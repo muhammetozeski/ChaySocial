@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="Generators/Generators.csproj" />
+  <Project Path="MainProject/MainProject.csproj" />
+  <Project Path="ChaySocial.Web.Client/ChaySocial.Web.Client.csproj" />
+  <Project Path="ChaySocial.Web/ChaySocial.Web.csproj" />
+  <Project Path="ChaySocial/ChaySocial.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
+</Solution>
