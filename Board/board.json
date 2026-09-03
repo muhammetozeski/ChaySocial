@@ -1,0 +1,23 @@
+{
+  "updatedAt": "2026-09-03 15:20",
+  "cards": [
+    {
+      "id": "S1-mimari",
+      "title": "Sprint 1 — Mimari iskelet",
+      "at": "2026-09-03 15:20",
+      "body": "Şablonu okudum, derleme temiz, git kuruldu.\n\n<b>Önerdiğim katmanlar (MainProject içinde):</b>\n• <b>Systems/</b> — projeden bağımsız, her projede tekrar kullanılabilir altyapı\n   ├ Observability/ → EventChannel&lt;T&gt; (readonly HashSet observer motoru)\n   ├ Outcomes/ → Result / Result&lt;T&gt;\n   ├ Persistence/ → IDocumentStore, IBlobStore, ILocalStore (Firebase mi PC mi — fark etmez)\n   ├ Cryptography/ → ISignatureScheme, IKeyEncapsulation, IAeadCipher, IKeyDerivation\n   └ Resilience/ → Polly boru hatları\n• <b>Domain/</b> — ChaySocial'a özgü modeller (Identity, Post, Message, Feed)\n• <b>Services/</b> — Domain + Systems'i birleştiren servisler\n• <b>Events/</b> — tüm event kanalları tek klasörde\n• <b>UI/</b> — şablonun mevcut hiyerarşisi + PageBase üstüne yeni taban sayfalar\n\n<b>Kural:</b> Systems/ içindeki hiçbir dosya ChaySocial kelimesini bilmeyecek. Proje çöpe gitse bile o klasör elimizde kalacak.\n\nOnay verirsen bu iskeleti kurup Observer motorundan başlıyorum."
+    },
+    {
+      "id": "S1-kripto",
+      "title": "Kimlik & kripto — hibrit kuantum dirençli",
+      "at": "2026-09-03 15:20",
+      "body": "<b>Hesap oluşturma:</b> tek tık → istemci 32 byte rastgele <b>master seed</b> üretir. Kullanıcının sakladığı tek şey bu (istersen parola ile şifrelenir).\n\nSeed'den KDF ile 4 anahtar çifti türer:\n• Ed25519 (imza) + <b>ML-DSA-65</b> (kuantum dirençli imza)\n• X25519 (anahtar değişimi) + <b>ML-KEM-768</b> (kuantum dirençli KEM)\n\n<b>Kullanıcı adı</b> = base32(hibrit public anahtar özeti + checksum + sürüm) → tor v3 adresi gibi: <code>chay-7k2mq9x4...</code>\n\n<b>Giriş:</b> sunucu nonce yollar, istemci imzalar. Secret asla ağa çıkmaz — Proton'un yaptığı da bu.\n\n<b>Paket:</b> BouncyCastle.Cryptography. Sebep: .NET'in MLKem/MLDsa sınıfları OS'a bağlı ve WebAssembly'de çalışmıyor; BouncyCastle saf C#, tarayıcıda da çalışır. Ed25519/X25519/Argon2id/ChaCha20-Poly1305 da aynı pakette.\n\nBu pakete onay verir misin?"
+    },
+    {
+      "id": "S1-public-sifre",
+      "title": "Tartışma — public gönderiyi sunucu görmesin (mega.nz modeli)",
+      "at": "2026-09-03 15:20",
+      "body": "Bunu birlikte düşünelim, aklıma gelen 4 yol var:\n\n<b>A) Takip = anahtar teslimi.</b> Her kullanıcının bir \"duvar anahtarı\" olur. Birini takip ettiğinde o anahtar sana E2EE ile gönderilir. Sunucu takip listesini görür, anahtarı görmez. Feed doğal çalışır. Eksik: yeni gelen eski gönderileri de çözebilir (anahtar döndürülmezse).\n\n<b>B) Link fragmentı (tam mega modeli).</b> Anahtar <code>#k=...</code> içinde, HTTP'ye hiç girmez. Sunucu gerçekten hiçbir şey bilmez. Eksik: keşif/feed olmaz, sadece paylaşılan link çalışır.\n\n<b>C) Türetilebilir anahtar.</b> Anahtar = HKDF(postId, yazarın public anahtarı). Herkes hesaplar. Ama sunucu da hesaplar → \"göremez\" iddiası çöker, sadece \"taramıyor\" olur.\n\n<b>D) Karma (bence en iyisi):</b> A + B birlikte. Feed'de takipçi anahtarı, dışarı paylaşımda fragment linki. Ayrıca gönderi <b>şikayet</b> edilirse şikayetçi kendi kopyasındaki anahtarı şikayetle beraber gönderir — sunucu ancak o zaman o tek gönderiyi açar.\n\nSen ne dersin? D'ye mi gidelim, yoksa başka bir fikrin var mı?"
+    }
+  ]
+}

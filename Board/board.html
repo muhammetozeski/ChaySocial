@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ChaySocial · Onay Panosu</title>
+<style>
+  :root {
+    --bg-deep: #070A1A;
+    --bg-base: #0E1230;
+    --surface: rgba(255,255,255,.06);
+    --surface-strong: rgba(255,255,255,.11);
+    --border: rgba(255,255,255,.13);
+    --text: #F4F6FF;
+    --text-dim: #A8B1D9;
+    --text-mute: #6B73A3;
+    --primary: #7C7BFF;
+    --accent: #FFB547;
+    --good: #10B981;
+    --bad: #EF4444;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 18px 80px;
+    font: 15px/1.6 "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(ellipse 55% 60% at 20% 15%, rgba(59,42,140,.55) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 55% at 85% 35%, rgba(91,46,148,.55) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 50% at 30% 95%, rgba(122,35,80,.55) 0%, transparent 70%),
+      linear-gradient(180deg, var(--bg-base), var(--bg-deep));
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  header { max-width: 860px; margin: 0 auto 22px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: .3px; }
+  .pulse { font-size: 12px; color: var(--text-mute); }
+  main { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .card {
+    background: var(--surface);
+    backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px 22px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.28);
+    animation: rise .35s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+  .card h2 { font-size: 17px; margin: 0 0 6px; }
+  .meta { font-size: 12px; color: var(--text-mute); margin-bottom: 12px; }
+  .body { color: var(--text-dim); white-space: pre-wrap; }
+  .body b, .body strong { color: var(--text); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  button {
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 12px; padding: 9px 15px;
+    background: var(--surface-strong); color: var(--text);
+    transition: transform .15s ease, filter .15s ease;
+  }
+  button:hover { transform: translateY(-1px); filter: brightness(1.18); }
+  button.good { background: linear-gradient(135deg, #10B981, #059669); border-color: transparent; }
+  button.bad { background: linear-gradient(135deg, #EF4444, #DC2626); border-color: transparent; }
+  button.detail { background: linear-gradient(135deg, var(--primary), var(--accent)); border-color: transparent; color: #0B0E22; }
+  textarea {
+    width: 100%; margin-top: 12px; min-height: 78px; resize: vertical;
+    background: rgba(0,0,0,.28); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px;
+    font: inherit;
+  }
+  textarea::placeholder { color: var(--text-mute); }
+  .answered { border-color: rgba(16,185,129,.5); }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }
+  .badge.like { background: rgba(16,185,129,.2); color: #6EE7B7; }
+  .badge.dislike { background: rgba(239,68,68,.2); color: #FCA5A5; }
+  .badge.detail { background: rgba(124,123,255,.22); color: #C7C6FF; }
+  .badge.wait { background: rgba(255,181,71,.18); color: #FFD79A; }
+  .empty { color: var(--text-mute); text-align: center; padding: 60px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🫖 ChaySocial · Onay Panosu</h1>
+  <span class="pulse" id="pulse">bağlanıyor…</span>
+</header>
+<main id="board"><div class="empty">yükleniyor…</div></main>
+
+<script>
+const VERDICT_LABEL = { like: "beğendim", dislike: "beğenmedim", detail: "detay" };
+let lastStamp = "";
+
+function cardHtml(card, reply) {
+  const badge = reply
+    ? `<span class="badge ${reply.verdict}">${VERDICT_LABEL[reply.verdict] ?? reply.verdict}</span>`
+    : `<span class="badge wait">bekliyor</span>`;
+  return `
+    <div class="card ${reply ? "answered" : ""}">
+      <h2>${card.title}${badge}</h2>
+      <div class="meta">${card.at ?? ""} · ${card.id}</div>
+      <div class="body">${card.body}</div>
+      <textarea id="note-${card.id}" placeholder="detay / not yaz…">${reply?.note ?? ""}</textarea>
+      <div class="row">
+        <button class="good" onclick="send('${card.id}','like')">👍 Beğendim</button>
+        <button class="bad" onclick="send('${card.id}','dislike')">👎 Beğenmedim</button>
+        <button class="detail" onclick="send('${card.id}','detail')">📝 Detaylara bak</button>
+      </div>
+    </div>`;
+}
+
+async function send(cardId, verdict) {
+  const note = document.getElementById("note-" + cardId).value;
+  await fetch("/reply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cardId, verdict, note })
+  });
+  lastStamp = "";
+  refresh();
+}
+
+async function refresh() {
+  try {
+    const [board, replies] = await Promise.all([
+      fetch("/data", { cache: "no-store" }).then(r => r.json()),
+      fetch("/replies", { cache: "no-store" }).then(r => r.json())
+    ]);
+    document.getElementById("pulse").textContent = "canlı · " + new Date().toLocaleTimeString("tr-TR");
+
+    const stamp = JSON.stringify([board.updatedAt, board.cards?.length, replies.length]);
+    if (stamp === lastStamp) return;
+    lastStamp = stamp;
+
+    const latest = {};
+    for (const r of [].concat(replies)) latest[r.cardId] = r;
+
+    const cards = (board.cards ?? []).slice().reverse();
+    document.getElementById("board").innerHTML = cards.length
+      ? cards.map(c => cardHtml(c, latest[c.id])).join("")
+      : `<div class="empty">henüz kart yok</div>`;
+  } catch (e) {
+    document.getElementById("pulse").textContent = "bağlantı yok — serve.ps1 çalışıyor mu?";
+  }
+}
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>
