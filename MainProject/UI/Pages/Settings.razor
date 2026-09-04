@@ -1,0 +1,305 @@
+@attribute [Route(SettingsRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    The owner's own screen, reached from their profile and from nowhere else. Four sections, in the order they
+    matter: the address other people know them by, the secret that is the account, the accounts they have shut
+    out, and the way off this device. Revealing the secret and signing out both take two deliberate presses,
+    because both are the kind of thing nobody should be able to do with one stray tap.
+*@
+
+<PageTitle>@PageTitleText</PageTitle>
+
+@* SessionPage sends anyone without an account to the welcome screen, but that navigation finishes after this
+   component has already rendered once — so without this guard the header would read a profile that is not
+   there yet, and the same is true for the beat between signing out and arriving at "/". *@
+@if (SessionService.IsSignedIn)
+{
+    <div class="settings-page">
+
+        <header class="settings-header">
+            <BackButton OnClick="GoBackToProfile" />
+
+            <div class="settings-header-text">
+                <h1 class="settings-title">@PageHeadline</h1>
+                <p class="settings-subtitle">@PageSubtitle</p>
+            </div>
+
+            <span class="settings-header-emoji" role="img" aria-label="@PageHeadline">@PageEmoji</span>
+        </header>
+
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
+                <span class="settings-section-emoji">@AddressSectionEmoji</span>
+                <h2 class="settings-section-title">@AddressSectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@AddressSectionDescription</p>
+
+            <div class="settings-identity">
+                <AvatarBubble Emoji="@OwnerAvatar" DiameterPx="OwnerAvatarDiameterPx" IsHighlighted="true" />
+
+                <div class="settings-identity-text">
+                    <span class="settings-identity-name">@OwnerName</span>
+                    @* ShowFull adds the readonly field holding the whole address: with no JavaScript in this app,
+                       selecting that field is how an owner copies their address. *@
+                    <AddressChip Address="@SessionService.CurrentAddress"
+                                 ShowFull="true"
+                                 VisibleCharacters="AddressVisibleCharacters" />
+                </div>
+            </div>
+
+        </CoreCard>
+
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
+                <span class="settings-section-emoji">@SecretSectionEmoji</span>
+                <h2 class="settings-section-title">@SecretSectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@SecretSectionDescription</p>
+
+            @if (IsSecretShowing)
+            {
+                <textarea class="settings-secret-box"
+                          rows="@SecretRowCount"
+                          readonly
+                          spellcheck="false"
+                          aria-label="@SecretFieldLabel">@_secretText</textarea>
+
+                <div class="settings-warning">
+                    <span class="settings-warning-emoji">@SecretWarningEmoji</span>
+                    <span class="settings-warning-text">@SecretWarningText</span>
+                </div>
+
+                <CoreButton OnClick="HideSecret"
+                            IsFullWidth="true"
+                            Background="AppColors.SurfaceSubtle"
+                            TextColor="AppColors.TextPrimary"
+                            BorderRadius="@ButtonRadius"
+                            Padding="@ActionButtonPadding"
+                            FontSize="AppMeasures.Font.Normal"
+                            FontWeight="AppMeasures.Weight.Heavy"
+                            Border="@QuietButtonBorder">
+                    <span class="settings-button-emoji">@HideSecretEmoji</span>
+                    <span>@HideSecretLabel</span>
+                </CoreButton>
+            }
+            else if (IsAskingToReveal)
+            {
+                <div class="settings-confirm">
+                    <span class="settings-confirm-emoji">@RevealConfirmEmoji</span>
+                    <p class="settings-confirm-headline">@RevealConfirmHeadline</p>
+                    <p class="settings-confirm-description">@RevealConfirmDescription</p>
+
+                    <div class="settings-confirm-buttons">
+                        <CoreButton OnClick="RevealSecret"
+                                    Gradient="@((AppColors.Accent, AppColors.AccentDark))"
+                                    TextColor="AppColors.TextOnAccent"
+                                    BorderRadius="@ButtonRadius"
+                                    Padding="@ActionButtonPadding"
+                                    FontSize="AppMeasures.Font.Normal"
+                                    Shadow="@(AppStyles.GetGlow(AppColors.Accent))">
+                            @RevealConfirmLabel
+                        </CoreButton>
+
+                        <button type="button" class="settings-quiet-button" @onclick="CancelReveal">@RevealCancelLabel</button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <CoreButton OnClick="AskToRevealSecret"
+                            IsFullWidth="true"
+                            Background="AppColors.SurfaceSubtle"
+                            TextColor="AppColors.TextPrimary"
+                            BorderRadius="@ButtonRadius"
+                            Padding="@ActionButtonPadding"
+                            FontSize="AppMeasures.Font.Normal"
+                            FontWeight="AppMeasures.Weight.Heavy"
+                            Border="@QuietButtonBorder">
+                    <span class="settings-button-emoji">@RevealEmoji</span>
+                    <span>@RevealLabel</span>
+                </CoreButton>
+            }
+
+            @if (_secretFailureMessage is not null)
+            {
+                <p class="settings-error">@_secretFailureMessage</p>
+            }
+
+        </CoreCard>
+
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
+                <span class="settings-section-emoji">@BlockedSectionEmoji</span>
+                <h2 class="settings-section-title">@BlockedSectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@BlockedSectionDescription</p>
+
+            @if (IsLoading)
+            {
+                <div class="settings-status">
+                    <CoreSpinner />
+                </div>
+            }
+            else if (LoadFailureMessage is not null)
+            {
+                <div class="settings-status">
+                    <span class="settings-status-emoji">@LoadFailureEmoji</span>
+                    <p class="settings-section-description">@LoadFailureMessage</p>
+
+                    <CoreButton OnClick="ReloadAsync"
+                                Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                                TextColor="AppColors.TextOnAccent"
+                                BorderRadius="@ButtonRadius"
+                                Padding="@ActionButtonPadding"
+                                FontSize="AppMeasures.Font.Normal"
+                                Shadow="@AppStyles.ShadowPrimaryGlow">
+                        @RetryLabel
+                    </CoreButton>
+                </div>
+            }
+            else if (_blocked.Count == 0)
+            {
+                <EmptyState Emoji="@EmptyBlockedEmoji"
+                            Headline="@EmptyBlockedHeadline"
+                            Description="@EmptyBlockedDescription" />
+            }
+            else
+            {
+                <ul class="settings-block-list">
+                    @foreach (BlockedAccount account in _blocked)
+                    {
+                        <li class="settings-block-item" @key="account.Address">
+                            @if (account.Profile is not null)
+                            {
+                                <PersonRow Profile="account.Profile" Action="@UnblockAction(account.Address)" />
+                            }
+                            else
+                            {
+                                @* An account that never published a profile still has to be releasable, so the row is
+                                   drawn from the address alone rather than skipped. *@
+                                <div class="settings-nameless-row">
+                                    <AvatarBubble Emoji="@AvatarFor(account)" DiameterPx="BlockedRowAvatarDiameterPx" />
+
+                                    <div class="settings-nameless-text">
+                                        <span class="settings-nameless-name">@NameFor(account)</span>
+                                        <AddressChip Address="@account.Address" />
+                                    </div>
+
+                                    <div class="settings-nameless-action">@UnblockAction(account.Address)</div>
+                                </div>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+
+        </CoreCard>
+
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
+                <span class="settings-section-emoji">@SignOutSectionEmoji</span>
+                <h2 class="settings-section-title">@SignOutSectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@SignOutSectionDescription</p>
+
+            <CoreButton OnClick="OpenSignOutConfirmation"
+                        IsFullWidth="true"
+                        Background="AppColors.SurfaceSubtle"
+                        TextColor="AppColors.TextDanger"
+                        BorderRadius="@ButtonRadius"
+                        Padding="@ActionButtonPadding"
+                        FontSize="AppMeasures.Font.Normal"
+                        FontWeight="AppMeasures.Weight.Heavy"
+                        Border="@QuietButtonBorder">
+                <span class="settings-button-emoji">@SignOutSectionEmoji</span>
+                <span>@SignOutLabel</span>
+            </CoreButton>
+
+        </CoreCard>
+
+    </div>
+
+    <CoreModal IsVisible="_isSignOutOpen" IsAcrylic="true" OnBackdropClick="CloseSignOutConfirmation">
+        <div class="settings-signout-sheet">
+            <span class="settings-signout-emoji">@SignOutSectionEmoji</span>
+            <h2 class="settings-signout-title">@SignOutConfirmTitle</h2>
+            <p class="settings-signout-description">@SignOutConfirmDescription</p>
+
+            @if (_isSigningOut)
+            {
+                <div class="settings-signout-busy">
+                    <CoreSpinner SizePx="BusySpinnerDiameterPx" BorderWidthPx="BusySpinnerBorderPx" />
+                    <p class="settings-section-description">@SignOutBusyLabel</p>
+                </div>
+            }
+            else
+            {
+                <CoreButton OnClick="SignOutAsync"
+                            IsFullWidth="true"
+                            Gradient="@((AppColors.Error, AppColors.ErrorDark))"
+                            TextColor="AppColors.TextOnDanger"
+                            BorderRadius="@ButtonRadius"
+                            Padding="@ActionButtonPadding"
+                            FontSize="AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowErrorGlow">
+                    @SignOutConfirmLabel
+                </CoreButton>
+
+                <button type="button" class="settings-quiet-button" @onclick="CloseSignOutConfirmation">@SignOutCancelLabel</button>
+            }
+        </div>
+    </CoreModal>
+}
+
+<SettingsCss />
+
+@code {
+    /// <summary>
+    /// The button that lifts one block, written once and drawn in both kinds of blocked row — the one built from a
+    /// profile and the one built from a bare address — so the two can never drift apart. While its own unblock is
+    /// running the label is swapped for a throbber, leaving every other row's button pressable.
+    /// </summary>
+    RenderFragment<string> UnblockAction => address =>
+    @<CoreButton OnClick="() => UnblockAsync(address)"
+                 Disabled="IsUnblocking(address)"
+                 Background="AppColors.SurfaceSubtle"
+                 TextColor="AppColors.TextPrimary"
+                 BorderRadius="@ButtonRadius"
+                 Padding="@QuietButtonPadding"
+                 FontSize="AppMeasures.Font.Small"
+                 FontWeight="AppMeasures.Weight.Medium"
+                 Border="@QuietButtonBorder">
+        @if (IsUnblocking(address))
+        {
+            <CoreSpinner SizePx="BusySpinnerDiameterPx" BorderWidthPx="BusySpinnerBorderPx" Color="AppColors.TextPrimary" />
+        }
+        else
+        {
+            <span>@UnblockLabel</span>
+        }
+    </CoreButton>;
+}

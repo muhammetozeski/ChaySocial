@@ -1,0 +1,409 @@
+using ChaySocial.MainProject.Constants.ThemeConstants;
+using ChaySocial.MainProject.DataModels;
+using ChaySocial.MainProject.Events;
+using ChaySocial.MainProject.Services;
+
+namespace ChaySocial.MainProject.UI.Pages
+{
+    /// <summary> Which of the wall's two lists of posts is on screen. </summary>
+    public enum WallFeed
+    {
+        /// <summary> Only posts written by the accounts the reader chose to follow. </summary>
+        Following,
+
+        /// <summary> Posts from every account, so the reader can find people they do not follow yet. </summary>
+        Discover
+    }
+
+    /// <summary>
+    /// The three numbers a post card draws under a post. Read once per post while the wall loads, so a repaint
+    /// never goes back to the store for a count it already has.
+    /// </summary>
+    /// <param name="LikeCount"> How many accounts liked the post. </param>
+    /// <param name="IsLikedByViewer"> True when the signed-in account is one of those likers, which fills the heart. </param>
+    /// <param name="CommentCount"> How many comments the post carries. </param>
+    public readonly record struct PostEngagement(int LikeCount, bool IsLikedByViewer, int CommentCount);
+
+    /// <summary>
+    /// The wall: what the reader writes, the two feeds they can read, and every post card in whichever feed is
+    /// selected. The page owns all the reads and all the writes — the cards below it only draw what they are
+    /// handed and report which button was pressed.
+    /// </summary>
+    public partial class Wall
+    {
+        /// <summary> Emoji beside the page heading: the teapot the whole app is named after. </summary>
+        const string PageEmoji = "🫖";
+
+        /// <summary> The page's heading. </summary>
+        const string PageHeadline = "Your teahouse";
+
+        /// <summary> Line under the heading, naming what makes this wall different from any other. </summary>
+        const string PageSubtitle = "Every word here is signed by the hand that wrote it.";
+
+        /// <summary> Label on the tab showing only followed accounts. </summary>
+        const string FollowingTabLabel = "Following";
+
+        /// <summary> Label on the tab showing everybody's posts. </summary>
+        const string DiscoverTabLabel = "Discover";
+
+        /// <summary> Emoji on the following tab: the people the reader already chose. </summary>
+        const string FollowingTabEmoji = "🤝";
+
+        /// <summary> Emoji on the discover tab: looking beyond the accounts already followed. </summary>
+        const string DiscoverTabEmoji = "🔭";
+
+        /// <summary> Tooltip on the following tab. </summary>
+        const string FollowingTabHint = "Posts from the accounts you follow";
+
+        /// <summary> Tooltip on the discover tab. </summary>
+        const string DiscoverTabHint = "Posts from everybody";
+
+        /// <summary> Class appended to whichever tab is selected; it carries the filled, glowing look. </summary>
+        const string ActiveTabClass = "is-active";
+
+        /// <summary> Value written into <c>aria-selected</c> on the tab that is showing. </summary>
+        const string SelectedTabValue = "true";
+
+        /// <summary> Value written into <c>aria-selected</c> on the tab that is not showing. </summary>
+        const string UnselectedTabValue = "false";
+
+        /// <summary> Line under the throbber while the first page of a feed is being read. </summary>
+        const string LoadingLabel = "Warming the pot…";
+
+        /// <summary> Emoji over the message shown when a feed could not be read. </summary>
+        const string LoadFailureEmoji = "🌧️";
+
+        /// <summary> Text on the button that runs a failed load again. </summary>
+        const string RetryLabel = "Try again";
+
+        /// <summary> Emoji for the placeholder shown when the reader follows nobody who has posted. </summary>
+        const string EmptyFollowingEmoji = "🌱";
+
+        /// <summary> Headline of that placeholder. </summary>
+        const string EmptyFollowingHeadline = "Nothing steeping yet";
+
+        /// <summary> Supporting line of that placeholder, pointing at the other tab. </summary>
+        const string EmptyFollowingDescription = "Follow a few people and their posts will gather here. Discover is where you meet them.";
+
+        /// <summary> Text on the button that switches the reader to the discover tab. </summary>
+        const string GoToDiscoverLabel = "Wander over to Discover";
+
+        /// <summary> Emoji for the placeholder shown when the whole app has no posts to read. </summary>
+        const string EmptyDiscoverEmoji = "🍃";
+
+        /// <summary> Headline of that placeholder. </summary>
+        const string EmptyDiscoverHeadline = "The teahouse is quiet";
+
+        /// <summary> Supporting line of that placeholder, inviting the reader to write the first post. </summary>
+        const string EmptyDiscoverDescription = "Nobody has written anything yet. Say the first word and the rest will follow.";
+
+        /// <summary> Emoji at the top of the report sheet. </summary>
+        const string ReportEmoji = "🚩";
+
+        /// <summary> Heading of the report sheet. </summary>
+        const string ReportTitle = "Report this post";
+
+        /// <summary> Line under that heading, saying what picking a reason does. </summary>
+        const string ReportSubtitle = "Pick what is wrong with it. Your report hands this post's text to the moderators.";
+
+        /// <summary> Line under the throbber while a report is being written. </summary>
+        const string ReportSendingLabel = "Sending your report…";
+
+        /// <summary> Text on the button that closes the report sheet without reporting anything. </summary>
+        const string CancelLabel = "Never mind";
+
+        /// <summary> Route a post's own page lives at; the post id is appended to it. </summary>
+        const string PostRoutePrefix = "/post/";
+
+        /// <summary> Route an account's profile lives at; the address is appended to it. </summary>
+        const string ProfileRoutePrefix = "/profile/";
+
+        /// <summary> Inside spacing of this page's pill buttons: wide enough to stay comfortable to tap on a phone. </summary>
+        static readonly string ActionButtonPadding = $"{AppMeasures.Space.Px10}px {AppMeasures.Space.Px20}px";
+
+        /// <summary> The tabs offered, in the order they are drawn. </summary>
+        static readonly WallFeed[] SelectableFeeds = Enum.GetValues<WallFeed>();
+
+        /// <summary> Every reason the report sheet offers, in the order <see cref="ReportReason"/> declares them. </summary>
+        static readonly ReportReason[] OfferedReportReasons = Enum.GetValues<ReportReason>();
+
+        /// <summary>
+        /// Reloads on a new post or like (wall), on a follow that changes what the following feed contains,
+        /// on a block or report that hides an account, and on a sign-in or sign-out that changes who is reading.
+        /// </summary>
+        protected override string[] ReloadOnEvents =>
+        [
+            MainEvents.Names.WallChanged,
+            MainEvents.Names.FollowChanged,
+            MainEvents.Names.ModerationChanged,
+            MainEvents.Names.SessionChanged
+        ];
+
+        /// <summary> The tab currently showing; the wall opens on the reader's own people. </summary>
+        WallFeed SelectedFeed = WallFeed.Following;
+
+        /// <summary> Posts of the selected feed, newest first. </summary>
+        IReadOnlyList<PostData> Posts = [];
+
+        /// <summary> One profile per distinct author in <see cref="Posts"/>, keyed by address; a value is null when that account has published no profile. </summary>
+        Dictionary<string, ProfileData?> AuthorProfiles = [];
+
+        /// <summary> The counts drawn under each post, keyed by post id. </summary>
+        Dictionary<string, PostEngagement> Engagements = [];
+
+        /// <summary> What the reader has typed into the composer but not published yet. </summary>
+        string ComposerText = string.Empty;
+
+        /// <summary> True while a post is being signed and stored, which locks the composer. </summary>
+        bool IsPublishing;
+
+        /// <summary> The post the report sheet is open for, or null while the sheet is closed. </summary>
+        PostData? ReportedPost;
+
+        /// <summary> True while a report is being written, which swaps the reasons for a throbber. </summary>
+        bool IsReportInFlight;
+
+        /// <summary> True while the report sheet should be on screen. </summary>
+        bool IsReportOpen => ReportedPost is not null;
+
+        /// <summary> Emoji drawn in the composer's bubble: the reader's own avatar, or the starter one before a profile is read. </summary>
+        string ComposerAvatar => SessionService.CurrentProfile?.Avatar ?? ProfileData.DefaultAvatar;
+
+        /// <summary> The frosted surface the two tabs sit on, built from the same glass recipe every other surface uses. </summary>
+        string TabStripStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle);
+
+        /// <summary>
+        /// Reads the selected feed and everything its cards need to draw: one profile per author, and the like
+        /// and comment counts of every post.
+        /// </summary>
+        /// <returns> A task that completes once the page has all of it. </returns>
+        protected override async Task LoadAsync()
+        {
+            string viewerAddress = SessionService.CurrentAddress;
+
+            IReadOnlyList<PostData> posts = SelectedFeed == WallFeed.Following
+                ? await FeedService.ReadFollowingFeedAsync(viewerAddress)
+                : await FeedService.ReadDiscoverFeedAsync(viewerAddress);
+
+            Dictionary<string, ProfileData?> authorProfiles = await ReadAuthorProfilesAsync(posts);
+            Dictionary<string, PostEngagement> engagements = await ReadEngagementsAsync(posts, viewerAddress);
+
+            Posts = posts;
+            AuthorProfiles = authorProfiles;
+            Engagements = engagements;
+        }
+
+        /// <summary>
+        /// Reads one profile per distinct author. Several posts by the same person share the one read, which is
+        /// what keeps a feed full of one prolific author down to a single profile fetch.
+        /// </summary>
+        /// <param name="posts"> The posts about to be drawn. </param>
+        /// <returns> Each author's profile keyed by address; a value is null when that account published none. </returns>
+        static async Task<Dictionary<string, ProfileData?>> ReadAuthorProfilesAsync(IReadOnlyList<PostData> posts)
+        {
+            string[] authorAddresses = [.. posts.Select(post => post.AuthorAddress).Distinct()];
+            ProfileData?[] profiles = await Task.WhenAll(authorAddresses.Select(ProfileService.ReadAsync));
+
+            Dictionary<string, ProfileData?> byAddress = new(authorAddresses.Length);
+            for (int index = 0; index < authorAddresses.Length; index++)
+            {
+                byAddress[authorAddresses[index]] = profiles[index];
+            }
+
+            return byAddress;
+        }
+
+        /// <summary> Reads the like and comment counts of every post in the feed. </summary>
+        /// <param name="posts"> The posts about to be drawn. </param>
+        /// <param name="viewerAddress"> Address of the reader, so their own like fills the heart. </param>
+        /// <returns> The counts keyed by post id. </returns>
+        static async Task<Dictionary<string, PostEngagement>> ReadEngagementsAsync(IReadOnlyList<PostData> posts, string viewerAddress)
+        {
+            PostEngagement[] measured = await Task.WhenAll(posts.Select(post => MeasureEngagementAsync(post, viewerAddress)));
+
+            Dictionary<string, PostEngagement> byPostId = new(posts.Count);
+            for (int index = 0; index < posts.Count; index++)
+            {
+                byPostId[posts[index].PostId] = measured[index];
+            }
+
+            return byPostId;
+        }
+
+        /// <summary> Reads one post's likers and comment count, both at once because neither needs the other. </summary>
+        /// <param name="post"> The post to measure. </param>
+        /// <param name="viewerAddress"> Address of the reader, looked for among the likers. </param>
+        /// <returns> The three numbers that post's card draws. </returns>
+        static async Task<PostEngagement> MeasureEngagementAsync(PostData post, string viewerAddress)
+        {
+            Task<IReadOnlyList<string>> likersRead = WallService.ReadLikersAsync(post.PostId);
+            Task<int> commentCountRead = CommentService.CountForPostAsync(post.PostId);
+            await Task.WhenAll(likersRead, commentCountRead);
+
+            IReadOnlyList<string> likers = await likersRead;
+            return new PostEngagement(likers.Count, likers.Contains(viewerAddress), await commentCountRead);
+        }
+
+        /// <summary> The profile of a post's author, or null while it has not been read or was never published. </summary>
+        /// <param name="post"> The post being drawn. </param>
+        /// <returns> The author's profile, or null. </returns>
+        ProfileData? AuthorProfileFor(PostData post) => AuthorProfiles.GetValueOrDefault(post.AuthorAddress);
+
+        /// <summary> The counts for one post, all zero while they have not been read. </summary>
+        /// <param name="post"> The post being drawn. </param>
+        /// <returns> That post's like and comment counts. </returns>
+        PostEngagement EngagementFor(PostData post) => Engagements.GetValueOrDefault(post.PostId);
+
+        /// <summary> Label on one tab. </summary>
+        /// <param name="feed"> The tab's feed. </param>
+        /// <returns> The word drawn on it. </returns>
+        static string FeedLabel(WallFeed feed) => feed switch
+        {
+            WallFeed.Following => FollowingTabLabel,
+            _ => DiscoverTabLabel
+        };
+
+        /// <summary> Emoji on one tab. </summary>
+        /// <param name="feed"> The tab's feed. </param>
+        /// <returns> The emoji drawn before its label. </returns>
+        static string FeedEmoji(WallFeed feed) => feed switch
+        {
+            WallFeed.Following => FollowingTabEmoji,
+            _ => DiscoverTabEmoji
+        };
+
+        /// <summary> Tooltip on one tab, saying whose posts it shows. </summary>
+        /// <param name="feed"> The tab's feed. </param>
+        /// <returns> The hovered description. </returns>
+        static string FeedHint(WallFeed feed) => feed switch
+        {
+            WallFeed.Following => FollowingTabHint,
+            _ => DiscoverTabHint
+        };
+
+        /// <summary> Name of one report reason, as the reader reads it. </summary>
+        /// <param name="reason"> The reason offered. </param>
+        /// <returns> Its label. </returns>
+        static string ReasonLabel(ReportReason reason) => reason switch
+        {
+            ReportReason.Spam => "Spam",
+            ReportReason.Harassment => "Harassment",
+            ReportReason.Violence => "Violence",
+            ReportReason.SexualContent => "Sexual content",
+            ReportReason.Impersonation => "Pretending to be someone",
+            _ => "Something else"
+        };
+
+        /// <summary> Emoji beside one report reason, so the sheet can be read at a glance. </summary>
+        /// <param name="reason"> The reason offered. </param>
+        /// <returns> Its emoji. </returns>
+        static string ReasonEmoji(ReportReason reason) => reason switch
+        {
+            ReportReason.Spam => "📢",
+            ReportReason.Harassment => "💢",
+            ReportReason.Violence => "⚠️",
+            ReportReason.SexualContent => "🔞",
+            ReportReason.Impersonation => "🎭",
+            _ => "❓"
+        };
+
+        /// <summary> Takes each keystroke from the composer, which the page owns rather than the composer. </summary>
+        /// <param name="text"> The textarea's new contents. </param>
+        void HandleComposerTextChanged(string text) => ComposerText = text;
+
+        /// <summary>
+        /// Switches tabs. The old feed's posts are dropped first so the throbber — not the previous tab's list —
+        /// is what the reader sees while the new one is read.
+        /// </summary>
+        /// <param name="feed"> The tab to show. </param>
+        /// <returns> A task that completes once the new feed has been read. </returns>
+        async Task SelectFeedAsync(WallFeed feed)
+        {
+            if (feed == SelectedFeed) return;
+
+            SelectedFeed = feed;
+            Posts = [];
+            AuthorProfiles = [];
+            Engagements = [];
+
+            await ReloadAsync();
+        }
+
+        /// <summary> Moves the reader to the discover tab, from the placeholder shown on an empty following feed. </summary>
+        /// <returns> A task that completes once discover has been read. </returns>
+        Task ShowDiscoverAsync() => SelectFeedAsync(WallFeed.Discover);
+
+        /// <summary>
+        /// Signs and publishes what the reader wrote, then empties the composer. The composer is only cleared on a
+        /// post that was actually stored, so text the service refused stays on screen to be fixed.
+        /// </summary>
+        /// <returns> A task that completes once the post is stored. </returns>
+        async Task PublishAsync()
+        {
+            if (IsPublishing) return;
+
+            IsPublishing = true;
+            try
+            {
+                PostData? published = await WallService.PublishAsync(Account, ComposerText);
+                if (published is not null) ComposerText = string.Empty;
+            }
+            finally
+            {
+                IsPublishing = false;
+            }
+        }
+
+        /// <summary>
+        /// Adds or removes the reader's like. The counts on screen are not patched here: the service announces the
+        /// change and this page is subscribed to that announcement, so the numbers come back from a fresh read.
+        /// </summary>
+        /// <param name="post"> The post whose heart was tapped. </param>
+        /// <returns> A task that completes once the like has been written. </returns>
+        Task ToggleLikeAsync(PostData post) => WallService.ToggleLikeAsync(post, Account.Public);
+
+        /// <summary> Removes one of the reader's own posts. </summary>
+        /// <param name="post"> The post to remove. </param>
+        /// <returns> A task that completes once the post is gone. </returns>
+        Task DeletePostAsync(PostData post) => WallService.DeleteAsync(post, Account.Public);
+
+        /// <summary> Opens the report sheet for one post. </summary>
+        /// <param name="post"> The post being reported. </param>
+        void OpenReport(PostData post) => ReportedPost = post;
+
+        /// <summary> Closes the report sheet, leaving a report that is already being written to finish. </summary>
+        void CloseReport()
+        {
+            if (IsReportInFlight) return;
+
+            ReportedPost = null;
+        }
+
+        /// <summary> Files the report under the reason the reader picked and closes the sheet. </summary>
+        /// <param name="reason"> The category the reader chose. </param>
+        /// <returns> A task that completes once the report is stored. </returns>
+        async Task SubmitReportAsync(ReportReason reason)
+        {
+            if (ReportedPost is null || IsReportInFlight) return;
+
+            IsReportInFlight = true;
+            try
+            {
+                await ModerationService.ReportPostAsync(Account, ReportedPost, reason);
+            }
+            finally
+            {
+                IsReportInFlight = false;
+                ReportedPost = null;
+            }
+        }
+
+        /// <summary> Opens an author's profile. </summary>
+        /// <param name="address"> Address of the account whose profile to open. </param>
+        void OpenAuthor(string address) => NavManager.NavigateTo($"{ProfileRoutePrefix}{address}");
+
+        /// <summary> Opens one post's own page, where its comments are read and written. </summary>
+        /// <param name="postId"> Id of the post to open. </param>
+        void OpenComments(string postId) => NavManager.NavigateTo($"{PostRoutePrefix}{postId}");
+    }
+}

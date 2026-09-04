@@ -1,0 +1,106 @@
+@using ChaySocial.MainProject.DataModels
+
+@*
+    Composer at the foot of a conversation: a frosted pill holding one text field and a round send button
+    that runs indigo into coral. The return key sends too, so the button is the visible affordance rather
+    than the only way through.
+*@
+<div class="message-composer" style="@SurfaceStyle">
+    <input class="message-composer-input"
+           type="text"
+           placeholder="@Placeholder"
+           maxlength="@MessageData.MaximumTextLength"
+           value="@Text"
+           disabled="@IsBusy"
+           @oninput="HandleInputAsync"
+           @onkeydown="HandleKeyDownAsync" />
+
+    <CoreButton Gradient="@SendGradient"
+                TextColor="@AppColors.TextOnFilledSurface"
+                BorderRadius="@(AppMeasures.Radius.Circular + "%")"
+                Padding="0"
+                Shadow="@SendShadow"
+                Disabled="@(!CanSubmit)"
+                OnClick="@SubmitAsync"
+                CustomClass="message-composer-send">
+        @if (IsBusy)
+        {
+            <CoreSpinner SizePx="@BusySpinnerDiameterPx" BorderWidthPx="@BusySpinnerBorderPx" Color="@AppColors.TextOnFilledSurface" />
+        }
+        else
+        {
+            <span class="message-composer-send-emoji">@SendEmoji</span>
+        }
+    </CoreButton>
+</div>
+
+<MessageComposerCss />
+
+@code {
+    /// <summary> What the sender has typed so far. </summary>
+    [Parameter] public string Text { get; set; } = string.Empty;
+
+    /// <summary> Raised on every keystroke with the field's new contents, so the caller owns the text. </summary>
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+
+    /// <summary> Raised when the sender presses the button or the return key on text worth sending. Encrypting and storing the message belongs to the caller. </summary>
+    [Parameter] public EventCallback OnSubmit { get; set; }
+
+    /// <summary> True while the caller is sending: the field locks and the button becomes a spinner. </summary>
+    [Parameter] public bool IsBusy { get; set; }
+
+    /// <summary> Grey prompt shown in the empty field. </summary>
+    [Parameter] public string Placeholder { get; set; } = DefaultPlaceholder;
+
+    /// <summary> Prompt used when the caller does not supply one. </summary>
+    const string DefaultPlaceholder = "Write a private message…";
+
+    /// <summary> Emoji on the send button: a dove carrying the message away. </summary>
+    const string SendEmoji = "🕊️";
+
+    /// <summary> Value <see cref="KeyboardEventArgs.Key"/> carries for the return key. </summary>
+    const string ReturnKeyName = "Enter";
+
+    /// <summary> Diameter of the spinner that fills the send button while a message is going out. </summary>
+    const int BusySpinnerDiameterPx = AppMeasures.Size.Px20;
+
+    /// <summary> Ring thickness of that spinner, thinned down from the app default so a disc this small still reads as a ring. </summary>
+    const int BusySpinnerBorderPx = AppMeasures.Border.Medium;
+
+    /// <summary> Strength of the halo under the send button, so it lifts off the frosted pill. </summary>
+    const float SendGlowOpacity = 0.4f;
+
+    /// <summary> True when there is something to send and the caller is not already sending. </summary>
+    bool CanSubmit => !IsBusy && !string.IsNullOrWhiteSpace(Text);
+
+    /// <summary> The pill's frosted glass fill. </summary>
+    string SurfaceStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle);
+
+    /// <summary> Indigo running into coral across the send button. </summary>
+    (Color Start, Color End)? SendGradient => (AppColors.Primary, AppColors.Secondary);
+
+    /// <summary> The indigo halo under the send button. </summary>
+    string SendShadow => AppStyles.GetGlow(AppColors.Primary, SendGlowOpacity);
+
+    /// <summary> Hands every keystroke straight back to the caller. </summary>
+    /// <param name="args"> The input event; its value is the field's new contents. </param>
+    /// <returns> A task that completes once the caller has taken the new text. </returns>
+    Task HandleInputAsync(ChangeEventArgs args) => TextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    /// <summary> Sends on a bare return press, and ignores every other key. Return with shift held is left alone so it keeps its usual meaning. </summary>
+    /// <param name="args"> The key that was pressed. </param>
+    /// <returns> A task that completes once the message has been handed to the caller, or immediately when the key was not a bare return. </returns>
+    async Task HandleKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key != ReturnKeyName || args.ShiftKey) return;
+        await SubmitAsync();
+    }
+
+    /// <summary> Hands the message to the caller, unless there is nothing to send or one is already on its way. </summary>
+    /// <returns> A task that completes once the caller has handled the submission. </returns>
+    async Task SubmitAsync()
+    {
+        if (!CanSubmit) return;
+        await OnSubmit.InvokeAsync();
+    }
+}

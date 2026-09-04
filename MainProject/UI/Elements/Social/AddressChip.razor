@@ -1,0 +1,78 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.Cryptography
+
+<span class="address-chip">
+    <span class="address-chip-pill" title="@Address">@ShortAddress</span>
+
+    @if (ShowFull)
+    {
+        <input class="address-chip-full"
+               type="text"
+               value="@Address"
+               readonly
+               spellcheck="false"
+               autocomplete="off"
+               aria-label="@FullFieldLabel" />
+    }
+</span>
+
+<AddressChipCss />
+
+@code {
+    /// <summary>
+    /// Characters kept at each end of the encoded part when no call site says otherwise. Four is enough for a reader
+    /// to tell two accounts apart at a glance while the pill still fits beside a display name.
+    /// </summary>
+    public const int DefaultVisibleCharacters = 4;
+
+    /// <summary> Fewest characters an end may shrink to, so a caller passing zero still leaves something to recognise. </summary>
+    const int MinimumVisibleCharacters = 1;
+
+    /// <summary> How many ends of the address stay visible — the head and the tail. </summary>
+    const int VisibleEndCount = 2;
+
+    /// <summary> Stands in for the characters dropped out of the middle. </summary>
+    const string MiddleEllipsis = "…";
+
+    /// <summary> Screen-reader name of the read-only field, which otherwise announces as an unlabelled text box. </summary>
+    const string FullFieldLabel = "Full account address";
+
+    /// <summary> Account address to show. </summary>
+    [Parameter] public string Address { get; set; } = string.Empty;
+
+    /// <summary>
+    /// True to also reveal a read-only field holding the whole address. The app runs without JavaScript, so there is
+    /// no clipboard call to make: the field is what lets a reader select the address and copy it themselves.
+    /// </summary>
+    [Parameter] public bool ShowFull { get; set; }
+
+    /// <summary> Characters kept at each end of the encoded part of the address. </summary>
+    [Parameter] public int VisibleCharacters { get; set; } = DefaultVisibleCharacters;
+
+    /// <summary> The address as drawn inside the pill. </summary>
+    string ShortAddress => Shorten(Address, VisibleCharacters);
+
+    /// <summary>
+    /// Shortens an address for display, keeping the <see cref="AppCryptography.AddressPrefix"/> and a few characters
+    /// from each end of the encoded part with the middle replaced by an ellipsis. This is the single place the app
+    /// shortens an address, so a chip, a button label and a page title all abbreviate the same account identically.
+    /// </summary>
+    /// <param name="address"> Address to shorten; null or empty shortens to an empty string. </param>
+    /// <param name="visibleCharacters"> Characters kept at each end of the encoded part; raised to <see cref="MinimumVisibleCharacters"/> when lower. </param>
+    /// <returns> The shortened address, or the address unchanged when it is already short enough to show whole. </returns>
+    public static string Shorten(string? address, int visibleCharacters = DefaultVisibleCharacters)
+    {
+        if (string.IsNullOrEmpty(address)) return string.Empty;
+
+        string prefix = address.StartsWith(AppCryptography.AddressPrefix, StringComparison.Ordinal)
+            ? AppCryptography.AddressPrefix
+            : string.Empty;
+
+        string body = address[prefix.Length..];
+        int kept = Math.Max(visibleCharacters, MinimumVisibleCharacters);
+
+        if (body.Length <= kept * VisibleEndCount) return address;
+
+        return prefix + body[..kept] + MiddleEllipsis + body[^kept..];
+    }
+}

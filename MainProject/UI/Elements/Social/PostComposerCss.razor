@@ -1,0 +1,138 @@
+@* Styles for PostComposer. Every selector is namespaced "post-composer-*" because *Css.razor styles are
+   global (this project uses no CSS isolation), so bare names would leak into every other component. *@
+<style>
+    .post-composer {
+        gap: @(AppMeasures.Space.Px12)px;
+        animation: post-composer-rise @(AppMeasures.Duration.Normal)s @SoftLandingEasing both;
+    }
+
+    .post-composer-row {
+        display: flex;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    .post-composer-avatar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: @(AppMeasures.Size.Px44)px;
+        height: @(AppMeasures.Size.Px44)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        font-size: @(AppMeasures.Font.Large)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        background: linear-gradient(@(AvatarGradientAngleDegrees)deg, @(AppColors.Secondary.ToRgbaHex(true)), @(AppColors.Accent.ToRgbaHex(true)));
+        box-shadow: @AppStyles.ShadowSoft;
+    }
+
+    /* min-width:0 lets the textarea shrink inside the flex row instead of forcing the card wider than the phone. */
+    .post-composer-input {
+        flex: 1 1 auto;
+        min-width: 0;
+        box-sizing: border-box;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px14)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        resize: none;
+        outline: none;
+        transition: border-color @(AppMeasures.Duration.Fast)s, box-shadow @(AppMeasures.Duration.Fast)s;
+    }
+
+    .post-composer-input::placeholder {
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .post-composer-input:focus {
+        border-color: @(AppColors.Primary.ToRgbaHex(true));
+        box-shadow: @AppStyles.ShadowPrimaryGlow;
+    }
+
+    .post-composer-input:disabled {
+        opacity: @(AppMeasures.Opacity.Dim);
+        cursor: not-allowed;
+    }
+
+    .post-composer-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    /* The colour is set inline by the component because it changes with how much room is left. */
+    .post-composer-counter {
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        font-variant-numeric: tabular-nums;
+        transition: color @(AppMeasures.Duration.Fast)s;
+    }
+
+    /* margin-left:auto keeps the button on the far edge even after the footer wraps onto two lines. The pill's
+       radius, padding and font size are passed to CoreButton instead, because it writes those as inline style. */
+    .post-composer-share {
+        margin-left: auto;
+        min-width: @(ShareButtonMinimumWidthPx)px;
+    }
+
+    .post-composer-share-icon {
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    @@keyframes post-composer-rise {
+        from {
+            opacity: 0;
+            transform: translateY(@(AppMeasures.Space.Px8)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Phone width: the avatar steps aside so the textarea keeps the full width of the card. */
+    @@media (max-width: @(NarrowScreenBreakpointPx)px) {
+        .post-composer-avatar {
+            width: @(AppMeasures.Size.Px36)px;
+            height: @(AppMeasures.Size.Px36)px;
+            font-size: @(AppMeasures.Font.Medium)px;
+        }
+
+        .post-composer-row {
+            gap: @(AppMeasures.Space.Px8)px;
+        }
+
+        .post-composer-input {
+            font-size: @(AppMeasures.Font.Normal)px;
+        }
+
+        .post-composer-share {
+            min-width: @(NarrowShareButtonMinimumWidthPx)px;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Angle of the avatar bubble's two-colour sheen, matching the diagonal every other gradient surface uses. </summary>
+    const int AvatarGradientAngleDegrees = 135;
+
+    /// <summary> Easing that starts fast and settles softly, used for the card's entrance. </summary>
+    const string SoftLandingEasing = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+    /// <summary> Floor under the share button's width so it does not shrink when the throbber replaces its label. </summary>
+    const int ShareButtonMinimumWidthPx = AppMeasures.Size.Px110;
+
+    /// <summary> The same floor on a phone, where the footer has less room to give the button. </summary>
+    const int NarrowShareButtonMinimumWidthPx = AppMeasures.Size.Px100;
+
+    /// <summary> Widest viewport still treated as a phone, below which the composer tightens its spacing. </summary>
+    const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
+}

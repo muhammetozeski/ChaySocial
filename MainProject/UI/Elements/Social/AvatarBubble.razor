@@ -1,0 +1,65 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.DataModels
+
+<span class="avatar-bubble @VariantClass" style="@SizeStyle" role="img" aria-label="@AccessibleLabel">@ShownEmoji</span>
+
+<AvatarBubbleCss />
+
+@code {
+    /// <summary>
+    /// Diameter a call site gets when it does not ask for one: the size an account reads at inside a list row,
+    /// large enough for the emoji to stay legible next to a name.
+    /// </summary>
+    public const int DefaultDiameterPx = AppMeasures.Size.Px48;
+
+    /// <summary> Smallest circle that still shows an emoji; a caller passing zero or a negative size is pulled up to this. </summary>
+    const int MinimumDiameterPx = AppMeasures.Size.Px20;
+
+    /// <summary>
+    /// Share of the circle's diameter the emoji glyph occupies, as a percentage. Deriving the glyph size from the
+    /// diameter keeps the same optical balance whether the bubble is drawn tiny in a comment or huge on a profile.
+    /// </summary>
+    const int EmojiShareOfDiameterPercent = 52;
+
+    /// <summary> Modifier class carrying the quiet everyday look; defined in <c>AvatarBubbleCss</c>. </summary>
+    const string RestingClass = "avatar-bubble--resting";
+
+    /// <summary> Modifier class carrying the lit ring and glow; defined in <c>AvatarBubbleCss</c>. </summary>
+    const string HighlightedClass = "avatar-bubble--highlighted";
+
+    /// <summary> Screen-reader name of an ordinary bubble. The emoji itself carries no meaning worth reading out. </summary>
+    const string RestingLabel = "Profile avatar";
+
+    /// <summary> Screen-reader name of a highlighted bubble, so the ring is not information sighted readers alone get. </summary>
+    const string HighlightedLabel = "Profile avatar, highlighted";
+
+    /// <summary> Emoji standing in for a picture. Falls back to <see cref="ProfileData.DefaultAvatar"/> when blank. </summary>
+    [Parameter] public string Emoji { get; set; } = ProfileData.DefaultAvatar;
+
+    /// <summary> Width and height of the circle in CSS pixels. </summary>
+    [Parameter] public int DiameterPx { get; set; } = DefaultDiameterPx;
+
+    /// <summary> True to draw the bubble with a lit indigo ring and glow — used for the signed-in account and for whoever a screen is about. </summary>
+    [Parameter] public bool IsHighlighted { get; set; }
+
+    /// <summary> The emoji actually drawn: the caller's, or the default teapot when the caller passed nothing. </summary>
+    string ShownEmoji => string.IsNullOrWhiteSpace(Emoji) ? ProfileData.DefaultAvatar : Emoji;
+
+    /// <summary> The modifier class matching <see cref="IsHighlighted"/>. </summary>
+    string VariantClass => IsHighlighted ? HighlightedClass : RestingClass;
+
+    /// <summary> The screen-reader name matching <see cref="IsHighlighted"/>. </summary>
+    string AccessibleLabel => IsHighlighted ? HighlightedLabel : RestingLabel;
+
+    /// <summary> The diameter that is actually drawn, never smaller than <see cref="MinimumDiameterPx"/>. </summary>
+    int EffectiveDiameterPx => Math.Max(DiameterPx, MinimumDiameterPx);
+
+    /// <summary>
+    /// The only inline style on the bubble: the two measurements that change per call site. Every colour, border and
+    /// animation lives in <c>AvatarBubbleCss</c>.
+    /// </summary>
+    string SizeStyle =>
+        $"width:{EffectiveDiameterPx}px;" +
+        $"height:{EffectiveDiameterPx}px;" +
+        $"font-size:{EffectiveDiameterPx * EmojiShareOfDiameterPercent / AppMeasures.Percent.Full}px;";
+}

@@ -1,0 +1,142 @@
+@namespace ChaySocial.MainProject.UI.Pages
+
+@*
+    Styling for PostThread. PostThread renders this component itself, so the thread always arrives with its own
+    CSS attached. Only layout lives here: the header's glass and the composer pill's glass are inline styles
+    built by AppStyles, so the material stays defined in one place.
+*@
+<style>
+    .post-thread-screen {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ThreadColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        padding-bottom: @(ThreadBottomClearancePx)px;
+        box-sizing: border-box;
+    }
+
+    /* Rides along the top of the scroll so the way back is always one tap away; the status-bar inset keeps the
+       title clear of a phone's notch. */
+    .post-thread-header {
+        position: sticky;
+        top: 0;
+        z-index: @(AppMeasures.ZLayer.Sticky);
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px16)px @(AppMeasures.Space.Px12)px;
+        box-sizing: border-box;
+    }
+
+    /* min-width:0 lets a long subtitle shrink instead of pushing the refresh spinner off the bar. */
+    .post-thread-heading {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px2)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .post-thread-title {
+        font-size: @(AppMeasures.Font.Large)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .post-thread-subtitle {
+        font-size: @(AppMeasures.Font.Small)px;
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .post-thread-first-load {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: @(AppMeasures.Viewport.Most)vh;
+    }
+
+    .post-thread-post,
+    .post-thread-replies,
+    .post-thread-composer {
+        padding-left: @(AppMeasures.Space.Px16)px;
+        padding-right: @(AppMeasures.Space.Px16)px;
+        box-sizing: border-box;
+    }
+
+    /* The post lifts into place once; its replies each carry their own arrival animation. */
+    .post-thread-post {
+        animation: post-thread-arrive @(AppMeasures.Duration.Medium)s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .post-thread-replies {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px10)px;
+    }
+
+    .post-thread-section-title {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px8)px;
+        margin: 0 0 @(AppMeasures.Space.Px2)px @(AppMeasures.Space.Px4)px;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .post-thread-section-emoji {
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    /* Sits just above the bottom navigation and stays there while the thread scrolls. The fade behind it is what
+       stops replies from sliding out from under the pill with a hard edge. */
+    .post-thread-composer {
+        position: sticky;
+        bottom: @(ComposerBottomOffsetPx)px;
+        z-index: @(AppMeasures.ZLayer.Sticky);
+        padding-top: @(AppMeasures.Space.Px16)px;
+        padding-bottom: @(AppMeasures.Space.Px8)px;
+        background: linear-gradient(to top, @(AppColors.BackgroundDeep.WithAlpha(ComposerFadeOpacity).ToRgbaHex(true)) @(ComposerFadeSolidStopPercent)%, transparent @(AppMeasures.Percent.Full)%);
+    }
+
+    @@keyframes post-thread-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(PostArrivalRisePx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Widest the thread column grows on a large screen, so a reply never stretches into an unreadable band. </summary>
+    const int ThreadColumnMaximumWidthPx = AppMeasures.Size.Px420;
+
+    /// <summary> How far above the viewport's bottom edge the composer parks: exactly the height of the bottom navigation it must clear. </summary>
+    const int ComposerBottomOffsetPx = AppMeasures.Space.ScrollBottomInset;
+
+    /// <summary> Height the pinned composer occupies, fade included. Reserved at the end of the thread so the last reply can always be scrolled out from under it. </summary>
+    const int PinnedComposerHeightPx = AppMeasures.Size.Px60;
+
+    /// <summary> Empty space left under the last reply: the bottom navigation plus the composer parked above it. </summary>
+    const int ThreadBottomClearancePx = ComposerBottomOffsetPx + PinnedComposerHeightPx;
+
+    /// <summary> How solid the backdrop behind the composer is where it meets the bottom of the screen. </summary>
+    const float ComposerFadeOpacity = 0.92f;
+
+    /// <summary> How far up that backdrop stays solid before it starts fading to nothing. </summary>
+    const int ComposerFadeSolidStopPercent = 55;
+
+    /// <summary> How far the post slides up as it fades in. </summary>
+    const int PostArrivalRisePx = AppMeasures.Space.Px12;
+}

@@ -1,0 +1,72 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+
+@if (Profile is not null)
+{
+    <div class="person-row">
+        @if (CanOpen)
+        {
+            @* A real button, so Enter and Space open the account without a line of script. The summary holds no
+               interactive elements of its own, which is what keeps nesting it inside a button valid. *@
+            <button type="button" class="person-row-main person-row-main--openable" @onclick="OnOpen">@PersonSummary</button>
+        }
+        else
+        {
+            <div class="person-row-main">@PersonSummary</div>
+        }
+
+        @if (Action is not null)
+        {
+            @* The action sits outside the opening button, so pressing it can never also open the account. *@
+            <div class="person-row-action">@Action</div>
+        }
+    </div>
+}
+
+<PersonRowCss />
+
+@code {
+    /// <summary> Diameter of the avatar in a person row: big enough to carry the emoji, small enough to leave the name room. </summary>
+    const int RowAvatarDiameterPx = AppMeasures.Size.Px48;
+
+    /// <summary> Characters of the address kept at each end inside a row, where the display name already identifies the account. </summary>
+    const int RowAddressVisibleCharacters = 4;
+
+    /// <summary> The account this row is about. Nothing renders while it is null, so a list can draw rows before its data lands. </summary>
+    [Parameter] public ProfileData Profile { get; set; } = default!;
+
+    /// <summary> Trailing slot, drawn at the right edge — a follow button, a block button, a badge. Left empty when the row is only informational. </summary>
+    [Parameter] public RenderFragment? Action { get; set; }
+
+    /// <summary> Raised when the reader opens the account. With no handler attached the row stays a plain, unfocusable panel. </summary>
+    [Parameter] public EventCallback OnOpen { get; set; }
+
+    /// <summary> True when a caller actually listens for <see cref="OnOpen"/>, which is what decides whether the row is a button at all. </summary>
+    bool CanOpen => OnOpen.HasDelegate;
+
+    /// <summary> True when this account wrote a bio worth a second line. </summary>
+    bool HasBio => !string.IsNullOrWhiteSpace(Profile.Bio);
+
+    /// <summary> The name drawn for this account, falling back to the readable head of its address when the owner never set one. </summary>
+    string ShownName => string.IsNullOrWhiteSpace(Profile.DisplayName)
+        ? ProfileService.FallbackDisplayName(Profile.Address)
+        : Profile.DisplayName;
+
+    /// <summary>
+    /// Avatar, name, address and bio — everything the row shows about the account. Held as one template so the
+    /// clickable and the static row draw exactly the same content instead of two copies drifting apart.
+    /// </summary>
+    RenderFragment PersonSummary => @<text>
+        <AvatarBubble Emoji="@Profile.Avatar" DiameterPx="@RowAvatarDiameterPx" />
+
+        <span class="person-row-text">
+            <span class="person-row-name">@ShownName</span>
+            <AddressChip Address="@Profile.Address" VisibleCharacters="@RowAddressVisibleCharacters" />
+            @if (HasBio)
+            {
+                <span class="person-row-bio">@Profile.Bio</span>
+            }
+        </span>
+    </text>;
+}

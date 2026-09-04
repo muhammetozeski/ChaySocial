@@ -1,0 +1,94 @@
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+
+@*
+    One reply under a post: the author's emoji avatar, their display name, how long ago they wrote it, and
+    what they said. The delete button is drawn only when the caller says the signed-in account owns this
+    reply, so nobody is offered a control that would be refused.
+*@
+@if (Comment is not null)
+{
+    <div class="comment-row">
+        <span class="comment-row-avatar">@AuthorAvatar</span>
+
+        <div class="comment-row-body">
+            <div class="comment-row-heading">
+                <span class="comment-row-name">@AuthorName</span>
+                <span class="comment-row-separator">@HeadingSeparator</span>
+                <span class="comment-row-time">@WrittenAgo</span>
+            </div>
+
+            <p class="comment-row-text">@Comment.Text</p>
+        </div>
+
+        @if (CanDelete)
+        {
+            <CoreButton Background="@AppColors.SurfaceSubtle"
+                        TextColor="@AppColors.TextDanger"
+                        BorderRadius="@(AppMeasures.Radius.Circular + "%")"
+                        Padding="0"
+                        FontSize="@AppMeasures.Font.Small"
+                        OnClick="@OnDelete"
+                        CustomClass="comment-row-delete">
+                @DeleteEmoji
+            </CoreButton>
+        }
+    </div>
+}
+
+<CommentRowCss />
+
+@code {
+    /// <summary> The reply to draw. </summary>
+    [Parameter, EditorRequired] public CommentData Comment { get; set; } = default!;
+
+    /// <summary> Profile of the account that wrote the reply, or null when it could not be read; only its avatar and display name are used here. </summary>
+    [Parameter] public ProfileData? AuthorProfile { get; set; }
+
+    /// <summary> Whether to offer the delete button. The caller passes true only for the signed-in account's own reply. </summary>
+    [Parameter] public bool CanDelete { get; set; }
+
+    /// <summary> Raised when the author asks for this reply to be removed. The actual deletion belongs to the caller. </summary>
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    /// <summary> Emoji on the delete button. </summary>
+    const string DeleteEmoji = "🗑️";
+
+    /// <summary> Drawn between the author's name and the timestamp. </summary>
+    const string HeadingSeparator = "·";
+
+    /// <summary> How many leading characters of a raw address are shown when no profile supplies a display name. Enough to tell two accounts apart at a glance. </summary>
+    const int AddressPrefixLength = 10;
+
+    /// <summary> Appended to an address that was cut short, so a stub never looks like a whole address. </summary>
+    const string TruncationMark = "…";
+
+    /// <summary> Emoji drawn beside the reply: the author's own, or the standing-in default when no profile could be read. </summary>
+    string AuthorAvatar
+    {
+        get
+        {
+            string? chosen = AuthorProfile?.Avatar;
+            return string.IsNullOrWhiteSpace(chosen) ? ProfileData.DefaultAvatar : chosen;
+        }
+    }
+
+    /// <summary> Label for the author: the name they chose, or a shortened form of their address when there is no profile to ask. </summary>
+    string AuthorName
+    {
+        get
+        {
+            string? chosen = AuthorProfile?.DisplayName;
+            return string.IsNullOrWhiteSpace(chosen) ? Shorten(Comment.AuthorAddress) : chosen;
+        }
+    }
+
+    /// <summary> How long ago the reply was written, in the app's short "3h" form. </summary>
+    string WrittenAgo => RelativeTimeFormatter.Format(Comment.CreatedAtUnixMs);
+
+    /// <summary> Cuts an address down to a readable stub. </summary>
+    /// <param name="address"> Address to shorten. </param>
+    /// <returns> The address unchanged when it is already short, otherwise its first <see cref="AddressPrefixLength"/> characters followed by <see cref="TruncationMark"/>. </returns>
+    static string Shorten(string address)
+        => address.Length <= AddressPrefixLength ? address : address[..AddressPrefixLength] + TruncationMark;
+}

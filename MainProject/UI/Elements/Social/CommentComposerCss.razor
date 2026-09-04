@@ -1,0 +1,73 @@
+@*
+    Styling for CommentComposer. CommentComposer renders this component itself, so the composer always
+    arrives with its own CSS attached.
+*@
+<style>
+    .comment-composer {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px10)px;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px4)px @(AppMeasures.Space.Px14)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        box-sizing: border-box;
+    }
+
+    .comment-composer-badge {
+        flex-shrink: 0;
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        opacity: @(AppMeasures.Opacity.Muted);
+    }
+
+    /* min-width:0 lets the field shrink inside the flex row instead of pushing the hint out of the pill. */
+    .comment-composer-input {
+        flex: 1;
+        min-width: 0;
+        border: none;
+        outline: none;
+        background: transparent;
+        padding: @(AppMeasures.Space.Px10)px 0;
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.Normal)px;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+        .comment-composer-input::placeholder {
+            color: @(AppColors.TextMuted.ToRgbaHex(true));
+        }
+
+        .comment-composer-input:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+        }
+
+    /* The return-key affordance: a dim disc that lights up in primary once the text is actually sendable. */
+    .comment-composer-hint {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: @(HintDiameterPx)px;
+        height: @(HintDiameterPx)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        transition: color @(AppMeasures.Duration.Fast)s, background @(AppMeasures.Duration.Fast)s, transform @(AppMeasures.Duration.Fast)s;
+    }
+
+        .comment-composer-hint--ready {
+            color: @(AppColors.TextOnFilledSurface.ToRgbaHex(true));
+            background: @(AppColors.Primary.ToRgbaHex(true));
+            transform: scale(@ReadyHintScale);
+        }
+</style>
+
+@code {
+    /// <summary> Side of the round return-key affordance sitting at the end of the pill. </summary>
+    const int HintDiameterPx = AppMeasures.Size.Px24;
+
+    /// <summary> How much the return-key affordance swells once the text is sendable. A string so the decimal point survives any OS culture. </summary>
+    const string ReadyHintScale = "1.1";
+}

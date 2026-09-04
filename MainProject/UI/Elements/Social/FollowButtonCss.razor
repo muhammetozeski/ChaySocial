@@ -1,0 +1,74 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+
+<style>
+    .follow-button {
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: @(AppMeasures.Space.Px6)px;
+        /* Fixed width so swapping the label for the busy throbber never resizes the button under the pointer. */
+        min-width: @(AppMeasures.Size.Px110)px;
+        padding: @(AppMeasures.Space.Px8)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.None);
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: transform @(AppMeasures.Duration.Fast)s ease-out, box-shadow @(AppMeasures.Duration.Fast)s ease-out, opacity @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+        .follow-button:active:not(:disabled) {
+            transform: scale(@PressedScale);
+        }
+
+        .follow-button:focus-visible {
+            outline: @(AppMeasures.Border.Medium)px solid @(AppColors.Primary.ToRgbaHex(true));
+            outline-offset: @(AppMeasures.Space.Px2)px;
+        }
+
+        /* Busy, not broken: dimmed just enough to read as unavailable while the throbber shows work is happening. */
+        .follow-button:disabled {
+            opacity: @(AppMeasures.Opacity.Soft);
+            cursor: default;
+        }
+
+    /* Not following yet: the filled indigo-to-coral gradient, the loudest thing in the row, asking to be pressed. */
+    .follow-button--invite {
+        background: linear-gradient(@DiagonalSheenAngle, @(AppColors.Primary.ToRgbaHex(true)), @(AppColors.Secondary.ToRgbaHex(true)));
+        border: @(AppMeasures.Border.Thin)px solid transparent;
+        color: @(AppColors.TextOnAccent.ToRgbaHex(true));
+        box-shadow: @(AppStyles.ShadowPrimaryGlow);
+    }
+
+    /* Already following: quiet glass. The state is done, so the button steps back out of the way. */
+    .follow-button--settled {
+        @(AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle))
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .follow-button-emoji {
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .follow-button {
+            transition: none;
+        }
+
+            .follow-button:active:not(:disabled) {
+                transform: none;
+            }
+    }
+</style>
+
+@code {
+    /// <summary> How far the button shrinks while held down — the same press feedback the core button gives. </summary>
+    const string PressedScale = "0.95";
+
+    /// <summary> Angle every filled surface in the app runs its gradient along, so this button sheens the same way the core cards and buttons do. </summary>
+    const string DiagonalSheenAngle = "135deg";
+}

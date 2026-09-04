@@ -1,0 +1,114 @@
+@*
+    Styling for MessageBubble. MessageBubble renders this component itself, so a message always arrives with
+    its own CSS attached.
+*@
+<style>
+    /* Full-width row that decides which side the bubble hugs; the bubble itself never sets its own alignment. */
+    .message-bubble-line {
+        display: flex;
+        width: @(AppMeasures.Percent.Full)%;
+        animation: message-bubble-arrive @(AppMeasures.Duration.Medium)s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .message-bubble-line--mine {
+        justify-content: flex-end;
+    }
+
+    .message-bubble-line--theirs {
+        justify-content: flex-start;
+    }
+
+    .message-bubble {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px4)px;
+        max-width: @(BubbleMaximumWidthPercent)%;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px14)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        box-sizing: border-box;
+    }
+
+        /* The corner nearest the speaker is pulled in tight — the quiet stand-in for a speech tail. */
+        .message-bubble--mine {
+            border-bottom-right-radius: @(TailCornerRadiusPx)px;
+        }
+
+        .message-bubble--theirs {
+            border-bottom-left-radius: @(TailCornerRadiusPx)px;
+        }
+
+    /* pre-wrap keeps the sender's own line breaks; overflow-wrap stops a pasted key or address from widening the bubble past its max. */
+    .message-bubble-text {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    /* Drawn instead of the text when this device could not decrypt the message. */
+    .message-bubble-locked {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px6)px;
+        margin: 0;
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-style: italic;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    /* font-style back to normal so the padlock is not sheared along with the italic sentence beside it. */
+    .message-bubble-locked-emoji {
+        font-style: normal;
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .message-bubble-footer {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: @(AppMeasures.Space.Px6)px;
+        opacity: @(AppMeasures.Opacity.Muted);
+    }
+
+    .message-bubble-time {
+        font-size: @(AppMeasures.Font.XSmall)px;
+    }
+
+    .message-bubble-seal {
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+        /* A message whose signature did not check out gets the warning tint, on either side of the conversation. */
+        .message-bubble-seal--unverified {
+            color: @(AppColors.TextWarning.ToRgbaHex(true));
+        }
+
+    @@keyframes message-bubble-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(ArrivalRisePx)px) scale(@ArrivalStartScale);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Widest a bubble may grow across the conversation column, leaving a visible gutter on the far side so the reader can always tell who is speaking. </summary>
+    const int BubbleMaximumWidthPercent = 78;
+
+    /// <summary> Radius of the one tightened corner that points back at the speaker. </summary>
+    const int TailCornerRadiusPx = AppMeasures.Radius.Px6;
+
+    /// <summary> How far a new message slides up as it fades in. </summary>
+    const int ArrivalRisePx = AppMeasures.Space.Px8;
+
+    /// <summary> How small a new message starts before settling to full size. A string so the decimal point survives any OS culture. </summary>
+    const string ArrivalStartScale = "0.96";
+}

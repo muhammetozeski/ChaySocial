@@ -1,0 +1,159 @@
+@attribute [Route("/")]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.PageBase
+
+@*
+    Route "/" — the screen someone lands on with no account. Everything the reader needs before they have one:
+    the app's name, what an account here actually is, one big button that makes one, and a quieter path back in
+    for anyone who already kept a secret. The logic lives in Welcome.razor.cs; the styling in WelcomeCss.razor,
+    which this component renders itself so the page always arrives dressed.
+*@
+
+<PageTitle>@AppConstants.AppTagline</PageTitle>
+
+<div class="welcome-screen">
+
+    <div class="welcome-mark">
+        <span class="welcome-mark-halo"></span>
+        <span class="welcome-mark-emoji">@BrandEmoji</span>
+    </div>
+
+    <h1 class="welcome-title">@AppConstants.AppNameHumanReadable</h1>
+    <p class="welcome-tagline">@Tagline</p>
+
+    <CoreCard Acrylic="AcrylicLevel.Normal"
+              AcrylicBlur="@AppMeasures.Blur.Strong"
+              TextColor="@AppColors.TextPrimary"
+              BorderRadius="@(AppMeasures.Radius.XLarge + "px")"
+              Padding="@(AppMeasures.Space.Px24 + "px")"
+              CustomClass="welcome-card">
+
+        @if (_stage == WelcomeStage.Choose)
+        {
+            <p class="welcome-promise-line">@PromiseSentence</p>
+
+            <div class="welcome-promise-chips">
+                @foreach ((string icon, string text) in Promises)
+                {
+                    <CoreChip Icon="@icon"
+                              Text="@text"
+                              Background="@AppColors.SurfaceSubtle"
+                              TextColor="@AppColors.TextSecondary"
+                              BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                              Border="@($"{AppMeasures.Border.Thin}px solid {AppColors.GlassBorderDefault.ToRgbaHex(true)}")" />
+                }
+            </div>
+
+            @* CoreButton is used directly rather than a preset button because the pill radius, padding and font
+               size arrive as inline style from CoreButton itself, where no class rule could override them. *@
+            <CoreButton OnClick="CreateAccountAsync"
+                        Disabled="@IsBusy"
+                        IsFullWidth="true"
+                        Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                        TextColor="@AppColors.TextOnAccent"
+                        BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                        Padding="@LargeButtonPadding"
+                        FontSize="@AppMeasures.Font.Medium"
+                        Shadow="@AppStyles.ShadowPrimaryGlow"
+                        CustomClass="welcome-primary-button">
+                @if (_work == WelcomeWork.Creating)
+                {
+                    <CoreSpinner SizePx="@BusySpinnerSizePx"
+                                 BorderWidthPx="@BusySpinnerBorderWidthPx"
+                                 Color="@AppColors.TextOnAccent" />
+                }
+                else
+                {
+                    <span class="welcome-button-emoji">@CreateEmoji</span>
+                    <span>@CreateLabel</span>
+                }
+            </CoreButton>
+
+            <button type="button"
+                    class="welcome-recall-toggle"
+                    disabled="@IsBusy"
+                    @onclick="ToggleRecallPanel">
+                <span class="welcome-recall-toggle-emoji">@RecallEmoji</span>
+                <span>@RecallToggleLabel</span>
+                <span class="welcome-recall-caret @(_isRecallOpen ? "welcome-recall-caret--open" : "")">@RecallCaretGlyph</span>
+            </button>
+
+            @if (_isRecallOpen)
+            {
+                <div class="welcome-recall-panel">
+                    <textarea class="welcome-secret-box"
+                              rows="@SecretRowCount"
+                              placeholder="@RecallPlaceholder"
+                              disabled="@IsBusy"
+                              value="@_recalledSecret"
+                              @oninput="HandleRecalledSecretInput"></textarea>
+
+                    @if (_errorMessage is not null)
+                    {
+                        <p class="welcome-error">@_errorMessage</p>
+                    }
+
+                    <CoreButton OnClick="RecallAccountAsync"
+                                Disabled="@(!CanRecall)"
+                                IsFullWidth="true"
+                                Background="@AppColors.SurfaceStrong"
+                                TextColor="@AppColors.TextPrimary"
+                                BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                                Padding="@LargeButtonPadding"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Border="@($"{AppMeasures.Border.Thin}px solid {AppColors.GlassBorderDefault.ToRgbaHex(true)}")"
+                                CustomClass="welcome-secondary-button">
+                        @if (_work == WelcomeWork.Recalling)
+                        {
+                            <CoreSpinner SizePx="@BusySpinnerSizePx"
+                                         BorderWidthPx="@BusySpinnerBorderWidthPx"
+                                         Color="@AppColors.TextPrimary" />
+                        }
+                        else
+                        {
+                            <span>@RecallSubmitLabel</span>
+                        }
+                    </CoreButton>
+                </div>
+            }
+
+            @if (!_isRecallOpen && _errorMessage is not null)
+            {
+                <p class="welcome-error">@_errorMessage</p>
+            }
+        }
+        else
+        {
+            <p class="welcome-secret-headline">
+                <span class="welcome-secret-headline-emoji">@SecretEmoji</span>
+                <span>@SecretHeadline</span>
+            </p>
+            <p class="welcome-secret-lead">@SecretLead</p>
+
+            <textarea class="welcome-secret-box welcome-secret-box--kept"
+                      rows="@SecretRowCount"
+                      readonly>@_secretText</textarea>
+
+            <div class="welcome-secret-warning">
+                <span class="welcome-secret-warning-emoji">@SecretWarningEmoji</span>
+                <span class="welcome-secret-warning-text">@SecretWarning</span>
+            </div>
+
+            <CoreButton OnClick="EnterWall"
+                        IsFullWidth="true"
+                        Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                        TextColor="@AppColors.TextOnAccent"
+                        BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                        Padding="@LargeButtonPadding"
+                        FontSize="@AppMeasures.Font.Medium"
+                        Shadow="@AppStyles.ShadowPrimaryGlow"
+                        CustomClass="welcome-primary-button">
+                <span class="welcome-button-emoji">@NavigationConstants.Wall.Icon</span>
+                <span>@EnterLabel</span>
+            </CoreButton>
+        }
+
+    </CoreCard>
+
+</div>
+
+<WelcomeCss />

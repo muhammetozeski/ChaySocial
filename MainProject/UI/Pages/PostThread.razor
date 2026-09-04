@@ -1,0 +1,115 @@
+@attribute [Route(ThreadRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    One post opened on its own: the post itself at the top, every reply written under it below, and a composer
+    pinned above the bottom navigation so answering never means scrolling back down. A post id that resolves to
+    nothing is met with a soft placeholder rather than an error, because a dead link is nobody's fault.
+*@
+
+<PageTitle>@ThreadTitle</PageTitle>
+
+<div class="post-thread-screen">
+
+    <header class="post-thread-header" style="@HeaderSurfaceStyle">
+        <BackButton OnClick="GoBackToWall" />
+
+        <div class="post-thread-heading">
+            <span class="post-thread-title">@ThreadTitle</span>
+            <span class="post-thread-subtitle">@ThreadSubtitle</span>
+        </div>
+
+        @if (IsRefreshing)
+        {
+            <CoreSpinner SizePx="@RefreshSpinnerDiameterPx"
+                         BorderWidthPx="@RefreshSpinnerBorderPx"
+                         Color="@AppColors.Primary" />
+        }
+    </header>
+
+    @if (IsFirstLoad)
+    {
+        <div class="post-thread-first-load">
+            <CoreSpinner />
+        </div>
+    }
+    else if (LoadFailureMessage is not null)
+    {
+        <EmptyState Emoji="@LoadFailedEmoji" Headline="@LoadFailedHeadline" Description="@LoadFailureMessage">
+            <Action>
+                <CoreButton Background="@AppColors.Primary"
+                            TextColor="@AppColors.TextOnFilledSurface"
+                            BorderRadius="@ActionButtonRadiusCss"
+                            Padding="@ActionButtonPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow"
+                            OnClick="ReloadAsync">
+                    @TryAgainLabel
+                </CoreButton>
+            </Action>
+        </EmptyState>
+    }
+    else if (post is null)
+    {
+        <EmptyState Emoji="@MissingPostEmoji" Headline="@MissingPostHeadline" Description="@MissingPostDescription">
+            <Action>
+                <CoreButton Background="@AppColors.Primary"
+                            TextColor="@AppColors.TextOnFilledSurface"
+                            BorderRadius="@ActionButtonRadiusCss"
+                            Padding="@ActionButtonPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow"
+                            OnClick="GoBackToWall">
+                    @BackToWallLabel
+                </CoreButton>
+            </Action>
+        </EmptyState>
+    }
+    else
+    {
+        <div class="post-thread-post">
+            <PostCard Post="@post"
+                      AuthorProfile="@ProfileFor(post.AuthorAddress)"
+                      IsLiked="@isLikedByViewer"
+                      LikeCount="@likeCount"
+                      CommentCount="@replies.Count"
+                      OnLike="ToggleLikeAsync"
+                      OnOpenAuthor="OpenAuthorProfile" />
+        </div>
+
+        <section class="post-thread-replies">
+            <h2 class="post-thread-section-title">
+                <span class="post-thread-section-emoji">@RepliesEmoji</span>
+                @RepliesHeading
+            </h2>
+
+            @if (replies.Count == 0)
+            {
+                <EmptyState Emoji="@NoRepliesEmoji" Headline="@NoRepliesHeadline" Description="@NoRepliesDescription" />
+            }
+            else
+            {
+                @foreach (CommentData reply in replies)
+                {
+                    <CommentRow @key="reply.CommentId"
+                                Comment="@reply"
+                                AuthorProfile="@ProfileFor(reply.AuthorAddress)"
+                                CanDelete="@IsOwnReply(reply)"
+                                OnDelete="@(() => DeleteReplyAsync(reply))" />
+                }
+            }
+        </section>
+
+        <div class="post-thread-composer">
+            <CommentComposer Text="@draftText"
+                             TextChanged="HandleDraftChanged"
+                             OnSubmit="PublishReplyAsync"
+                             IsBusy="@isPublishing" />
+        </div>
+    }
+
+</div>
+
+<PostThreadCss />

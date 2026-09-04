@@ -1,0 +1,68 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+
+<style>
+    /* Column so the revealed full-address field stacks under the pill instead of stretching the row it sits in. */
+    .address-chip {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px6)px;
+        max-width: @(AppMeasures.Percent.Full)%;
+        min-width: 0;
+    }
+
+    .address-chip-pill {
+        @(AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Light))
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        max-width: @(AppMeasures.Percent.Full)%;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        padding: @(AppMeasures.Space.Px4)px @(AppMeasures.Space.Px10)px;
+        font-family: @AddressTypeface;
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Semibold);
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        /* The pill is already abbreviated; clipping instead of wrapping keeps it one line inside any narrow row. */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Read-only, but selectable on purpose: with no JavaScript this field is the only way to copy the address. */
+    .address-chip-full {
+        @(AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Light))
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        padding: @(AppMeasures.Space.Px8)px @(AppMeasures.Space.Px12)px;
+        font-family: @AddressTypeface;
+        font-size: @(AppMeasures.Font.Small)px;
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        outline: none;
+        cursor: text;
+        transition: border-color @(AppMeasures.Duration.Fast)s ease-out, box-shadow @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+        .address-chip-full:focus {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            box-shadow: @(AppStyles.ShadowPrimaryGlow);
+        }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .address-chip-full {
+            transition: none;
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Type stack for address text. A monospace face gives every character the same width, so two addresses line up
+    /// column by column and a single wrong character is easy to spot.
+    /// </summary>
+    const string AddressTypeface = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+}

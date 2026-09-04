@@ -1,0 +1,124 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+
+<style>
+    .person-row {
+        @(AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Normal))
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        animation: person-row-arrive @(AppMeasures.Duration.Normal)s ease-out backwards;
+        transition: transform @(AppMeasures.Duration.Fast)s ease-out, box-shadow @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+        .person-row:hover {
+            transform: translateY(-@(HoverLiftPx)px);
+            box-shadow: @(AppStyles.ShadowMedium);
+        }
+
+    /* Strips the native button look so the opening region is indistinguishable from the rest of the row. */
+    .person-row-main {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        flex: 1;
+        /* Lets the name and bio shrink and ellipsize instead of forcing the row wider than its parent. */
+        min-width: 0;
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+    }
+
+        .person-row-main--openable {
+            cursor: pointer;
+        }
+
+            .person-row-main--openable:active {
+                transform: scale(@PressedScale);
+            }
+
+            .person-row-main--openable:focus-visible {
+                outline: @(AppMeasures.Border.Medium)px solid @(AppColors.Primary.ToRgbaHex(true));
+                outline-offset: @(AppMeasures.Space.Px2)px;
+            }
+
+    .person-row-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px4)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .person-row-name {
+        max-width: @(AppMeasures.Percent.Full)%;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Clamped rather than truncated: a bio is a sentence, so two lines read better than one clipped one. */
+    .person-row-bio {
+        max-width: @(AppMeasures.Percent.Full)%;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: @BioMaximumLines;
+        line-clamp: @BioMaximumLines;
+        overflow: hidden;
+    }
+
+    .person-row-action {
+        display: flex;
+        align-items: center;
+        flex: none;
+    }
+
+    @@keyframes person-row-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(ArriveRisePx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .person-row {
+            animation: none;
+            transition: none;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> How far the row lifts under the pointer, small enough to read as a nudge rather than a jump. </summary>
+    const int HoverLiftPx = AppMeasures.Space.Px2;
+
+    /// <summary> Distance the row starts below its resting place, so it rises into position as it fades in. </summary>
+    const int ArriveRisePx = AppMeasures.Space.Px6;
+
+    /// <summary> How far the opening region shrinks while held down — the same press feedback the core button gives. </summary>
+    const string PressedScale = "0.985";
+
+    /// <summary> Lines of bio a row shows before clamping; two fit under the name without pushing rows apart. </summary>
+    const int BioMaximumLines = 2;
+}

@@ -16,7 +16,7 @@ namespace ChaySocial.MainProject.Constants.ThemeConstants
         {
             if (theme == Current) return;
             Current = theme;
-            Events.MainEvents.Trigger("OnThemeChanged");
+            Events.MainEvents.Trigger(Events.MainEvents.Names.ThemeChanged);
         }
     }
 }

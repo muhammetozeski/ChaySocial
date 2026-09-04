@@ -1,0 +1,65 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+
+<style>
+    .avatar-bubble {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        flex: none;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        line-height: @(AppMeasures.LineHeight.None);
+        text-align: center;
+        user-select: none;
+        -webkit-user-select: none;
+        animation: avatar-bubble-arrive @(AppMeasures.Duration.Normal)s @ArriveEasing backwards;
+        transition: transform @(AppMeasures.Duration.Fast)s ease-out, box-shadow @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+    /* Quiet everyday bubble: the faintest frosted disc, so a wall of avatars never turns into a wall of colour. */
+    .avatar-bubble--resting {
+        @(AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle))
+    }
+
+    /* Lit bubble: the primary-tinted glass plus a thicker indigo ring and its glow. Declared after the resting rule
+       so it wins on equal specificity — the border-width and box-shadow below likewise override the acrylic block. */
+    .avatar-bubble--highlighted {
+        @(AppStyles.BuildAcrylicStyle(AcrylicLevel.TintPrimary, AppMeasures.Blur.Subtle))
+        border-color: @(AppColors.Primary.ToRgbaHex(true));
+        border-width: @(HighlightRingWidthPx)px;
+        box-shadow: @(AppStyles.ShadowPrimaryGlow);
+    }
+
+    @@keyframes avatar-bubble-arrive {
+        from {
+            opacity: 0;
+            transform: scale(@ArriveStartScale);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .avatar-bubble {
+            animation: none;
+            transition: none;
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Easing for the arrival: the curve overshoots past full size and settles back, which is what makes the bubble
+    /// read as popping into place rather than fading in.
+    /// </summary>
+    const string ArriveEasing = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+
+    /// <summary> Scale the bubble starts from, small enough to read as growth without looking like a glitch. </summary>
+    const string ArriveStartScale = "0.85";
+
+    /// <summary> Thickness of the ring around a highlighted bubble — heavier than the hairline every glass surface carries. </summary>
+    const int HighlightRingWidthPx = AppMeasures.Border.Medium;
+}

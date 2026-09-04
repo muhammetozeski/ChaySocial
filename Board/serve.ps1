@@ -47,10 +47,10 @@ while ($listener.IsListening) {
 
                 $incoming = $raw | ConvertFrom-Json
                 $entry = [ordered]@{
-                    cardId  = $incoming.cardId
-                    verdict = $incoming.verdict
-                    note    = $incoming.note
-                    at      = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+                    cardId    = $incoming.cardId
+                    optionKey = $incoming.optionKey
+                    note      = $incoming.note
+                    at        = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
                 }
 
                 $existing = @()

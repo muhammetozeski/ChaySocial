@@ -1,0 +1,127 @@
+@using ChaySocial.MainProject.Services
+
+@*
+    One direct message in a conversation. The signed-in account's own messages sit on the right in a filled
+    indigo gradient; the other side's sit on the left on glass. A message this device could not decrypt is
+    drawn as a quiet padlocked line rather than as a blank bubble, and every bubble carries a seal saying
+    whether the sender's signature checked out.
+*@
+<div class="message-bubble-line @LineSideClass">
+    <div class="message-bubble @BubbleSideClass" style="@BubbleStyle">
+        @if (CouldDecrypt)
+        {
+            <p class="message-bubble-text">@Text</p>
+        }
+        else
+        {
+            <p class="message-bubble-locked">
+                <span class="message-bubble-locked-emoji">@LockedEmoji</span>
+                @UnreadableMessageText
+            </p>
+        }
+
+        <div class="message-bubble-footer">
+            <span class="message-bubble-time">@SentAgo</span>
+
+            @if (IsSenderVerified)
+            {
+                <span class="message-bubble-seal" title="@VerifiedSealTitle">@VerifiedEmoji</span>
+            }
+            else
+            {
+                <span class="message-bubble-seal message-bubble-seal--unverified" title="@UnverifiedSealTitle">@UnverifiedEmoji</span>
+            }
+        </div>
+    </div>
+</div>
+
+<MessageBubbleCss />
+
+@code {
+    /// <summary> The decrypted message body. Ignored when <see cref="CouldDecrypt"/> is false. </summary>
+    [Parameter] public string Text { get; set; } = string.Empty;
+
+    /// <summary> True when the signed-in account sent this message, which puts it on the right in a filled bubble. </summary>
+    [Parameter] public bool IsMine { get; set; }
+
+    /// <summary> When the sender sent it. </summary>
+    [Parameter] public long CreatedAtUnixMs { get; set; }
+
+    /// <summary> True when the sender's signature checked out against the key their profile publishes. </summary>
+    [Parameter] public bool IsSenderVerified { get; set; }
+
+    /// <summary> False when this device could not turn the stored ciphertext back into text; the bubble then shows the padlocked line instead of <see cref="Text"/>. </summary>
+    [Parameter] public bool CouldDecrypt { get; set; } = true;
+
+    /// <summary> Modifier pushing the bubble to the right edge of the conversation column. </summary>
+    const string MineLineClass = "message-bubble-line--mine";
+
+    /// <summary> Modifier holding the bubble at the left edge of the conversation column. </summary>
+    const string TheirsLineClass = "message-bubble-line--theirs";
+
+    /// <summary> Modifier tightening the bubble's bottom-right corner. </summary>
+    const string MineBubbleClass = "message-bubble--mine";
+
+    /// <summary> Modifier tightening the bubble's bottom-left corner. </summary>
+    const string TheirsBubbleClass = "message-bubble--theirs";
+
+    /// <summary> Shown in place of the body when the ciphertext could not be opened on this device. </summary>
+    const string UnreadableMessageText = "Can't open this message";
+
+    /// <summary> Emoji beside the unreadable-message line. </summary>
+    const string LockedEmoji = "🔐";
+
+    /// <summary> Seal shown when the sender's signature verified. </summary>
+    const string VerifiedEmoji = "🔏";
+
+    /// <summary> Seal shown when the sender's signature did not verify. </summary>
+    const string UnverifiedEmoji = "⚠️";
+
+    /// <summary> Hover text on the verified seal. </summary>
+    const string VerifiedSealTitle = "Signed by the sender's own key";
+
+    /// <summary> Hover text on the unverified seal. </summary>
+    const string UnverifiedSealTitle = "This message's signature could not be checked";
+
+    /// <summary> Direction the filled bubble's sheen runs, top-left to bottom-right. </summary>
+    const string MineFillSheenAngle = "135deg";
+
+    /// <summary> Strength of the indigo halo under the signed-in account's own bubbles. </summary>
+    const float MineFillGlowOpacity = 0.35f;
+
+    /// <summary> Which side of the conversation column this message hangs on. </summary>
+    string LineSideClass => IsMine ? MineLineClass : TheirsLineClass;
+
+    /// <summary> Which corner of the bubble is tightened into a tail. </summary>
+    string BubbleSideClass => IsMine ? MineBubbleClass : TheirsBubbleClass;
+
+    /// <summary> How long ago the message was sent, in the app's short "3h" form. </summary>
+    string SentAgo => RelativeTimeFormatter.Format(CreatedAtUnixMs);
+
+    /// <summary>
+    /// The bubble's fill. An unopenable message drops to the faintest glass on either side, because muted
+    /// placeholder text would be unreadable over the filled gradient; otherwise the account's own messages
+    /// take the indigo gradient with a halo, and the other side's take plain glass.
+    /// </summary>
+    string BubbleStyle
+    {
+        get
+        {
+            if (!CouldDecrypt)
+            {
+                return AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle)
+                     + $"color:{AppColors.TextMuted.ToRgbaHex(true)};";
+            }
+
+            if (IsMine)
+            {
+                return $"background:linear-gradient({MineFillSheenAngle}, {AppColors.Primary.ToRgbaHex(true)}, {AppColors.PrimaryDark.ToRgbaHex(true)});"
+                     + $"color:{AppColors.TextOnFilledSurface.ToRgbaHex(true)};"
+                     + $"box-shadow:{AppStyles.GetGlow(AppColors.Primary, MineFillGlowOpacity)};";
+            }
+
+            return AppStyles.BuildAcrylicStyle(AcrylicLevel.Normal, AppMeasures.Blur.Subtle)
+                 + $"color:{AppColors.TextPrimary.ToRgbaHex(true)};";
+        }
+    }
+}

@@ -1,0 +1,224 @@
+@* Styles for PostCard. Every selector is namespaced "post-card-*" because *Css.razor styles are global
+   (this project uses no CSS isolation), so bare names would leak into every other component. All colours,
+   sizes and timings come from C# tokens so a theme swap restyles the card on the next render. *@
+<style>
+    .post-card {
+        gap: @(AppMeasures.Space.Px12)px;
+        animation: post-card-rise @(AppMeasures.Duration.Normal)s @SoftLandingEasing both;
+    }
+
+    .post-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    /* The avatar and name together are one tap target that opens the author, so the wrapper is a real
+       button stripped back to plain text styling. */
+    .post-card-identity {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px10)px;
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .post-card-avatar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: @(AppMeasures.Size.Px44)px;
+        height: @(AppMeasures.Size.Px44)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        font-size: @(AppMeasures.Font.Large)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        background: linear-gradient(@(AvatarGradientAngleDegrees)deg, @(AppColors.Primary.ToRgbaHex(true)), @(AppColors.Secondary.ToRgbaHex(true)));
+        box-shadow: @AppStyles.ShadowPrimaryGlow;
+        transition: transform @(AppMeasures.Duration.Fast)s @SoftLandingEasing;
+    }
+
+    .post-card-identity:active .post-card-avatar {
+        transform: scale(@AvatarPressedScale);
+    }
+
+    /* min-width:0 lets the two labels below actually shrink, which is what makes their ellipsis work. */
+    .post-card-identity-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px2)px;
+        min-width: 0;
+    }
+
+    .post-card-name {
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+    }
+
+    .post-card-address {
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+    }
+
+    .post-card-name,
+    .post-card-address {
+        display: block;
+        max-width: @(AppMeasures.Percent.Full)%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .post-card-time {
+        flex-shrink: 0;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Small)px;
+        white-space: nowrap;
+    }
+
+    /* Holds the unverified badge on its own line and keeps it hugging its text instead of stretching
+       across the card the way a lone inline-flex child of a column would. */
+    .post-card-badge-row {
+        display: flex;
+        align-items: center;
+    }
+
+    .post-card-text {
+        margin: 0;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .post-card-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    .post-card-action {
+        display: inline-flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px6)px;
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px12)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        cursor: pointer;
+        transition: transform @(AppMeasures.Duration.Fast)s @SoftLandingEasing, background @(AppMeasures.Duration.Fast)s, color @(AppMeasures.Duration.Fast)s, border-color @(AppMeasures.Duration.Fast)s;
+    }
+
+    .post-card-action:active {
+        transform: scale(@ActionPressedScale);
+    }
+
+    .post-card-action-icon {
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .post-card-action-count {
+        font-variant-numeric: tabular-nums;
+    }
+
+    .post-card-action--like.is-liked {
+        background: @(AppColors.SurfaceTintAccent.ToRgbaHex(true));
+        border-color: @(AppColors.Secondary.ToRgbaHex(true));
+        color: @(AppColors.TextDanger.ToRgbaHex(true));
+    }
+
+    /* The heart only pops on the render where it becomes filled, which is exactly when this class appears. */
+    .post-card-action--like.is-liked .post-card-action-icon {
+        animation: post-card-heart-pop @(AppMeasures.Duration.Medium)s @PlayfulOvershootEasing;
+    }
+
+    .post-card-action--danger {
+        color: @(AppColors.TextDanger.ToRgbaHex(true));
+    }
+
+    /* Pushes the delete / report button to the far edge, away from the like and comment counts. */
+    .post-card-action--trailing {
+        margin-left: auto;
+    }
+
+    @@keyframes post-card-rise {
+        from {
+            opacity: 0;
+            transform: translateY(@(AppMeasures.Space.Px8)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes post-card-heart-pop {
+        0% {
+            transform: scale(1);
+        }
+
+        @(AppMeasures.Percent.Half)% {
+            transform: scale(@HeartPopPeakScale);
+        }
+
+        @(AppMeasures.Percent.Full)% {
+            transform: scale(1);
+        }
+    }
+
+    /* Phone width: the card keeps every control, it only gives back the padding it can spare. */
+    @@media (max-width: @(NarrowScreenBreakpointPx)px) {
+        .post-card-avatar {
+            width: @(AppMeasures.Size.Px40)px;
+            height: @(AppMeasures.Size.Px40)px;
+        }
+
+        .post-card-action {
+            padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px10)px;
+        }
+
+        .post-card-text {
+            font-size: @(AppMeasures.Font.Normal)px;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Angle of the avatar bubble's two-colour sheen, matching the diagonal every other gradient surface uses. </summary>
+    const int AvatarGradientAngleDegrees = 135;
+
+    /// <summary> How far the avatar bubble shrinks while the author button is held down. </summary>
+    const string AvatarPressedScale = "0.94";
+
+    /// <summary> How far an action pill shrinks while it is held down. </summary>
+    const string ActionPressedScale = "0.94";
+
+    /// <summary> How far the heart swells at the top of its pop before settling back. </summary>
+    const string HeartPopPeakScale = "1.3";
+
+    /// <summary> Easing that starts fast and settles softly, used for entrances and presses. </summary>
+    const string SoftLandingEasing = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+    /// <summary> Easing that overshoots past its target before coming back, which is what makes the heart pop read as playful. </summary>
+    const string PlayfulOvershootEasing = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+
+    /// <summary> Widest viewport still treated as a phone, below which the card tightens its spacing. </summary>
+    const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
+}

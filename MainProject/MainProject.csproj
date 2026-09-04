@@ -5,14 +5,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>ChaySocial.MainProject</RootNamespace>
-    <RuntimeIdentifiers>win-x64;win-x86;win-arm64;android-arm64;android-x64</RuntimeIdentifiers>
-    <!-- MAUI consumer projects propagate legacy RIDs (win10-x64, android-arm, etc.).
-         Translate them to the modern RIDs that the net10.0 framework recognizes. -->
-    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == 'win10-x64'">win-x64</RuntimeIdentifier>
-    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == 'win10-x86'">win-x86</RuntimeIdentifier>
-    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == 'win10-arm64'">win-arm64</RuntimeIdentifier>
-    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == 'android-arm'">android-arm64</RuntimeIdentifier>
-    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == 'android-x86'">android-x64</RuntimeIdentifier>
+    <!-- Declaring RuntimeIdentifiers here would mark this library as RID-specific, and the
+         .NET Android SDK's per-RID inner build (which runs with SkipCompilerExecution=true)
+         would then push RuntimeIdentifier down into it. That inner pass writes no assembly,
+         so the copy to the output directory fails with MSB3030. Staying RID-agnostic keeps
+         every consumer head reusing the single obj\Debug\net10.0 output. -->
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="5.6.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0" />
@@ -29,10 +27,8 @@
     <PackageReference Include="Plugin.Firebase" Version="4.2.1" />
   </ItemGroup>
 	<ItemGroup>
-		<ProjectReference Include="..\Groundwork\Groundwork.csproj" />
-		<ProjectReference Include="..\Generators\Generators.csproj"
-						  OutputItemType="Analyzer"
-						  ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\Generators\Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 	</ItemGroup>
 </Project>
+
 

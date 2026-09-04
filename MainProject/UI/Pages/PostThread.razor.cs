@@ -1,0 +1,288 @@
+using ChaySocial.MainProject.Constants.ThemeConstants;
+using ChaySocial.MainProject.DataModels;
+using ChaySocial.MainProject.Events;
+using ChaySocial.MainProject.Persistence;
+using ChaySocial.MainProject.Services;
+using Microsoft.AspNetCore.Components;
+
+namespace ChaySocial.MainProject.UI.Pages
+{
+    /// <summary>
+    /// The page behind a single post: the post itself, the replies under it, and the composer that adds another.
+    /// Everything it draws is re-read whenever a comment, a post or the session changes, so a reply written here and
+    /// a reply written on another device both land on screen without the reader doing anything.
+    /// </summary>
+    public partial class PostThread
+    {
+        /// <summary> Start of every thread address. <see cref="ThreadRoute"/> and <see cref="LinkTo"/> are both built from it. </summary>
+        public const string ThreadRoutePrefix = "/post";
+
+        /// <summary>
+        /// Route this page answers on. The parameter segment is spelled from <see cref="PostId"/> itself, so renaming
+        /// the property moves the route with it instead of silently breaking every link.
+        /// </summary>
+        public const string ThreadRoute = ThreadRoutePrefix + "/{" + nameof(PostId) + "}";
+
+        /// <summary> Builds the address that opens one post's thread. </summary>
+        /// <param name="postId"> Id of the post to open. </param>
+        /// <returns> A path another page can hand to its navigation manager. </returns>
+        public static string LinkTo(string postId) => $"{ThreadRoutePrefix}/{postId}";
+
+        /// <summary> Id of the post to show, taken from the route. </summary>
+        [Parameter] public string PostId { get; set; } = string.Empty;
+
+        /// <summary> Header title, and the browser tab's title. </summary>
+        const string ThreadTitle = "Conversation";
+
+        /// <summary> Header line shown while the post id resolves to nothing. </summary>
+        const string MissingPostSubtitle = "nothing to read here";
+
+        /// <summary> Header line for a thread holding exactly one reply, where the plural would read wrong. </summary>
+        const string SingleReplySubtitle = "1 reply";
+
+        /// <summary> Header line for any other reply count; the placeholder takes the count. </summary>
+        const string ManyRepliesSubtitleFormat = "{0} replies";
+
+        /// <summary> Heading over the list of replies. </summary>
+        const string RepliesHeading = "Replies";
+
+        /// <summary> Emoji beside that heading. </summary>
+        const string RepliesEmoji = "💬";
+
+        /// <summary> Emoji for the placeholder shown when the post id resolves to nothing. </summary>
+        const string MissingPostEmoji = "🫧";
+
+        /// <summary> Headline of that placeholder. Phrased as something that happened, not as something the reader did wrong. </summary>
+        const string MissingPostHeadline = "This post floated away";
+
+        /// <summary> Supporting line of that placeholder, naming both ways a thread ends up empty. </summary>
+        const string MissingPostDescription = "Whoever wrote it may have taken it down, or the link lost a character on its way here.";
+
+        /// <summary> Emoji for the placeholder shown while a post has no replies. </summary>
+        const string NoRepliesEmoji = "🌱";
+
+        /// <summary> Headline of that placeholder. </summary>
+        const string NoRepliesHeadline = "No replies yet";
+
+        /// <summary> Supporting line of that placeholder, which is also the invitation to use the composer below it. </summary>
+        const string NoRepliesDescription = "Say the first kind thing under this post — one line is plenty.";
+
+        /// <summary> Emoji for the placeholder shown when the thread could not be read at all. </summary>
+        const string LoadFailedEmoji = "🌧️";
+
+        /// <summary> Headline of that placeholder; the supporting line is the failure message the page base supplies. </summary>
+        const string LoadFailedHeadline = "The thread didn't come through";
+
+        /// <summary> Label on the button that runs the failed load again. </summary>
+        const string TryAgainLabel = "Try again";
+
+        /// <summary> Label on the button that leaves a thread with nothing in it. </summary>
+        const string BackToWallLabel = "Back to the wall";
+
+        /// <summary> Diameter of the small spinner that sits in the header while an already-drawn thread refreshes. </summary>
+        const int RefreshSpinnerDiameterPx = AppMeasures.Size.Px20;
+
+        /// <summary> Ring thickness of that spinner, thinned from the app default so a disc this small still reads as a ring. </summary>
+        const int RefreshSpinnerBorderPx = AppMeasures.Border.Medium;
+
+        /// <summary> Fully rounded corners on the buttons offered under a placeholder. </summary>
+        static readonly string ActionButtonRadiusCss = $"{AppMeasures.Radius.Pill}px";
+
+        /// <summary> Padding inside those buttons: wide across and shallow down, so they read as pills. </summary>
+        static readonly string ActionButtonPaddingCss = $"{AppMeasures.Space.Px12}px {AppMeasures.Space.Px24}px";
+
+        /// <summary> The post this thread hangs under, or null when nothing is stored under <see cref="PostId"/>. </summary>
+        PostData? post;
+
+        /// <summary> The post's replies, oldest first, the way a conversation is read. </summary>
+        IReadOnlyList<CommentData> replies = [];
+
+        /// <summary>
+        /// Profiles of everyone the thread names, keyed by address. An address is read once and then answered from
+        /// here, so an account that replied five times costs one fetch and a reload only asks for faces it has not
+        /// seen yet.
+        /// </summary>
+        readonly Dictionary<string, ProfileData> profilesByAddress = [];
+
+        /// <summary> How many accounts have liked the post. </summary>
+        int likeCount;
+
+        /// <summary> True when the signed-in account is one of them. </summary>
+        bool isLikedByViewer;
+
+        /// <summary> What the reader has typed into the composer and not sent yet. </summary>
+        string draftText = string.Empty;
+
+        /// <summary> True while a reply is being signed and stored, which locks the composer. </summary>
+        bool isPublishing;
+
+        /// <summary> True once a load has finished, so later reloads refresh the thread in place instead of blanking it. </summary>
+        bool hasLoadedOnce;
+
+        /// <summary> Post id the last load ran for; a different one in the route means the reader opened another thread. </summary>
+        string loadedPostId = string.Empty;
+
+        protected override string[] ReloadOnEvents =>
+        [
+            MainEvents.Names.CommentsChanged,
+            MainEvents.Names.WallChanged,
+            MainEvents.Names.SessionChanged
+        ];
+
+        /// <summary> True while the very first load runs and there is nothing on screen to keep. </summary>
+        bool IsFirstLoad => IsLoading && !hasLoadedOnce;
+
+        /// <summary> True while a reload refreshes a thread that is already drawn; only the header spinner reacts to it. </summary>
+        bool IsRefreshing => IsLoading && hasLoadedOnce;
+
+        /// <summary> Header line under the title: what the reader is looking at, in one short phrase. </summary>
+        string ThreadSubtitle => post is null
+            ? MissingPostSubtitle
+            : replies.Count == 1
+                ? SingleReplySubtitle
+                : string.Format(ManyRepliesSubtitleFormat, replies.Count);
+
+        /// <summary> Frosted bar the sticky header is painted on, so the thread scrolls under glass instead of under nothing. </summary>
+        static string HeaderSurfaceStyle => AppStyles.BuildBarSurface(pinnedToBottom: false);
+
+        /// <summary>
+        /// Loads whatever the route asks for when the reader opens a second thread without leaving the page — going
+        /// from an alert straight to another post, for instance. The first pass is already covered by the page base,
+        /// which is why an id that matches the one just loaded is left alone.
+        /// </summary>
+        /// <returns> A task that completes once the new thread has been read, or immediately when nothing changed. </returns>
+        protected override async Task OnParametersSetAsync()
+        {
+            await base.OnParametersSetAsync();
+
+            if (!SessionService.IsSignedIn || loadedPostId == PostId) return;
+
+            await ReloadAsync();
+        }
+
+        /// <summary> Reads the post, its replies, its likes, and the profile behind every address the thread draws. </summary>
+        /// <returns> A task that completes once the page has everything it needs to render. </returns>
+        protected override async Task LoadAsync()
+        {
+            if (!SessionService.IsSignedIn)
+            {
+                NavManager.NavigateTo(WelcomeRoute);
+                return;
+            }
+
+            loadedPostId = PostId;
+            post = await AppServices.Documents.ReadAsync(new DocumentId<PostData>(PostId));
+
+            if (post is null)
+            {
+                replies = [];
+                likeCount = 0;
+                isLikedByViewer = false;
+                hasLoadedOnce = true;
+                return;
+            }
+
+            replies = await CommentService.ReadForPostAsync(post.PostId);
+
+            IReadOnlyList<string> likerAddresses = await WallService.ReadLikersAsync(post.PostId);
+            likeCount = likerAddresses.Count;
+            isLikedByViewer = likerAddresses.Contains(Account.Public.Address);
+
+            await ReadMissingProfilesAsync();
+            hasLoadedOnce = true;
+        }
+
+        /// <summary>
+        /// Fills <see cref="profilesByAddress"/> with the profiles this thread needs and nothing more: the post's
+        /// author plus each account that replied, skipping every address already answered from an earlier load.
+        /// </summary>
+        /// <returns> A task that completes once every missing profile has been read. </returns>
+        async Task ReadMissingProfilesAsync()
+        {
+            if (post is null) return;
+
+            List<string> namedAddresses = [post.AuthorAddress, .. replies.Select(reply => reply.AuthorAddress)];
+
+            foreach (string address in namedAddresses.Distinct(StringComparer.Ordinal))
+            {
+                if (profilesByAddress.ContainsKey(address)) continue;
+
+                ProfileData? profile = await ProfileService.ReadAsync(address);
+                if (profile is not null) profilesByAddress[address] = profile;
+            }
+        }
+
+        /// <summary> The profile behind an address, for the cards and rows that draw a name and a face. </summary>
+        /// <param name="address"> Address to look up. </param>
+        /// <returns> The stored profile, or null when that account has never published one — both callers fall back on their own. </returns>
+        ProfileData? ProfileFor(string address) => profilesByAddress.GetValueOrDefault(address);
+
+        /// <summary> True when the signed-in account wrote this reply, which is the only case a delete button is offered in. </summary>
+        /// <param name="reply"> Reply being drawn. </param>
+        /// <returns> True when the reply is the reader's own. </returns>
+        bool IsOwnReply(CommentData reply) => reply.AuthorAddress == Account.Public.Address;
+
+        /// <summary> Keeps the composer's text on the page, so what is half-typed survives every redraw. </summary>
+        /// <param name="text"> The field's new contents. </param>
+        void HandleDraftChanged(string text) => draftText = text;
+
+        /// <summary>
+        /// Signs the draft as the reader and stores it. The thread is not re-read here: publishing raises the
+        /// comments event this page already reloads on, so the new reply arrives the same way one written elsewhere
+        /// would.
+        /// </summary>
+        /// <returns> A task that completes once the reply has been stored and the composer has been unlocked. </returns>
+        async Task PublishReplyAsync()
+        {
+            if (post is null || isPublishing || string.IsNullOrWhiteSpace(draftText)) return;
+
+            isPublishing = true;
+
+            try
+            {
+                CommentData? published = await CommentService.PublishAsync(Account, post, draftText);
+
+                if (published is null)
+                {
+                    Log($"Reply under post '{post.PostId}' was refused at {draftText.Trim().Length} characters.", LogLevel.Warning);
+                    return;
+                }
+
+                draftText = string.Empty;
+            }
+            finally
+            {
+                isPublishing = false;
+            }
+        }
+
+        /// <summary> Removes one of the reader's own replies; anyone else's is refused by the service. </summary>
+        /// <param name="reply"> Reply to remove. </param>
+        /// <returns> A task that completes once the reply is gone and the thread has been told to redraw. </returns>
+        Task DeleteReplyAsync(CommentData reply) => CommentService.DeleteAsync(reply, Account.Public);
+
+        /// <summary>
+        /// Turns the reader's like on the post on or off. The count is moved here as well as re-read by the reload
+        /// the service triggers, so the heart answers the tap immediately instead of after a round trip.
+        /// </summary>
+        /// <returns> A task that completes once the like has been stored or removed. </returns>
+        async Task ToggleLikeAsync()
+        {
+            if (post is null) return;
+
+            isLikedByViewer = await WallService.ToggleLikeAsync(post, Account.Public);
+            likeCount = Math.Max(0, likeCount + (isLikedByViewer ? 1 : -1));
+        }
+
+        /// <summary> Leaves the thread for the wall it was opened from. </summary>
+        void GoBackToWall() => NavManager.NavigateTo(NavigationConstants.Wall.Link);
+
+        /// <summary> Opens the profile behind the post's author, built from the same navigation constant the profile tab uses. </summary>
+        void OpenAuthorProfile()
+        {
+            if (post is null) return;
+
+            NavManager.NavigateTo($"{NavigationConstants.Profile.Link}/{post.AuthorAddress}");
+        }
+    }
+}

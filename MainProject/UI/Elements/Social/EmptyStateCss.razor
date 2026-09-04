@@ -1,0 +1,120 @@
+@*
+    Styling for EmptyState. EmptyState renders this component itself, so the placeholder always arrives
+    with its own CSS attached.
+*@
+<style>
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: @(AppMeasures.Space.Px8)px;
+        padding: @(AppMeasures.Space.Px40)px @(AppMeasures.Space.Px24)px;
+        animation: empty-state-arrive @(AppMeasures.Duration.Slow)s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    /* Square frame the emoji and its halo are centred in, so the bobbing emoji never nudges the text below it. */
+    .empty-state-emoji-frame {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: @(EmojiFrameDiameterPx)px;
+        height: @(EmojiFrameDiameterPx)px;
+        margin-bottom: @(AppMeasures.Space.Px8)px;
+    }
+
+    /* Blurred disc of primary light sitting behind the emoji, so the placeholder glows instead of floating on nothing. */
+    .empty-state-halo {
+        position: absolute;
+        width: @(HaloDiameterPx)px;
+        height: @(HaloDiameterPx)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        background: @(AppColors.Primary.WithAlpha(HaloTintOpacity).ToRgbaHex(true));
+        filter: blur(@(AppMeasures.Blur.Heavy)px);
+        animation: empty-state-breathe @(AppMeasures.Duration.Slowest)s ease-in-out infinite;
+    }
+
+    .empty-state-emoji {
+        position: relative;
+        font-size: @(AppMeasures.Font.Mega)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        animation: empty-state-bob @(AppMeasures.Duration.Slowest)s ease-in-out infinite;
+    }
+
+    .empty-state-headline {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Large)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .empty-state-description {
+        margin: 0;
+        max-width: @(DescriptionMaximumWidthPx)px;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .empty-state-action {
+        margin-top: @(AppMeasures.Space.Px16)px;
+    }
+
+    @@keyframes empty-state-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(ArrivalRisePx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes empty-state-bob {
+        0%, 100% {
+            transform: translateY(0);
+        }
+
+        50% {
+            transform: translateY(-@(BobLiftPx)px);
+        }
+    }
+
+    @@keyframes empty-state-breathe {
+        0%, 100% {
+            opacity: @(AppMeasures.Opacity.Dim);
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: @(AppMeasures.Opacity.Bright);
+            transform: scale(@HaloBreathPeakScale);
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Side of the square that holds the emoji and its halo. Big enough that the halo's blur never spills onto the headline. </summary>
+    const int EmojiFrameDiameterPx = AppMeasures.Size.Px100;
+
+    /// <summary> Diameter of the blurred glow disc behind the emoji; kept under the frame so the blur has room to fade out. </summary>
+    const int HaloDiameterPx = AppMeasures.Size.Px80;
+
+    /// <summary> How solid the halo's primary tint is before the blur spreads it. </summary>
+    const float HaloTintOpacity = 0.55f;
+
+    /// <summary> How far the whole placeholder slides up as it fades in. </summary>
+    const int ArrivalRisePx = AppMeasures.Space.Px12;
+
+    /// <summary> How far the emoji rises at the top of its idle bob. </summary>
+    const int BobLiftPx = AppMeasures.Space.Px6;
+
+    /// <summary> Widest the halo swells to while breathing. A string so the decimal point survives any OS culture. </summary>
+    const string HaloBreathPeakScale = "1.15";
+
+    /// <summary> Caps the supporting line's measure so it wraps into a readable few words per row instead of one long band. </summary>
+    const int DescriptionMaximumWidthPx = AppMeasures.Size.Px300;
+}

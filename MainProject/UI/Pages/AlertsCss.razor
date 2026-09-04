@@ -1,0 +1,364 @@
+@namespace ChaySocial.MainProject.UI.Pages
+
+@*
+    Styling for the Alerts page. Alerts renders this component itself, so the screen never draws without it.
+*@
+
+<style>
+    .alerts-screen {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px20)px;
+        min-height: @(AppMeasures.Viewport.Full)vh;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(ListBottomInsetPx)px;
+    }
+
+    .alerts-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: @(AppMeasures.Space.Px12)px;
+        animation: alerts-header-arrive @(AppMeasures.Duration.Medium)s @ArriveEasing both;
+    }
+
+    /* min-width:0 lets a long heading block shrink instead of pushing the clear action off the row. */
+    .alerts-title-block {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        min-width: 0;
+    }
+
+    /* The bell gives one short swing as the screen arrives, hinged at its top edge the way a real bell hangs. */
+    .alerts-title-emoji {
+        flex: none;
+        font-size: @(AppMeasures.Font.Hero)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        transform-origin: @(AppMeasures.Percent.Half)% 0;
+        animation: alerts-bell-ring @(AppMeasures.Duration.Slower)s ease-in-out both;
+    }
+
+    .alerts-title-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px2)px;
+        min-width: 0;
+    }
+
+    .alerts-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Title)px;
+        font-weight: @(AppMeasures.Weight.Bold);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .alerts-subtitle {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    /* CoreButton paints its own colours inline, so this class only holds what inline styling never touches. */
+    .alerts-clear-button {
+        flex: none;
+        white-space: nowrap;
+        transition: transform @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+        .alerts-clear-button:hover:not(:disabled) {
+            transform: translateY(-@(HoverLiftPx)px);
+        }
+
+        .alerts-clear-button:active:not(:disabled) {
+            transform: scale(@PressedScale);
+        }
+
+    /* Shared frame for the spinner and the failure card, both of which stand alone in the middle of the screen. */
+    .alerts-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: @(AppMeasures.Space.Px16)px;
+        padding-top: @(AppMeasures.Space.Px40)px;
+    }
+
+    .alerts-failure-card {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(FailureCardMaximumWidthPx)px;
+    }
+
+    .alerts-failure-text {
+        margin: 0;
+        text-align: center;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .alerts-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px10)px;
+    }
+
+    .alerts-item {
+        display: block;
+    }
+
+    /* Every row is a real button, so the native look has to be stripped before the glass is painted on. */
+    .alert-row {
+        box-sizing: border-box;
+        display: flex;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+        margin: 0;
+        padding: @(AppMeasures.Space.Px14)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+        animation: alert-row-arrive @(AppMeasures.Duration.Medium)s @ArriveEasing both;
+        transition: transform @(AppMeasures.Duration.Fast)s ease-out, box-shadow @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+    /* Already opened: the faintest glass, dimmed, so unread rows are what the eye lands on first. */
+    .alert-row--read {
+        @(AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle))
+        opacity: @(AppMeasures.Opacity.Muted);
+    }
+
+    /* Still waiting: primary-tinted glass at full strength, declared after the read rule so it wins on equal specificity. */
+    .alert-row--unread {
+        @(AppStyles.BuildAcrylicStyle(AcrylicLevel.TintPrimary, AppMeasures.Blur.Normal))
+    }
+
+    .alert-row:hover {
+        transform: translateY(-@(HoverLiftPx)px);
+        box-shadow: @(AppStyles.ShadowMedium);
+    }
+
+    .alert-row:active {
+        transform: scale(@PressedScale);
+    }
+
+    .alert-row:focus-visible {
+        outline: @(AppMeasures.Border.Medium)px solid @(AppColors.Primary.ToRgbaHex(true));
+        outline-offset: @(AppMeasures.Space.Px2)px;
+    }
+
+    /* Anchors the kind badge to the avatar's corner. */
+    .alert-row-avatar {
+        position: relative;
+        display: inline-flex;
+        flex: none;
+    }
+
+    /* Small disc hanging off the avatar saying what happened, filled with the page ground so it reads as cut out of the row. */
+    .alert-row-kind-badge {
+        position: absolute;
+        right: -@(KindBadgeOverhangPx)px;
+        bottom: -@(KindBadgeOverhangPx)px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: @(KindBadgeDiameterPx)px;
+        height: @(KindBadgeDiameterPx)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        background: @(AppColors.BackgroundDeep.ToRgbaHex(true));
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderTop.ToRgbaHex(true));
+    }
+
+    /* min-width:0 lets a pasted address wrap inside the row instead of widening it past the screen. */
+    .alert-row-body {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px4)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* Laid out as a wrapping flex row so the gap between the name and the action never depends on markup whitespace. */
+    .alert-row-sentence {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0 @(AppMeasures.Space.Px4)px;
+        min-width: 0;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .alert-row-actor {
+        min-width: 0;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+    /* The excerpt the alert carried, set apart by an accent rule so it reads as a quotation of the post, not a new sentence. */
+    .alert-row-preview {
+        max-width: @(AppMeasures.Percent.Full)%;
+        padding-left: @(AppMeasures.Space.Px8)px;
+        border-left: @(AppMeasures.Border.Medium)px solid @(AppColors.Accent.WithAlpha(PreviewAccentOpacity).ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Small)px;
+        font-style: italic;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+    .alert-row-time {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    /* Coral bead on the trailing edge, breathing quietly so an unread row is obvious without a badge or a border. */
+    .alert-row-unread-dot {
+        flex: none;
+        align-self: center;
+        width: @(UnreadDotDiameterPx)px;
+        height: @(UnreadDotDiameterPx)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        background: @(AppColors.Secondary.ToRgbaHex(true));
+        box-shadow: @(AppStyles.GetGlow(AppColors.Secondary, UnreadDotGlowOpacity));
+        animation: alerts-unread-pulse @(AppMeasures.Duration.VerySlow)s ease-in-out infinite;
+    }
+
+    @@keyframes alerts-header-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(-@(HeaderArriveDropPx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes alerts-bell-ring {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        25% {
+            transform: rotate(-@(BellSwingAngleDegrees)deg);
+        }
+
+        55% {
+            transform: rotate(@(BellSwingAngleDegrees)deg);
+        }
+
+        80% {
+            transform: rotate(-@(BellSettleAngleDegrees)deg);
+        }
+
+        100% {
+            transform: rotate(0deg);
+        }
+    }
+
+    @@keyframes alert-row-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(RowArriveRisePx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes alerts-unread-pulse {
+        0%, 100% {
+            opacity: @(AppMeasures.Opacity.Soft);
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: 1;
+            transform: scale(@UnreadDotPeakScale);
+        }
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .alerts-header,
+        .alerts-title-emoji,
+        .alert-row,
+        .alert-row-unread-dot,
+        .alerts-clear-button {
+            animation: none;
+            transition: none;
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Space kept under the last row: the floating bottom navigation's own height plus a gap, so the final alert
+    /// can be read and pressed instead of hiding behind the bar.
+    /// </summary>
+    const int ListBottomInsetPx = AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px40;
+
+    /// <summary> The single easing every arrival on this screen uses: a fast start that decelerates into place. </summary>
+    const string ArriveEasing = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+    /// <summary> How far a row or the clear action lifts under the pointer — a nudge, not a jump. </summary>
+    const int HoverLiftPx = AppMeasures.Space.Px2;
+
+    /// <summary> How far a pressed row shrinks, matching the press feedback the core button gives. </summary>
+    const string PressedScale = "0.985";
+
+    /// <summary> How far the header starts above its resting place, so it drops into view. </summary>
+    const int HeaderArriveDropPx = AppMeasures.Space.Px12;
+
+    /// <summary> How far each row starts below its resting place, so the list rises as it fades in. </summary>
+    const int RowArriveRisePx = AppMeasures.Space.Px8;
+
+    /// <summary> How far the bell swings at the ends of its one entrance ring. </summary>
+    const int BellSwingAngleDegrees = 10;
+
+    /// <summary> The smaller swing back the bell makes before coming to rest, which is what stops the ring looking mechanical. </summary>
+    const int BellSettleAngleDegrees = 4;
+
+    /// <summary> Side of the disc carrying the like / comment / follow / message emoji on the avatar's corner. </summary>
+    const int KindBadgeDiameterPx = AppMeasures.Size.Px22;
+
+    /// <summary> How far that badge hangs outside the avatar, so it reads as sitting on top of the circle rather than inside it. </summary>
+    const int KindBadgeOverhangPx = AppMeasures.Space.Px2;
+
+    /// <summary> Side of the bead marking an unread row. </summary>
+    const int UnreadDotDiameterPx = AppMeasures.Size.Px12;
+
+    /// <summary> Strength of the coral halo around that bead. </summary>
+    const float UnreadDotGlowOpacity = 0.5f;
+
+    /// <summary> Widest the bead swells to while breathing. A string so the decimal point survives any OS culture. </summary>
+    const string UnreadDotPeakScale = "1.2";
+
+    /// <summary> How solid the accent rule beside an excerpt is: present enough to mark the quotation, quiet enough not to compete with the name. </summary>
+    const float PreviewAccentOpacity = 0.5f;
+
+    /// <summary> Caps the failure card's width so its message wraps into readable lines instead of one long band. </summary>
+    const int FailureCardMaximumWidthPx = AppMeasures.Size.Px360;
+}

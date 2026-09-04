@@ -1,9 +1,16 @@
+using ChaySocial.Web.Api;
 using ChaySocial.Web.Components;
 
 namespace ChaySocial
 {
+    /// <summary>
+    /// Startup of the web host. It serves two things: the Blazor application itself, and the document server the
+    /// browser build reads and writes through — posts, profiles, likes and everything else the app stores.
+    /// </summary>
     public class Program
     {
+        /// <summary> Builds the host, registers the document store, maps both the components and the document routes, and runs. </summary>
+        /// <param name="args"> Host arguments handed over by the runtime. </param>
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +19,10 @@ namespace ChaySocial
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents()
                 .AddInteractiveWebAssemblyComponents();
+
+            // One store for the whole host: every browser talking to this server sees the same documents, which is
+            // what makes two accounts on two tabs able to read each other's posts.
+            builder.Services.AddSingleton<JsonDocumentStore>();
 
             var app = builder.Build();
 
@@ -33,6 +44,7 @@ namespace ChaySocial
             app.UseAntiforgery();
 
             app.MapStaticAssets();
+            app.MapDocumentApi();
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()

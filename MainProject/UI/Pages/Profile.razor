@@ -1,0 +1,465 @@
+@* Two routes reach this one component: "/Profile" shows the signed-in account, "/Profile/{Address}" shows
+   whoever that address names. The second template is built from the first so the two can never drift apart;
+   Blazor matches route templates case-insensitively, so "/profile/xyz" lands here too. *@
+@attribute [Route(NavigationConstants.Profile.Link)]
+@attribute [Route(NavigationConstants.Profile.Link + "/{Address}")]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+<PageTitle>@ShownName</PageTitle>
+
+<div class="profile-screen">
+
+    @if (ShowInitialSpinner)
+    {
+        <div class="profile-centered">
+            <CoreSpinner />
+        </div>
+    }
+    else if (ShowLoadFailure)
+    {
+        <CoreCard Acrylic="AcrylicLevel.Strong"
+                  AcrylicBlur="@AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadiusCss"
+                  Padding="@CardPaddingCss"
+                  CustomClass="profile-card profile-failure">
+            <span class="profile-failure-emoji">@FailureEmoji</span>
+            <p class="profile-failure-text">@LoadFailureMessage</p>
+            <CoreButton OnClick="ReloadAsync"
+                        Gradient="@PrimaryGradient"
+                        TextColor="@AppColors.TextOnAccent"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Shadow="@AppStyles.ShadowPrimaryGlow">@RetryLabel</CoreButton>
+        </CoreCard>
+    }
+    else
+    {
+        @if (IsLoading)
+        {
+            <div class="profile-refreshing" aria-hidden="true"></div>
+        }
+
+        @if (LoadFailureMessage is not null)
+        {
+            <p class="profile-inline-failure">@LoadFailureMessage</p>
+        }
+
+        @if (ActionNotice is not null)
+        {
+            <div class="profile-notice-row">
+                <CoreChip Icon="@NoticeEmoji"
+                          Text="@ActionNotice"
+                          Background="@AppColors.SurfaceTintPrimary"
+                          TextColor="@AppColors.TextPrimary"
+                          FontSize="@AppMeasures.Font.Small"
+                          PaddingX="@AppMeasures.Space.Px14"
+                          PaddingY="@AppMeasures.Space.Px6"
+                          BorderRadius="@PillRadiusCss"
+                          Border="@NoticeChipBorder" />
+            </div>
+        }
+
+        @if (IsEditing)
+        {
+            <CoreCard Acrylic="AcrylicLevel.Normal"
+                      AcrylicBlur="@AppMeasures.Blur.Strong"
+                      BorderRadius="@CardRadiusCss"
+                      Padding="@CardPaddingCss"
+                      CustomClass="profile-card profile-editor">
+
+                <h2 class="profile-section-title">@EditorTitle</h2>
+
+                <div class="profile-field">
+                    <span class="profile-field-label">@AvatarFieldLabel</span>
+                    <div class="profile-avatar-grid">
+                        @foreach (string choice in AvatarChoices)
+                        {
+                            <button type="button"
+                                    class="profile-avatar-choice @(choice == DraftAvatar ? PickedAvatarClass : string.Empty)"
+                                    aria-pressed="@(choice == DraftAvatar ? PressedTrue : PressedFalse)"
+                                    title="@AvatarChoiceHint"
+                                    disabled="@IsSavingProfile"
+                                    @onclick="() => ChooseAvatar(choice)">@choice</button>
+                        }
+                    </div>
+                </div>
+
+                <div class="profile-field">
+                    <label class="profile-field-label" for="@DisplayNameFieldId">@DisplayNameFieldLabel</label>
+                    <input id="@DisplayNameFieldId"
+                           class="profile-input"
+                           type="text"
+                           maxlength="@ProfileData.MaximumDisplayNameLength"
+                           placeholder="@DisplayNamePlaceholder"
+                           value="@DraftDisplayName"
+                           disabled="@IsSavingProfile"
+                           spellcheck="false"
+                           autocomplete="off"
+                           @oninput="HandleDisplayNameInput" />
+                    <span class="profile-counter">@RemainingNameCharacters</span>
+                </div>
+
+                <div class="profile-field">
+                    <label class="profile-field-label" for="@BioFieldId">@BioFieldLabel</label>
+                    <textarea id="@BioFieldId"
+                              class="profile-textarea"
+                              maxlength="@ProfileData.MaximumBioLength"
+                              rows="@BioFieldRowCount"
+                              placeholder="@BioPlaceholder"
+                              value="@DraftBio"
+                              disabled="@IsSavingProfile"
+                              @oninput="HandleBioInput"></textarea>
+                    <span class="profile-counter">@RemainingBioCharacters</span>
+                </div>
+
+                @if (EditErrorMessage is not null)
+                {
+                    <p class="profile-error">@EditErrorMessage</p>
+                }
+
+                <div class="profile-actions">
+                    <CoreButton OnClick="SaveProfileAsync"
+                                Disabled="@IsSavingProfile"
+                                Gradient="@PrimaryGradient"
+                                TextColor="@AppColors.TextOnAccent"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Shadow="@AppStyles.ShadowPrimaryGlow"
+                                CustomClass="profile-action-button">
+                        @if (IsSavingProfile)
+                        {
+                            <CoreSpinner SizePx="@InlineSpinnerDiameterPx"
+                                         BorderWidthPx="@InlineSpinnerBorderPx"
+                                         Color="@AppColors.TextOnAccent" />
+                        }
+                        else
+                        {
+                            <span class="profile-action-emoji">@SaveEmoji</span>
+                            <span>@SaveLabel</span>
+                        }
+                    </CoreButton>
+
+                    <CoreButton OnClick="CancelEditing"
+                                Disabled="@IsSavingProfile"
+                                Background="@AppColors.SurfaceSubtle"
+                                TextColor="@AppColors.TextSecondary"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Border="@QuietButtonBorder"
+                                CustomClass="profile-action-button">@CancelLabel</CoreButton>
+                </div>
+            </CoreCard>
+        }
+        else
+        {
+            <CoreCard Acrylic="AcrylicLevel.Normal"
+                      AcrylicBlur="@AppMeasures.Blur.Strong"
+                      BorderRadius="@CardRadiusCss"
+                      Padding="@CardPaddingCss"
+                      CustomClass="profile-card profile-header">
+
+                <div class="profile-header-top">
+                    <AvatarBubble Emoji="@ShownAvatar" DiameterPx="@HeaderAvatarDiameterPx" IsHighlighted="true" />
+
+                    <div class="profile-identity">
+                        <h1 class="profile-name">@ShownName</h1>
+
+                        <div class="profile-address-row">
+                            <AddressChip Address="@TargetAddress"
+                                         ShowFull="@IsAddressExpanded"
+                                         VisibleCharacters="@HeaderAddressVisibleCharacters" />
+
+                            <button type="button"
+                                    class="profile-address-toggle"
+                                    aria-pressed="@(IsAddressExpanded ? PressedTrue : PressedFalse)"
+                                    title="@AddressToggleHint"
+                                    @onclick="ToggleAddressDetail">@AddressToggleEmoji</button>
+                        </div>
+
+                        @if (IsShownAccountBlocked)
+                        {
+                            <div class="profile-blocked-row">
+                                <CoreChip Icon="@BlockEmoji"
+                                          Text="@BlockedChipLabel"
+                                          Background="@AppColors.SurfaceTintAccent"
+                                          TextColor="@AppColors.TextDanger"
+                                          FontSize="@AppMeasures.Font.XSmall"
+                                          PaddingX="@AppMeasures.Space.Px10"
+                                          PaddingY="@AppMeasures.Space.Px4"
+                                          BorderRadius="@PillRadiusCss"
+                                          Border="@BlockedChipBorder" />
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @if (HasBio)
+                {
+                    <p class="profile-bio">@ShownBio</p>
+                }
+
+                <p class="profile-joined"><span class="profile-joined-emoji">@JoinedEmoji</span>@JoinedLabel</p>
+
+                <div class="profile-counts">
+                    <div class="profile-count">
+                        <span class="profile-count-value">@FollowerCount</span>
+                        <span class="profile-count-label">@FollowersLabel</span>
+                    </div>
+                    <div class="profile-count">
+                        <span class="profile-count-value">@FollowingCount</span>
+                        <span class="profile-count-label">@FollowingLabel</span>
+                    </div>
+                    <div class="profile-count">
+                        <span class="profile-count-value">@AuthorPosts.Count</span>
+                        <span class="profile-count-label">@PostsCountLabel</span>
+                    </div>
+                </div>
+            </CoreCard>
+
+            <div class="profile-actions">
+                @if (IsOwnProfile)
+                {
+                    <CoreButton OnClick="BeginEditing"
+                                Gradient="@PrimaryGradient"
+                                TextColor="@AppColors.TextOnAccent"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Shadow="@AppStyles.ShadowPrimaryGlow"
+                                CustomClass="profile-action-button">
+                        <span class="profile-action-emoji">@EditEmoji</span>
+                        <span>@EditProfileLabel</span>
+                    </CoreButton>
+
+                    <CoreButton OnClick="OpenSettings"
+                                Background="@AppColors.SurfaceSubtle"
+                                TextColor="@AppColors.TextSecondary"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Border="@QuietButtonBorder"
+                                CustomClass="profile-action-button">
+                        <span class="profile-action-emoji">@SettingsEmoji</span>
+                        <span>@SettingsLabel</span>
+                    </CoreButton>
+                }
+                else
+                {
+                    <FollowButton TargetAddress="@TargetAddress"
+                                  IsFollowing="@IsFollowingShownAccount"
+                                  IsBusy="@IsFollowBusy"
+                                  OnToggle="ToggleFollowAsync" />
+
+                    <CoreButton OnClick="OpenMessages"
+                                Background="@AppColors.SurfaceSubtle"
+                                TextColor="@AppColors.TextSecondary"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Border="@QuietButtonBorder"
+                                CustomClass="profile-action-button">
+                        <span class="profile-action-emoji">@MessageEmoji</span>
+                        <span>@MessageLabel</span>
+                    </CoreButton>
+
+                    <CoreButton OnClick="OpenAccountReport"
+                                Background="@AppColors.SurfaceSubtle"
+                                TextColor="@AppColors.TextSecondary"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Border="@QuietButtonBorder"
+                                CustomClass="profile-action-button">
+                        <span class="profile-action-emoji">@ReportEmoji</span>
+                        <span>@ReportLabel</span>
+                    </CoreButton>
+
+                    @if (IsShownAccountBlocked)
+                    {
+                        <CoreButton OnClick="UnblockAsync"
+                                    Disabled="@IsModerationBusy"
+                                    Background="@AppColors.SurfaceSubtle"
+                                    TextColor="@AppColors.TextSuccess"
+                                    BorderRadius="@PillRadiusCss"
+                                    Padding="@ActionPaddingCss"
+                                    FontSize="@AppMeasures.Font.Normal"
+                                    Border="@QuietButtonBorder"
+                                    CustomClass="profile-action-button">
+                            <span class="profile-action-emoji">@UnblockEmoji</span>
+                            <span>@UnblockLabel</span>
+                        </CoreButton>
+                    }
+                    else
+                    {
+                        <CoreButton OnClick="OpenBlockConfirm"
+                                    Disabled="@IsModerationBusy"
+                                    Background="@AppColors.SurfaceSubtle"
+                                    TextColor="@AppColors.TextDanger"
+                                    BorderRadius="@PillRadiusCss"
+                                    Padding="@ActionPaddingCss"
+                                    FontSize="@AppMeasures.Font.Normal"
+                                    Border="@DangerButtonBorder"
+                                    CustomClass="profile-action-button">
+                            <span class="profile-action-emoji">@BlockEmoji</span>
+                            <span>@BlockLabel</span>
+                        </CoreButton>
+                    }
+                }
+            </div>
+        }
+
+        <section class="profile-posts">
+            <h2 class="profile-section-title">@PostsSectionTitle</h2>
+
+            @if (AuthorPosts.Count == 0)
+            {
+                @if (IsOwnProfile)
+                {
+                    <EmptyState Emoji="@OwnEmptyEmoji" Headline="@OwnEmptyHeadline" Description="@OwnEmptyDescription">
+                        <Action>
+                            <CoreButton OnClick="OpenWall"
+                                        Gradient="@PrimaryGradient"
+                                        TextColor="@AppColors.TextOnAccent"
+                                        BorderRadius="@PillRadiusCss"
+                                        Padding="@ActionPaddingCss"
+                                        FontSize="@AppMeasures.Font.Normal"
+                                        Shadow="@AppStyles.ShadowPrimaryGlow"
+                                        CustomClass="profile-action-button">
+                                <span class="profile-action-emoji">@WriteEmoji</span>
+                                <span>@WriteFirstPostLabel</span>
+                            </CoreButton>
+                        </Action>
+                    </EmptyState>
+                }
+                else
+                {
+                    <EmptyState Emoji="@OtherEmptyEmoji" Headline="@OtherEmptyHeadline" Description="@OtherEmptyDescription" />
+                }
+            }
+            else
+            {
+                @foreach (PostData post in AuthorPosts)
+                {
+                    <PostCard Post="post"
+                              AuthorProfile="@ShownProfile"
+                              IsLiked="@IsLikedByViewer(post)"
+                              LikeCount="@LikeCountOf(post)"
+                              CommentCount="@CommentCountOf(post)"
+                              OnLike="() => ToggleLikeAsync(post)"
+                              OnDelete="() => DeletePostAsync(post)"
+                              OnReport="() => OpenPostReport(post)" />
+                }
+            }
+        </section>
+    }
+</div>
+
+<CoreModal IsVisible="@IsBlockConfirmVisible" IsAcrylic="true" OnBackdropClick="CloseBlockConfirm">
+    <div class="profile-modal">
+        <span class="profile-modal-emoji">@BlockEmoji</span>
+        <h2 class="profile-modal-title">@BlockModalTitle</h2>
+        <p class="profile-modal-text">@BlockModalDescription</p>
+
+        <div class="profile-modal-actions">
+            <CoreButton OnClick="CloseBlockConfirm"
+                        Disabled="@IsModerationBusy"
+                        Background="@AppColors.SurfaceSubtle"
+                        TextColor="@AppColors.TextSecondary"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Border="@QuietButtonBorder"
+                        CustomClass="profile-action-button">@CancelLabel</CoreButton>
+
+            <CoreButton OnClick="ConfirmBlockAsync"
+                        Disabled="@IsModerationBusy"
+                        Background="@AppColors.Error"
+                        TextColor="@AppColors.TextOnDanger"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Shadow="@AppStyles.ShadowErrorGlow"
+                        CustomClass="profile-action-button">
+                @if (IsModerationBusy)
+                {
+                    <CoreSpinner SizePx="@InlineSpinnerDiameterPx"
+                                 BorderWidthPx="@InlineSpinnerBorderPx"
+                                 Color="@AppColors.TextOnDanger" />
+                }
+                else
+                {
+                    <span>@BlockConfirmLabel</span>
+                }
+            </CoreButton>
+        </div>
+    </div>
+</CoreModal>
+
+<CoreModal IsVisible="@IsReportVisible" IsAcrylic="true" OnBackdropClick="CloseReport">
+    <div class="profile-modal">
+        <span class="profile-modal-emoji">@ReportEmoji</span>
+        <h2 class="profile-modal-title">@ReportModalTitle</h2>
+        <p class="profile-modal-text">@ReportModalDescription</p>
+
+        <div class="profile-reason-grid">
+            @foreach (ReportReason reason in ReportReasons)
+            {
+                <button type="button"
+                        class="profile-reason @(reason == SelectedReportReason ? PickedReasonClass : string.Empty)"
+                        aria-pressed="@(reason == SelectedReportReason ? PressedTrue : PressedFalse)"
+                        disabled="@IsReportBusy"
+                        @onclick="() => SelectReportReason(reason)">@DescribeReason(reason)</button>
+            }
+        </div>
+
+        <textarea class="profile-textarea"
+                  maxlength="@ReportData.MaximumDetailLength"
+                  rows="@ReportDetailRowCount"
+                  placeholder="@ReportDetailPlaceholder"
+                  value="@ReportDetail"
+                  disabled="@IsReportBusy"
+                  aria-label="@ReportDetailFieldLabel"
+                  @oninput="HandleReportDetailInput"></textarea>
+
+        <div class="profile-modal-actions">
+            <CoreButton OnClick="CloseReport"
+                        Disabled="@IsReportBusy"
+                        Background="@AppColors.SurfaceSubtle"
+                        TextColor="@AppColors.TextSecondary"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Border="@QuietButtonBorder"
+                        CustomClass="profile-action-button">@CancelLabel</CoreButton>
+
+            <CoreButton OnClick="SubmitReportAsync"
+                        Disabled="@IsReportBusy"
+                        Gradient="@PrimaryGradient"
+                        TextColor="@AppColors.TextOnAccent"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Shadow="@AppStyles.ShadowPrimaryGlow"
+                        CustomClass="profile-action-button">
+                @if (IsReportBusy)
+                {
+                    <CoreSpinner SizePx="@InlineSpinnerDiameterPx"
+                                 BorderWidthPx="@InlineSpinnerBorderPx"
+                                 Color="@AppColors.TextOnAccent" />
+                }
+                else
+                {
+                    <span>@SendReportLabel</span>
+                }
+            </CoreButton>
+        </div>
+    </div>
+</CoreModal>
+
+<ProfileCss />

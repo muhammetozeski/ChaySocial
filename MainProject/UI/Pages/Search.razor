@@ -1,0 +1,135 @@
+@attribute [Route(NavigationConstants.Search.Link)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.UI.Elements.Social
+
+<PageTitle>@PageHeading</PageTitle>
+
+<div class="search-screen">
+
+    <header class="search-header">
+        <h1 class="search-heading">
+            <span class="search-heading-emoji">@HeadingEmoji</span>
+            @PageHeading
+        </h1>
+
+        <div class="search-field">
+            <span class="search-field-emoji">@FieldEmoji</span>
+
+            @* Bound on every keystroke, so the results below follow the term as it is being typed. *@
+            <input class="search-field-input"
+                   type="search"
+                   inputmode="search"
+                   autocomplete="off"
+                   spellcheck="false"
+                   maxlength="@MaximumTermLength"
+                   placeholder="@FieldPlaceholder"
+                   aria-label="@FieldPlaceholder"
+                   @bind="Term"
+                   @bind:event="oninput"
+                   @bind:after="RunSearchAsync" />
+
+            @if (IsSearching)
+            {
+                <CoreSpinner SizePx="@FieldSpinnerDiameterPx"
+                             BorderWidthPx="@FieldSpinnerBorderWidthPx"
+                             Color="@AppColors.Primary" />
+            }
+            else if (Term.Length > 0)
+            {
+                <button type="button"
+                        class="search-field-clear"
+                        title="@ClearHint"
+                        aria-label="@ClearHint"
+                        @onclick="ClearTermAsync">@ClearEmoji</button>
+            }
+        </div>
+    </header>
+
+    <div class="search-results">
+        @if (SearchFailureMessage is not null)
+        {
+            <EmptyState Emoji="@FailureEmoji" Headline="@FailureHeadline" Description="@SearchFailureMessage" />
+        }
+        else if (!IsTermSearchable)
+        {
+            <EmptyState Emoji="@PromptEmoji" Headline="@PromptHeadline" Description="@PromptDescription" />
+        }
+        else
+        {
+            <section class="search-section">
+                <h2 class="search-section-heading">
+                    <span class="search-section-emoji">@PeopleEmoji</span>
+                    <span class="search-section-name">@PeopleSectionName</span>
+                    <span class="search-section-count">@People.Count</span>
+                </h2>
+
+                @if (People.Count == 0)
+                {
+                    <EmptyState Emoji="@NoPeopleEmoji" Headline="@NoPeopleHeadline" Description="@NoPeopleDescription" />
+                }
+                else
+                {
+                    <div class="search-section-list">
+                        @foreach (ProfileData person in People)
+                        {
+                            <PersonRow @key="person.Address" Profile="person" OnOpen="@(() => OpenProfile(person.Address))">
+                                <Action>
+                                    @if (IsViewersOwnAccount(person.Address))
+                                    {
+                                        <CoreChip Icon="@ViewerChipEmoji"
+                                                  Text="@ViewerChipLabel"
+                                                  Background="@AppColors.SurfaceTintPrimary"
+                                                  TextColor="@AppColors.TextSecondary"
+                                                  FontSize="@AppMeasures.Font.XSmall"
+                                                  PaddingX="@AppMeasures.Space.Px10"
+                                                  PaddingY="@AppMeasures.Space.Px4"
+                                                  BorderRadius="@(AppMeasures.Radius.Pill + "px")" />
+                                    }
+                                    else
+                                    {
+                                        <FollowButton TargetAddress="@person.Address"
+                                                      IsFollowing="@FollowedAddresses.Contains(person.Address)"
+                                                      IsBusy="@BusyFollowAddresses.Contains(person.Address)"
+                                                      OnToggle="@(() => ToggleFollowAsync(person.Address))" />
+                                    }
+                                </Action>
+                            </PersonRow>
+                        }
+                    </div>
+                }
+            </section>
+
+            <section class="search-section">
+                <h2 class="search-section-heading">
+                    <span class="search-section-emoji">@PostsEmoji</span>
+                    <span class="search-section-name">@PostsSectionName</span>
+                    <span class="search-section-count">@Posts.Count</span>
+                </h2>
+
+                @if (Posts.Count == 0)
+                {
+                    <EmptyState Emoji="@NoPostsEmoji" Headline="@NoPostsHeadline" Description="@NoPostsDescription" />
+                }
+                else
+                {
+                    <div class="search-section-list">
+                        @foreach (PostData post in Posts)
+                        {
+                            <PostCard @key="post.PostId"
+                                      Post="post"
+                                      AuthorProfile="@DetailFor(post.PostId).AuthorProfile"
+                                      IsLiked="@DetailFor(post.PostId).IsLikedByViewer"
+                                      LikeCount="@DetailFor(post.PostId).LikeCount"
+                                      CommentCount="@DetailFor(post.PostId).CommentCount"
+                                      OnLike="@(() => ToggleLikeAsync(post))"
+                                      OnOpenAuthor="@(() => OpenProfile(post.AuthorAddress))" />
+                        }
+                    </div>
+                }
+            </section>
+        }
+    </div>
+</div>
+
+<SearchCss />

@@ -1,0 +1,38 @@
+@*
+    The friendly placeholder every empty list in the app draws: one large emoji over a soft glow, a headline
+    naming what is missing, a supporting line saying what to do about it, and an optional action underneath.
+    Single source for that look, so an empty wall, an empty inbox and an empty search all read the same way.
+*@
+<div class="empty-state">
+    <div class="empty-state-emoji-frame">
+        <span class="empty-state-halo"></span>
+        <span class="empty-state-emoji">@Emoji</span>
+    </div>
+
+    <p class="empty-state-headline">@Headline</p>
+    <p class="empty-state-description">@Description</p>
+
+    @if (Action is not null)
+    {
+        <div class="empty-state-action">@Action</div>
+    }
+</div>
+
+<EmptyStateCss />
+
+@code {
+    /// <summary> The one large emoji drawn above the text. Falls back to <see cref="DefaultEmoji"/> when the caller has nothing better to say. </summary>
+    [Parameter] public string Emoji { get; set; } = DefaultEmoji;
+
+    /// <summary> Short line naming what is missing, e.g. "No comments yet". </summary>
+    [Parameter] public string Headline { get; set; } = string.Empty;
+
+    /// <summary> Longer line telling the reader how this list gets filled. </summary>
+    [Parameter] public string Description { get; set; } = string.Empty;
+
+    /// <summary> Optional button or link drawn under the text; nothing is drawn when it is null. </summary>
+    [Parameter] public RenderFragment? Action { get; set; }
+
+    /// <summary> Emoji used when the caller does not pick one: sparkles, which suit any empty list. </summary>
+    const string DefaultEmoji = "✨";
+}

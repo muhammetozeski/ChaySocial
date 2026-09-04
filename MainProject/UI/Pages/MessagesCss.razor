@@ -1,0 +1,390 @@
+@namespace ChaySocial.MainProject.UI.Pages
+
+@*
+    Styles for the Messages page — both the postbox and one open conversation. Every selector is namespaced
+    "messages-*" because *Css.razor styles are global (this project uses no CSS isolation), so bare names would
+    leak into every other component. Messages renders this component itself, so the page always arrives with its
+    styling attached.
+*@
+
+<style>
+    /* ---------------------------------------------------------------- the postbox */
+
+    .messages-inbox {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReadingColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(ListBottomInsetPx)px;
+        animation: messages-arrive @(AppMeasures.Duration.Slow)s @SoftLandingEasing both;
+    }
+
+    .messages-inbox-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: @(AppMeasures.Space.Px16)px;
+    }
+
+    /* min-width:0 lets a long heading block shrink instead of pushing the emoji off the row. */
+    .messages-inbox-header-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px4)px;
+        min-width: 0;
+    }
+
+    /* The two brand colours run through the heading itself, the way every other page in the app opens. */
+    .messages-inbox-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Hero)px;
+        font-weight: @(AppMeasures.Weight.Black);
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Tight);
+        background: linear-gradient(@(BrandGradientAngleDegrees)deg, @(AppColors.PrimaryLight.ToRgbaHex(true)), @(AppColors.Secondary.ToRgbaHex(true)));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .messages-inbox-subtitle {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    /* The envelope drifts as if it were still in the air, which is what keeps the header from reading as a label. */
+    .messages-inbox-emoji {
+        flex-shrink: 0;
+        font-size: @(AppMeasures.Font.Headline)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        filter: drop-shadow(@AppStyles.ShadowPrimaryGlow);
+        animation: messages-emoji-drift @(AppMeasures.Duration.Slowest)s ease-in-out infinite;
+    }
+
+    .messages-inbox-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px10)px;
+    }
+
+    .messages-inbox-item {
+        display: block;
+    }
+
+    /* Every row is a real button, so the native look has to be stripped before the glass is painted on. */
+    .messages-row {
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+        margin: 0;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+        @(AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle))
+        animation: messages-row-arrive @(AppMeasures.Duration.Medium)s @SoftLandingEasing both;
+        transition: transform @(AppMeasures.Duration.Fast)s ease-out, box-shadow @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+    .messages-row:hover {
+        transform: translateY(-@(HoverLiftPx)px);
+        box-shadow: @(AppStyles.ShadowMedium);
+    }
+
+    .messages-row:active {
+        transform: scale(@RowPressedScale);
+    }
+
+    .messages-row:focus-visible {
+        outline: @(AppMeasures.Border.Medium)px solid @(AppColors.Primary.ToRgbaHex(true));
+        outline-offset: @(AppMeasures.Space.Px2)px;
+    }
+
+    /* min-width:0 lets a pasted address wrap inside the row instead of widening it past the screen. */
+    .messages-row-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px4)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .messages-row-name {
+        min-width: 0;
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+    .messages-row-time {
+        flex: none;
+        align-self: center;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    /* ---------------------------------------------------------- one open conversation */
+
+    /* A column tall enough to fill the screen, so a two-letter conversation still keeps its composer at the foot
+       rather than leaving it stranded under the last bubble. */
+    .messages-conversation {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        min-height: @(AppMeasures.Viewport.Full)vh;
+        padding-bottom: @(ComposerRestingGapPx)px;
+        animation: messages-arrive @(AppMeasures.Duration.Slow)s @SoftLandingEasing both;
+    }
+
+    /* Parks at the very top of the viewport and carries the screen inset itself, so the letters scroll under real
+       glass and the way back never scrolls away. The fill, hairline and rounded lower corners arrive inline from
+       AppStyles.BuildBarSurface. */
+    .messages-conversation-header {
+        position: sticky;
+        top: 0;
+        z-index: @(AppMeasures.ZLayer.Sticky);
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(AppMeasures.Space.Px12)px;
+    }
+
+    .messages-back {
+        display: inline-flex;
+        flex: none;
+    }
+
+    .messages-conversation-heading {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px10)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .messages-conversation-heading-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px2)px;
+        min-width: 0;
+    }
+
+    /* Clipped rather than wrapped: the header is a bar, and a long name must not push it into two rows. */
+    .messages-conversation-name {
+        max-width: @(AppMeasures.Percent.Full)%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    /* Grows to take whatever height is left, which is what pushes the composer to the foot of a short conversation.
+       Centring is what a lone placeholder — the throbber, a failed load, an empty conversation — settles into. */
+    .messages-conversation-body {
+        box-sizing: border-box;
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReadingColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        padding: @(AppMeasures.Space.Px20)px @(AppMeasures.Space.Px20)px 0;
+    }
+
+    /* The automatic top margin eats the spare height before centring gets a say, so a two-letter conversation sits
+       down on the composer the way a long one does instead of floating in the middle of the screen. */
+    .messages-thread {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px10)px;
+        margin-top: auto;
+    }
+
+    /* Rides at the foot of the viewport, lifted clear of the floating bottom navigation. Its z-index sits under the
+       navigation's own, so the bar always stays on top of it. */
+    .messages-composer {
+        position: sticky;
+        bottom: @(ComposerLiftAboveNavigationPx)px;
+        z-index: @(AppMeasures.ZLayer.Sticky);
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReadingColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        padding: @(AppMeasures.Space.Px16)px @(AppMeasures.Space.Px20)px 0;
+    }
+
+    /* Stands in for the composer when there is no published key to seal a letter to; glass, so it reads as a quiet
+       state of the same surface rather than as an error. */
+    .messages-unwritable {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px10)px;
+        margin: 0;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .messages-unwritable-emoji {
+        flex: none;
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    /* ------------------------------------------------- shared by both screens */
+
+    .messages-status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px40)px @(AppMeasures.Space.Px24)px;
+        text-align: center;
+    }
+
+    .messages-status-text {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    @@keyframes messages-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(PageArrivalRisePx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes messages-row-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(RowArrivalRisePx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes messages-emoji-drift {
+        0%, 100% {
+            transform: translateY(0) rotate(0deg);
+        }
+
+        50% {
+            transform: translateY(-@(HeaderEmojiDriftLiftPx)px) rotate(-@(HeaderEmojiDriftTiltDegrees)deg);
+        }
+    }
+
+    /* Phone width: both screens keep everything, they only give back the padding and type size they can spare. */
+    @@media (max-width: @(NarrowScreenBreakpointPx)px) {
+        .messages-inbox {
+            padding-left: @(AppMeasures.Space.Px14)px;
+            padding-right: @(AppMeasures.Space.Px14)px;
+        }
+
+        .messages-inbox-title {
+            font-size: @(AppMeasures.Font.Title)px;
+        }
+
+        .messages-inbox-emoji {
+            font-size: @(AppMeasures.Font.Hero)px;
+        }
+
+        .messages-conversation-header,
+        .messages-conversation-body,
+        .messages-composer {
+            padding-left: @(AppMeasures.Space.Px14)px;
+            padding-right: @(AppMeasures.Space.Px14)px;
+        }
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .messages-inbox,
+        .messages-inbox-emoji,
+        .messages-conversation,
+        .messages-row {
+            animation: none;
+            transition: none;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Widest either screen's column of content grows; past this a line of a letter gets tiring to track back to. </summary>
+    const int ReadingColumnMaximumWidthPx = 640;
+
+    /// <summary>
+    /// Space kept under the last postbox row: the floating bottom navigation's own height plus a gap, so the final
+    /// conversation can be read and pressed instead of hiding behind the bar.
+    /// </summary>
+    const int ListBottomInsetPx = AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px40;
+
+    /// <summary>
+    /// Where the composer parks while a long conversation scrolls under it: clear of the floating bottom navigation,
+    /// plus a gap so the two surfaces never touch.
+    /// </summary>
+    const int ComposerLiftAboveNavigationPx = AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px16;
+
+    /// <summary> Gap left under the composer once a conversation is scrolled all the way down and it stops sticking. </summary>
+    const int ComposerRestingGapPx = AppMeasures.Space.Px16;
+
+    /// <summary> Angle of the two-colour sheen through the postbox heading, matching every other gradient surface in the app. </summary>
+    const int BrandGradientAngleDegrees = 135;
+
+    /// <summary> How far the whole screen slides up as it fades in. </summary>
+    const int PageArrivalRisePx = AppMeasures.Space.Px12;
+
+    /// <summary> How far each postbox row starts below its resting place, so the list rises as it fades in. </summary>
+    const int RowArrivalRisePx = AppMeasures.Space.Px8;
+
+    /// <summary> How far the envelope rises at the top of its idle drift. </summary>
+    const int HeaderEmojiDriftLiftPx = AppMeasures.Space.Px6;
+
+    /// <summary> How far the envelope tips as it drifts, which is what makes the motion read as floating rather than bouncing. </summary>
+    const int HeaderEmojiDriftTiltDegrees = 6;
+
+    /// <summary> How far a row lifts under the pointer — a nudge, not a jump. </summary>
+    const int HoverLiftPx = AppMeasures.Space.Px2;
+
+    /// <summary> How far a pressed row shrinks, matching the press feedback the core button gives. A string so the decimal survives any OS culture. </summary>
+    const string RowPressedScale = "0.985";
+
+    /// <summary> Easing that starts fast and settles softly, used for every entrance and press on this page. </summary>
+    const string SoftLandingEasing = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+    /// <summary> Widest viewport still treated as a phone, below which both screens tighten their spacing. </summary>
+    const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
+}

@@ -1,0 +1,53 @@
+@*
+    Styling for MessageComposer. MessageComposer renders this component itself, so the composer always
+    arrives with its own CSS attached.
+*@
+<style>
+    .message-composer {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px10)px;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        box-sizing: border-box;
+    }
+
+    /* min-width:0 lets the field shrink inside the flex row instead of pushing the send button out of the pill. */
+    .message-composer-input {
+        flex: 1;
+        min-width: 0;
+        border: none;
+        outline: none;
+        background: transparent;
+        padding: @(AppMeasures.Space.Px10)px 0;
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.Normal)px;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+        .message-composer-input::placeholder {
+            color: @(AppColors.TextMuted.ToRgbaHex(true));
+        }
+
+        .message-composer-input:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+        }
+
+    /* Sizes the CoreButton that sends; CoreButton owns its own press and disabled behaviour. */
+    .message-composer-send {
+        flex-shrink: 0;
+        width: @(SendButtonDiameterPx)px;
+        height: @(SendButtonDiameterPx)px;
+    }
+
+    .message-composer-send-emoji {
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+</style>
+
+@code {
+    /// <summary> Side of the round send button. Wide enough to stay an easy thumb target at the bottom of a conversation. </summary>
+    const int SendButtonDiameterPx = AppMeasures.Size.Px44;
+}

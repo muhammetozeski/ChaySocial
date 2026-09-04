@@ -1,0 +1,319 @@
+@namespace ChaySocial.MainProject.UI.Pages
+@* Styles for the Wall page. Every selector is namespaced "wall-*" because *Css.razor styles are global
+   (this project uses no CSS isolation), so bare names would leak into every other component. Wall renders
+   this component itself, so the page always arrives with its styling attached. *@
+<style>
+    .wall-page {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReadingColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px40)px;
+        animation: wall-arrive @(AppMeasures.Duration.Slow)s @SoftLandingEasing both;
+    }
+
+    .wall-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: @(AppMeasures.Space.Px16)px;
+    }
+
+    .wall-header-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px4)px;
+        min-width: 0;
+    }
+
+    /* The two brand colours run through the heading itself, which is what gives the page its aurora feel
+       without painting a single flat band across the top. */
+    .wall-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Hero)px;
+        font-weight: @(AppMeasures.Weight.Black);
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Tight);
+        background: linear-gradient(@(TitleGradientAngleDegrees)deg, @(AppColors.PrimaryLight.ToRgbaHex(true)), @(AppColors.Secondary.ToRgbaHex(true)));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .wall-subtitle {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .wall-header-emoji {
+        flex-shrink: 0;
+        font-size: @(AppMeasures.Font.Headline)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        filter: drop-shadow(@AppStyles.ShadowPrimaryGlow);
+        animation: wall-header-float @(AppMeasures.Duration.Slowest)s ease-in-out infinite;
+    }
+
+    /* The glass fill, hairline and shadow arrive inline from AppStyles.BuildAcrylicStyle; the strip owns
+       only its shape and the way it lays the two tabs out. */
+    .wall-tabs {
+        display: flex;
+        align-items: stretch;
+        gap: @(AppMeasures.Space.Px6)px;
+        padding: @(AppMeasures.Space.Px6)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+    }
+
+    .wall-tab {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: @(AppMeasures.Space.Px8)px;
+        flex: 1 1 0;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px16)px;
+        border: none;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: transparent;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        cursor: pointer;
+        transition: transform @(AppMeasures.Duration.Fast)s @SoftLandingEasing, background @(AppMeasures.Duration.Normal)s, color @(AppMeasures.Duration.Normal)s, box-shadow @(AppMeasures.Duration.Normal)s;
+    }
+
+    .wall-tab:active {
+        transform: scale(@TabPressedScale);
+    }
+
+    .wall-tab.is-active {
+        background: linear-gradient(@(TitleGradientAngleDegrees)deg, @(AppColors.Primary.ToRgbaHex(true)), @(AppColors.Secondary.ToRgbaHex(true)));
+        color: @(AppColors.TextOnAccent.ToRgbaHex(true));
+        font-weight: @(AppMeasures.Weight.Heavy);
+        box-shadow: @AppStyles.ShadowPrimaryGlow;
+    }
+
+    .wall-tab-emoji {
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .wall-feed {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+    }
+
+    /* Shared by the loading throbber and the failure card, so both sit in the same centred column. */
+    .wall-status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px40)px @(AppMeasures.Space.Px24)px;
+        text-align: center;
+    }
+
+    .wall-status-emoji {
+        font-size: @(AppMeasures.Font.Giant)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .wall-status-text {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .wall-report {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px10)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReportSheetMaximumWidthPx)px;
+        text-align: center;
+    }
+
+    .wall-report-emoji {
+        font-size: @(AppMeasures.Font.Giant)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .wall-report-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Large)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .wall-report-subtitle {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    /* The reported post's opening lines, so the reader can see they are reporting the post they meant to. */
+    .wall-report-quote {
+        display: -webkit-box;
+        -webkit-line-clamp: @(ReportQuoteVisibleLineCount);
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin: 0;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-left: @(AppMeasures.Border.Thick)px solid @(AppColors.Secondary.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        text-align: left;
+        overflow-wrap: anywhere;
+    }
+
+    .wall-report-reasons {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(@(ReasonMinimumColumnWidthPx)px, 1fr));
+        gap: @(AppMeasures.Space.Px8)px;
+        width: @(AppMeasures.Percent.Full)%;
+        margin-top: @(AppMeasures.Space.Px6)px;
+    }
+
+    .wall-reason {
+        display: inline-flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px8)px;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px14)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        text-align: left;
+        cursor: pointer;
+        transition: transform @(AppMeasures.Duration.Fast)s @SoftLandingEasing, background @(AppMeasures.Duration.Fast)s, border-color @(AppMeasures.Duration.Fast)s;
+    }
+
+    .wall-reason:hover {
+        background: @(AppColors.SurfaceTintAccent.ToRgbaHex(true));
+        border-color: @(AppColors.Secondary.ToRgbaHex(true));
+    }
+
+    .wall-reason:active {
+        transform: scale(@TabPressedScale);
+    }
+
+    .wall-reason-emoji {
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .wall-report-cancel {
+        margin-top: @(AppMeasures.Space.Px6)px;
+        padding: @(AppMeasures.Space.Px8)px @(AppMeasures.Space.Px16)px;
+        border: none;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: transparent;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Semibold);
+        cursor: pointer;
+        transition: color @(AppMeasures.Duration.Fast)s;
+    }
+
+    .wall-report-cancel:hover {
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .wall-report-busy {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px24)px 0;
+    }
+
+    @@keyframes wall-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(PageArrivalRisePx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes wall-header-float {
+        0%, 100% {
+            transform: translateY(0) rotate(0deg);
+        }
+
+        50% {
+            transform: translateY(-@(HeaderEmojiFloatLiftPx)px) rotate(-@(HeaderEmojiFloatTiltDegrees)deg);
+        }
+    }
+
+    /* Phone width: the page keeps every control, it only gives back the padding and type size it can spare. */
+    @@media (max-width: @(NarrowScreenBreakpointPx)px) {
+        .wall-page {
+            padding-left: @(AppMeasures.Space.Px14)px;
+            padding-right: @(AppMeasures.Space.Px14)px;
+        }
+
+        .wall-title {
+            font-size: @(AppMeasures.Font.Title)px;
+        }
+
+        .wall-header-emoji {
+            font-size: @(AppMeasures.Font.Hero)px;
+        }
+
+        .wall-tab {
+            padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px10)px;
+            font-size: @(AppMeasures.Font.Small)px;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Widest the wall's column of posts grows on a large screen; past this a line of post text gets tiring to track back to. </summary>
+    const int ReadingColumnMaximumWidthPx = 640;
+
+    /// <summary> Widest the report sheet's inner column grows, so its reason grid stays two comfortable columns rather than spreading thin. </summary>
+    const int ReportSheetMaximumWidthPx = AppMeasures.Size.Px360;
+
+    /// <summary> Narrowest a report reason may be squeezed to before the grid drops it to its own row. </summary>
+    const int ReasonMinimumColumnWidthPx = AppMeasures.Size.Px140;
+
+    /// <summary> Lines of the reported post shown in the sheet before the rest is clipped. </summary>
+    const int ReportQuoteVisibleLineCount = 3;
+
+    /// <summary> Angle of the two-colour sheen shared by the heading and the selected tab, matching every other gradient surface in the app. </summary>
+    const int TitleGradientAngleDegrees = 135;
+
+    /// <summary> How far the teapot rises at the top of its idle float. </summary>
+    const int HeaderEmojiFloatLiftPx = AppMeasures.Space.Px6;
+
+    /// <summary> How far the teapot tips as it floats, which is what makes the motion read as pouring rather than bouncing. </summary>
+    const int HeaderEmojiFloatTiltDegrees = 6;
+
+    /// <summary> How far the whole page slides up as it fades in. </summary>
+    const int PageArrivalRisePx = AppMeasures.Space.Px12;
+
+    /// <summary> How far a tab or a reason shrinks while it is held down. </summary>
+    const string TabPressedScale = "0.96";
+
+    /// <summary> Easing that starts fast and settles softly, used for entrances and presses. </summary>
+    const string SoftLandingEasing = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+    /// <summary> Widest viewport still treated as a phone, below which the page tightens its spacing. </summary>
+    const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
+}

@@ -1,0 +1,451 @@
+@namespace ChaySocial.MainProject.UI.Pages
+
+@*
+    Styles for the Settings page. Every selector is namespaced "settings-*" because *Css.razor styles are global
+    (this project uses no CSS isolation), so bare names would leak into every other component. Settings renders
+    this component itself, so the page always arrives with its styling attached. Colours and spacing come from
+    the theme tokens; anything belonging to this screen alone is a named constant in this file's @@code block.
+*@
+<style>
+    .settings-page {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReadingColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px40)px;
+        animation: settings-arrive @(AppMeasures.Duration.Slow)s @SoftLandingEasing both;
+    }
+
+    .settings-header {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    .settings-header-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px4)px;
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    /* The two brand colours run through the heading itself, which is what gives the screen its aurora feel
+       without painting a flat band across the top. */
+    .settings-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Hero)px;
+        font-weight: @(AppMeasures.Weight.Black);
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Tight);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        background-image: linear-gradient(@(TitleGradientAngleDegrees)deg, @(AppColors.PrimaryLight.ToRgbaHex(true)), @(AppColors.Secondary.ToRgbaHex(true)));
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .settings-subtitle {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .settings-header-emoji {
+        flex-shrink: 0;
+        font-size: @(AppMeasures.Font.Hero)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        filter: drop-shadow(@AppStyles.ShadowPrimaryGlow);
+        animation: settings-header-turn @(AppMeasures.Duration.Slowest)s ease-in-out infinite;
+    }
+
+    /* The glass fill, radius and padding arrive inline from CoreCard; the card class owns only the column
+       its contents stack in. */
+    .settings-card {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    .settings-section-heading {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px10)px;
+    }
+
+    .settings-section-emoji {
+        font-size: @(AppMeasures.Font.Large)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .settings-section-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .settings-section-description {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .settings-identity {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px16)px;
+        margin-top: @(AppMeasures.Space.Px4)px;
+    }
+
+    .settings-identity-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px6)px;
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .settings-identity-name {
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+    /* Emoji inside a button label: CoreButton lays its content out inline, so the gap comes from here. */
+    .settings-button-emoji {
+        margin-right: @(AppMeasures.Space.Px8)px;
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    /* The question asked between the two presses that reveal a secret. It is tinted amber rather than left
+       plain, so it reads as a pause rather than as one more paragraph. */
+    .settings-confirm {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px8)px;
+        padding: @(AppMeasures.Space.Px20)px @(AppMeasures.Space.Px16)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.Accent.WithAlpha(WarningEdgeOpacity).ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.Accent.WithAlpha(WarningTintOpacity).ToRgbaHex(true));
+        text-align: center;
+        animation: settings-unfold @(AppMeasures.Duration.Normal)s @SoftLandingEasing both;
+    }
+
+    .settings-confirm-emoji {
+        font-size: @(AppMeasures.Font.Hero)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .settings-confirm-headline {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .settings-confirm-description {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .settings-confirm-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: @(AppMeasures.Space.Px8)px;
+        margin-top: @(AppMeasures.Space.Px6)px;
+    }
+
+    /* The way out of any two-step action: a label, not a second solid button, so the choice to go on stays
+       the one the eye lands on. */
+    .settings-quiet-button {
+        padding: @(AppMeasures.Space.Px8)px @(AppMeasures.Space.Px16)px;
+        border: none;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: transparent;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Semibold);
+        cursor: pointer;
+        transition: color @(AppMeasures.Duration.Fast)s, transform @(AppMeasures.Duration.Fast)s @SoftLandingEasing;
+    }
+
+        .settings-quiet-button:hover {
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
+        .settings-quiet-button:active {
+            transform: scale(@PressedScale);
+        }
+
+    /* The revealed secret: monospace so every group lines up, sunk into a dark well so it reads as something
+       set apart, and ringed in amber because it is the most valuable thing on the screen. */
+    .settings-secret-box {
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        resize: none;
+        padding: @(AppMeasures.Space.Px14)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.Accent.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.BackgroundDeep.WithAlpha(SecretWellOpacity).ToRgbaHex(true));
+        box-shadow: @AppStyles.ShadowGoldGlow;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        font-family: @SecretTypeface;
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        letter-spacing: @(AppMeasures.Tracking.Wide)px;
+        text-align: center;
+        cursor: text;
+        animation: settings-unfold @(AppMeasures.Duration.Normal)s @SoftLandingEasing both;
+    }
+
+        .settings-secret-box:focus {
+            outline: none;
+        }
+
+    .settings-warning {
+        display: flex;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px10)px;
+        padding: @(AppMeasures.Space.Px14)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.Warning.WithAlpha(WarningEdgeOpacity).ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.Warning.WithAlpha(WarningTintOpacity).ToRgbaHex(true));
+    }
+
+    .settings-warning-emoji {
+        flex-shrink: 0;
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+    }
+
+    .settings-warning-text {
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextWarning.ToRgbaHex(true));
+    }
+
+    .settings-error {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextDanger.ToRgbaHex(true));
+    }
+
+    /* Shared by the throbber and the failure line inside the blocked-accounts card. */
+    .settings-status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px24)px @(AppMeasures.Space.Px16)px;
+        text-align: center;
+    }
+
+    .settings-status-emoji {
+        font-size: @(AppMeasures.Font.Giant)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .settings-block-list {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .settings-block-item {
+        animation: settings-unfold @(AppMeasures.Duration.Normal)s @SoftLandingEasing both;
+    }
+
+    /* A blocked account that never published a profile. Same shape as a PersonRow so the two kinds of row sit
+       in one even column, built from the address alone. */
+    .settings-nameless-row {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px12)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+    }
+
+    .settings-nameless-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px4)px;
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .settings-nameless-name {
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+    .settings-nameless-action {
+        flex-shrink: 0;
+    }
+
+    .settings-signout-sheet {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(SignOutSheetMaximumWidthPx)px;
+        text-align: center;
+    }
+
+    .settings-signout-emoji {
+        font-size: @(AppMeasures.Font.Giant)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .settings-signout-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Large)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .settings-signout-description {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .settings-signout-busy {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px16)px 0;
+    }
+
+    @@keyframes settings-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(PageArrivalRisePx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes settings-unfold {
+        from {
+            opacity: 0;
+            transform: translateY(-@(PanelUnfoldDropPx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* The cog turns a little way and settles back, rather than spinning: the screen should feel calm. */
+    @@keyframes settings-header-turn {
+        0%, 100% {
+            transform: rotate(0deg);
+        }
+
+        50% {
+            transform: rotate(@(HeaderEmojiTurnDegrees)deg);
+        }
+    }
+
+    /* Phone width: the screen keeps every control, it only gives back the padding and type size it can spare. */
+    @@media (max-width: @(NarrowScreenBreakpointPx)px) {
+        .settings-page {
+            padding-left: @(AppMeasures.Space.Px14)px;
+            padding-right: @(AppMeasures.Space.Px14)px;
+        }
+
+        .settings-title {
+            font-size: @(AppMeasures.Font.Title)px;
+        }
+
+        .settings-header-emoji {
+            font-size: @(AppMeasures.Font.Title)px;
+        }
+
+        .settings-nameless-row {
+            padding: @(AppMeasures.Space.Px8)px;
+        }
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .settings-page,
+        .settings-header-emoji,
+        .settings-confirm,
+        .settings-secret-box,
+        .settings-block-item {
+            animation: none;
+        }
+
+        .settings-quiet-button {
+            transition: none;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Widest this screen's column of cards grows on a large window; past this a line of explanation gets tiring to track back to. </summary>
+    const int ReadingColumnMaximumWidthPx = 640;
+
+    /// <summary> Widest the sign-out sheet's inner column grows, so its question stays a compact block rather than spreading thin. </summary>
+    const int SignOutSheetMaximumWidthPx = AppMeasures.Size.Px360;
+
+    /// <summary> How far the whole screen slides up as it fades in. </summary>
+    const int PageArrivalRisePx = AppMeasures.Space.Px12;
+
+    /// <summary> How far a panel drops from as it fades in, so it reads as unfolding out of the row above it. </summary>
+    const int PanelUnfoldDropPx = AppMeasures.Space.Px8;
+
+    /// <summary> How far the cog turns at the far end of its idle sweep before settling back. </summary>
+    const int HeaderEmojiTurnDegrees = 25;
+
+    /// <summary> Direction the heading's colour sheen runs in: a diagonal, matching every other gradient surface in the app. </summary>
+    const int TitleGradientAngleDegrees = 135;
+
+    /// <summary> How far a pressed label shrinks while it is held down. A string so the decimal survives any OS culture. </summary>
+    const string PressedScale = "0.96";
+
+    /// <summary> Easing that starts fast and settles softly, used for every entrance and press on this screen. </summary>
+    const string SoftLandingEasing = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+    /// <summary> Widest viewport still treated as a phone, below which the screen tightens its spacing. </summary>
+    const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
+
+    /// <summary> How deeply the secret field is sunk into the card: a dark well under the glass, so the characters read as something set apart from the text around them. </summary>
+    const float SecretWellOpacity = 0.45f;
+
+    /// <summary> How solid the amber wash behind a warning or a confirmation panel is — enough to tint the glass, not enough to hide it. </summary>
+    const float WarningTintOpacity = 0.14f;
+
+    /// <summary> How solid the amber hairline around those panels is. </summary>
+    const float WarningEdgeOpacity = 0.35f;
+
+    /// <summary> Typeface stack for the grouped secret characters: fixed-width faces first so every group lines up, falling back to whatever monospace the device has. </summary>
+    const string SecretTypeface = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+}

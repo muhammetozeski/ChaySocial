@@ -1,56 +1,53 @@
+@*
+    The shell every page is drawn inside: the aurora background and body typography come from
+    <MainLayoutCss />, the routed page fills the content area, and the bottom navigation appears only once
+    somebody is signed in — a signed-out visitor sees the welcome screen with nothing to navigate to yet.
+*@
 @inherits LayoutComponentBase
-@inject NavigationManager NavManager
 @implements IDisposable
 
-<div class="app-page @(_showBottomNav ? "has-bottom-nav" : "")">
+<div class="app-page @(ShowBottomNavigation ? HasBottomNavClass : string.Empty)">
     <main>
         <article class="content">
             @Body
         </article>
     </main>
 
-    @if (_showBottomNav)
+    @if (ShowBottomNavigation)
     {
         <AppBottomNav />
     }
 </div>
 
+<MainLayoutCss />
 
 @code {
+    /// <summary> Class added to the page shell so its bottom padding clears the navigation bar. </summary>
+    const string HasBottomNavClass = "has-bottom-nav";
 
-    private bool _showBottomNav = false;
+    /// <summary> True while the navigation bar belongs on screen, which is exactly while an account is unlocked. </summary>
+    bool ShowBottomNavigation;
 
     protected override void OnInitialized()
     {
-        
-        NavManager.LocationChanged += HandleLocationChanged;
-        Events.MainEvents.OnDataChanged += HandleDataChanged;
-        EvaluateBottomNavVisibility(NavManager.Uri);
+        MainEvents.Subscribe(HandleAppEvent);
+        ShowBottomNavigation = SessionService.IsSignedIn;
     }
 
-    private void HandleLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    /// <summary>
+    /// Redraws the shell when the palette swaps, and re-reads whether anybody is signed in when the session
+    /// changes, so the navigation bar appears the moment an account is created or unlocked and leaves again on
+    /// sign-out.
+    /// </summary>
+    /// <param name="eventName"> Name of the event that fired, one of <see cref="MainEvents.Names"/>. </param>
+    /// <param name="data"> Payload the event carried; the shell re-reads what it needs and ignores it. </param>
+    void HandleAppEvent(string eventName, object? data)
     {
-        
-        EvaluateBottomNavVisibility(e.Location);
-        StateHasChanged();
+        if (eventName == MainEvents.Names.SessionChanged) ShowBottomNavigation = SessionService.IsSignedIn;
+        else if (eventName != MainEvents.Names.ThemeChanged) return;
+
+        InvokeAsync(StateHasChanged);
     }
 
-    private void HandleDataChanged(string eventName, object? data)
-    {
-        if (eventName == "OnThemeChanged")
-        {
-            InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private void EvaluateBottomNavVisibility(string uri)
-    {
-        _showBottomNav = true;
-    }
-
-    public void Dispose()
-    {
-        NavManager.LocationChanged -= HandleLocationChanged;
-        Events.MainEvents.OnDataChanged -= HandleDataChanged;
-    }
+    public void Dispose() => MainEvents.Unsubscribe(HandleAppEvent);
 }

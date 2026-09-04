@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "chaysocial-web",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "ChaySocial.Web/ChaySocial.Web.csproj", "--urls", "http://localhost:5017"],
+      "port": 5017
+    }
+  ]
+}

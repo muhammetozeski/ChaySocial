@@ -1,0 +1,117 @@
+@attribute [Route(NavigationConstants.Alerts.Link)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    The bell screen. Rows are buttons rather than divs, so a keyboard opens an alert exactly as a tap does
+    without a line of script; each one marks itself read on the way to whatever it points at.
+*@
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<section class="alerts-screen">
+    <header class="alerts-header">
+        <div class="alerts-title-block">
+            <span class="alerts-title-emoji" role="img" aria-label="@PageHeadline">@NavigationConstants.Alerts.Icon</span>
+
+            <div class="alerts-title-text">
+                <h1 class="alerts-title">@PageHeadline</h1>
+                <p class="alerts-subtitle">@SubtitleText</p>
+            </div>
+        </div>
+
+        @if (UnreadCount > 0)
+        {
+            <CoreButton OnClick="MarkEverythingReadAsync"
+                        Disabled="@_isMarkingAllRead"
+                        CustomClass="alerts-clear-button"
+                        Background="AppColors.SurfaceTintPrimary"
+                        TextColor="AppColors.TextPrimary"
+                        BorderRadius="@MarkAllButtonRadius"
+                        Padding="@MarkAllButtonPadding"
+                        FontSize="AppMeasures.Font.Small"
+                        FontWeight="AppMeasures.Weight.Medium"
+                        Border="@MarkAllButtonBorder">
+                @MarkAllReadLabel
+            </CoreButton>
+        }
+    </header>
+
+    @if (IsLoading)
+    {
+        <div class="alerts-state">
+            <CoreSpinner />
+        </div>
+    }
+    else if (LoadFailureMessage is not null)
+    {
+        <div class="alerts-state">
+            <CoreCard Acrylic="AcrylicLevel.Strong" CustomClass="alerts-failure-card">
+                <p class="alerts-failure-text">@LoadFailureMessage</p>
+
+                <CoreButton OnClick="ReloadAsync"
+                            IsFullWidth="true"
+                            Background="AppColors.Primary"
+                            TextColor="AppColors.TextOnAccent"
+                            BorderRadius="@RetryButtonRadius"
+                            Padding="@RetryButtonPadding"
+                            Shadow="@AppStyles.ShadowPrimaryGlow">
+                    @RetryLabel
+                </CoreButton>
+            </CoreCard>
+        </div>
+    }
+    else if (_alerts.Count == 0)
+    {
+        <EmptyState Emoji="@EmptyStateEmoji" Headline="@EmptyStateHeadline" Description="@EmptyStateDescription" />
+    }
+    else
+    {
+        <ul class="alerts-list">
+            @for (int index = 0; index < _alerts.Count; index++)
+            {
+                // Declared inside the loop body, so each row's click handler captures its own alert rather than the last one.
+                NotificationData alert = _alerts[index];
+
+                <li class="alerts-item" @key="alert.NotificationId">
+                    <button type="button"
+                            class="alert-row @(alert.IsRead ? ReadRowClass : UnreadRowClass)"
+                            style="@BuildArrivalDelayStyle(index)"
+                            @onclick="() => OpenAsync(alert)">
+
+                        <span class="alert-row-avatar">
+                            <AvatarBubble Emoji="@ActorAvatarFor(alert)"
+                                          DiameterPx="@RowAvatarDiameterPx"
+                                          IsHighlighted="@(!alert.IsRead)" />
+
+                            <span class="alert-row-kind-badge">@DescribeKindEmoji(alert.Kind)</span>
+                        </span>
+
+                        <span class="alert-row-body">
+                            <span class="alert-row-sentence">
+                                <span class="alert-row-actor">@ActorNameFor(alert)</span>
+                                <span class="alert-row-action">@DescribeAction(alert.Kind)</span>
+                            </span>
+
+                            @if (alert.Preview.Length > 0)
+                            {
+                                <span class="alert-row-preview">@alert.Preview</span>
+                            }
+
+                            <span class="alert-row-time">@RelativeTimeFormatter.Format(alert.CreatedAtUnixMs)</span>
+                        </span>
+
+                        @if (!alert.IsRead)
+                        {
+                            <span class="alert-row-unread-dot" role="img" aria-label="@UnreadDotLabel"></span>
+                        }
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+<AlertsCss />

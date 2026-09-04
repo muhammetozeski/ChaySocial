@@ -6,74 +6,72 @@
 <title>ChaySocial · Onay Panosu</title>
 <style>
   :root {
-    --bg-deep: #070A1A;
-    --bg-base: #0E1230;
-    --surface: rgba(255,255,255,.06);
-    --surface-strong: rgba(255,255,255,.11);
+    --bg-deep: #070A1A; --bg-base: #0E1230;
+    --surface: rgba(255,255,255,.06); --surface-2: rgba(255,255,255,.10);
     --border: rgba(255,255,255,.13);
-    --text: #F4F6FF;
-    --text-dim: #A8B1D9;
-    --text-mute: #6B73A3;
-    --primary: #7C7BFF;
-    --accent: #FFB547;
-    --good: #10B981;
-    --bad: #EF4444;
+    --text: #F4F6FF; --text-dim: #DDE3FF; --text-mute: #98A2CE;
+    --primary: #7C7BFF; --accent: #FFB547; --good: #10B981;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 28px 18px 80px;
-    font: 15px/1.6 "Segoe UI", system-ui, sans-serif;
-    color: var(--text);
+    margin: 0; padding: 26px 18px 90px;
+    font: 15px/1.6 "Segoe UI", system-ui, sans-serif; color: var(--text);
     background:
       radial-gradient(ellipse 55% 60% at 20% 15%, rgba(59,42,140,.55) 0%, transparent 70%),
       radial-gradient(ellipse 60% 55% at 85% 35%, rgba(91,46,148,.55) 0%, transparent 70%),
       radial-gradient(ellipse 60% 50% at 30% 95%, rgba(122,35,80,.55) 0%, transparent 70%),
       linear-gradient(180deg, var(--bg-base), var(--bg-deep));
-    background-attachment: fixed;
-    min-height: 100vh;
+    background-attachment: fixed; min-height: 100vh;
   }
-  header { max-width: 860px; margin: 0 auto 22px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-  h1 { font-size: 22px; margin: 0; letter-spacing: .3px; }
+  header { max-width: 900px; margin: 0 auto 20px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 21px; margin: 0; }
   .pulse { font-size: 12px; color: var(--text-mute); }
-  main { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  main { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
   .card {
-    background: var(--surface);
-    backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 20px 22px;
+    background: var(--surface); backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--border); border-radius: 20px; padding: 20px 22px;
     box-shadow: 0 4px 12px rgba(0,0,0,.28);
-    animation: rise .35s cubic-bezier(.2,.8,.2,1) both;
+    animation: rise .3s cubic-bezier(.2,.8,.2,1) both;
   }
-  @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
-  .card h2 { font-size: 17px; margin: 0 0 6px; }
+  .card.answered { border-color: rgba(16,185,129,.45); }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } }
+  .card h2 { font-size: 17px; margin: 0 0 4px; }
   .meta { font-size: 12px; color: var(--text-mute); margin-bottom: 12px; }
   .body { color: var(--text-dim); white-space: pre-wrap; }
-  .body b, .body strong { color: var(--text); }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
-  button {
-    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
-    border: 1px solid var(--border); border-radius: 12px; padding: 9px 15px;
-    background: var(--surface-strong); color: var(--text);
-    transition: transform .15s ease, filter .15s ease;
+  .body code { background: rgba(0,0,0,.35); padding: 1px 5px; border-radius: 5px; font-size: 13px; }
+
+  .options { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .option {
+    display: flex; gap: 12px; align-items: flex-start; text-align: left; width: 100%;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px;
+    padding: 12px 14px; color: var(--text); font: inherit; cursor: pointer;
+    transition: border-color .15s ease, transform .15s ease, background .15s ease;
   }
-  button:hover { transform: translateY(-1px); filter: brightness(1.18); }
-  button.good { background: linear-gradient(135deg, #10B981, #059669); border-color: transparent; }
-  button.bad { background: linear-gradient(135deg, #EF4444, #DC2626); border-color: transparent; }
-  button.detail { background: linear-gradient(135deg, var(--primary), var(--accent)); border-color: transparent; color: #0B0E22; }
+  .option:hover { border-color: var(--primary); transform: translateY(-1px); }
+  .option.chosen { background: linear-gradient(135deg, rgba(124,123,255,.28), rgba(255,181,71,.16)); border-color: var(--primary); }
+  .option .key {
+    flex: 0 0 26px; height: 26px; border-radius: 9px; display: grid; place-items: center;
+    background: rgba(0,0,0,.35); font-weight: 700; font-size: 13px; color: var(--accent);
+  }
+  .option .label { font-weight: 600; }
+  .option .detail { display: block; font-weight: 400; font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+
+  .note-row { display: flex; gap: 8px; margin-top: 12px; align-items: stretch; }
   textarea {
-    width: 100%; margin-top: 12px; min-height: 78px; resize: vertical;
-    background: rgba(0,0,0,.28); color: var(--text);
-    border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px;
-    font: inherit;
+    flex: 1; min-height: 46px; resize: vertical; background: rgba(0,0,0,.28); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px; padding: 11px 13px; font: inherit;
   }
   textarea::placeholder { color: var(--text-mute); }
-  .answered { border-color: rgba(16,185,129,.5); }
-  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }
-  .badge.like { background: rgba(16,185,129,.2); color: #6EE7B7; }
-  .badge.dislike { background: rgba(239,68,68,.2); color: #FCA5A5; }
-  .badge.detail { background: rgba(124,123,255,.22); color: #C7C6FF; }
-  .badge.wait { background: rgba(255,181,71,.18); color: #FFD79A; }
+  .send {
+    flex: 0 0 auto; padding: 0 18px; border-radius: 12px; border: 1px solid transparent;
+    background: linear-gradient(135deg, var(--primary), var(--accent)); color: #0B0E22;
+    font: inherit; font-weight: 700; cursor: pointer;
+  }
+  .send:hover { filter: brightness(1.1); }
+
+  .answer { margin-top: 12px; font-size: 13px; color: #6EE7B7; }
+  .answer .said { color: var(--text-dim); }
   .empty { color: var(--text-mute); text-align: center; padding: 60px 0; }
 </style>
 </head>
@@ -85,41 +83,69 @@
 <main id="board"><div class="empty">yükleniyor…</div></main>
 
 <script>
-const VERDICT_LABEL = { like: "beğendim", dislike: "beğenmedim", detail: "detay" };
 let lastStamp = "";
+const pending = {};   // cardId -> seçili option key (henüz gönderilmemiş)
+
+function optionHtml(card, option, reply) {
+  const chosen = pending[card.id] === option.key || (!pending[card.id] && reply?.optionKey === option.key);
+  return `<button class="option ${chosen ? "chosen" : ""}" onclick="choose('${card.id}','${option.key}')">
+      <span class="key">${option.key}</span>
+      <span class="label">${option.label}<span class="detail">${option.detail ?? ""}</span></span>
+    </button>`;
+}
 
 function cardHtml(card, reply) {
-  const badge = reply
-    ? `<span class="badge ${reply.verdict}">${VERDICT_LABEL[reply.verdict] ?? reply.verdict}</span>`
-    : `<span class="badge wait">bekliyor</span>`;
+  const answered = !!reply;
+  const options = (card.options ?? []).map(o => optionHtml(card, o, reply)).join("");
+  const answerLine = answered
+    ? `<div class="answer">✓ ${reply.at} · seçtiğin: <b>${reply.optionKey ?? "-"}</b>${reply.note ? ` · <span class="said">"${reply.note}"</span>` : ""}</div>`
+    : "";
   return `
-    <div class="card ${reply ? "answered" : ""}">
-      <h2>${card.title}${badge}</h2>
+    <div class="card ${answered ? "answered" : ""}">
+      <h2>${card.title}</h2>
       <div class="meta">${card.at ?? ""} · ${card.id}</div>
       <div class="body">${card.body}</div>
-      <textarea id="note-${card.id}" placeholder="detay / not yaz…">${reply?.note ?? ""}</textarea>
-      <div class="row">
-        <button class="good" onclick="send('${card.id}','like')">👍 Beğendim</button>
-        <button class="bad" onclick="send('${card.id}','dislike')">👎 Beğenmedim</button>
-        <button class="detail" onclick="send('${card.id}','detail')">📝 Detaylara bak</button>
+      <div class="options">${options}</div>
+      <div class="note-row">
+        <textarea id="note-${card.id}" placeholder="istersen kendi cevabını yaz (seçenek seçmeden de gönderebilirsin)">${reply?.note ?? ""}</textarea>
+        <button class="send" onclick="send('${card.id}')">Gönder</button>
       </div>
+      ${answerLine}
     </div>`;
 }
 
-async function send(cardId, verdict) {
+function choose(cardId, optionKey) {
+  pending[cardId] = optionKey;
+  render();
+}
+
+async function send(cardId) {
   const note = document.getElementById("note-" + cardId).value;
   await fetch("/reply", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cardId, verdict, note })
+    body: JSON.stringify({ cardId, optionKey: pending[cardId] ?? "", note })
   });
+  delete pending[cardId];
   lastStamp = "";
   refresh();
 }
 
+let board = { cards: [] };
+let replies = [];
+
+function render() {
+  const latest = {};
+  for (const r of [].concat(replies)) latest[r.cardId] = r;
+  const cards = (board.cards ?? []).slice().reverse();
+  document.getElementById("board").innerHTML = cards.length
+    ? cards.map(c => cardHtml(c, latest[c.id])).join("")
+    : `<div class="empty">henüz kart yok</div>`;
+}
+
 async function refresh() {
   try {
-    const [board, replies] = await Promise.all([
+    [board, replies] = await Promise.all([
       fetch("/data", { cache: "no-store" }).then(r => r.json()),
       fetch("/replies", { cache: "no-store" }).then(r => r.json())
     ]);
@@ -128,15 +154,8 @@ async function refresh() {
     const stamp = JSON.stringify([board.updatedAt, board.cards?.length, replies.length]);
     if (stamp === lastStamp) return;
     lastStamp = stamp;
-
-    const latest = {};
-    for (const r of [].concat(replies)) latest[r.cardId] = r;
-
-    const cards = (board.cards ?? []).slice().reverse();
-    document.getElementById("board").innerHTML = cards.length
-      ? cards.map(c => cardHtml(c, latest[c.id])).join("")
-      : `<div class="empty">henüz kart yok</div>`;
-  } catch (e) {
+    render();
+  } catch {
     document.getElementById("pulse").textContent = "bağlantı yok — serve.ps1 çalışıyor mu?";
   }
 }

@@ -1,0 +1,104 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+
+<button type="button"
+        class="follow-button @StateClass"
+        disabled="@IsBusy"
+        aria-pressed="@PressedValue"
+        aria-label="@AccessibleLabel"
+        title="@AccessibleLabel"
+        @onclick="OnToggle">
+    @if (IsBusy)
+    {
+        <CoreSpinner SizePx="@BusySpinnerSizePx" BorderWidthPx="@BusySpinnerBorderWidthPx" Color="@ForegroundColor" />
+    }
+    else
+    {
+        <span class="follow-button-emoji">@StateEmoji</span>
+        <span class="follow-button-label">@StateLabel</span>
+    }
+</button>
+
+<FollowButtonCss />
+
+@code {
+    /// <summary> Modifier class for the inviting, gradient-filled state; defined in <c>FollowButtonCss</c>. </summary>
+    const string NotFollowingClass = "follow-button--invite";
+
+    /// <summary> Modifier class for the settled, glass state; defined in <c>FollowButtonCss</c>. </summary>
+    const string FollowingClass = "follow-button--settled";
+
+    /// <summary> Label while the reader does not follow the account yet. </summary>
+    const string NotFollowingLabel = "Follow";
+
+    /// <summary> Label once the reader follows the account. </summary>
+    const string FollowingLabel = "Following";
+
+    /// <summary> Emoji on the inviting state: a spark, because pressing this starts something. </summary>
+    const string NotFollowingEmoji = "✨";
+
+    /// <summary> Emoji on the settled state: a handshake, because the connection already exists. </summary>
+    const string FollowingEmoji = "🤝";
+
+    /// <summary> What pressing the button does while not following, used to build the spoken name. </summary>
+    const string FollowActionText = "Follow";
+
+    /// <summary> What pressing the button does while following, used to build the spoken name. </summary>
+    const string UnfollowActionText = "Unfollow";
+
+    /// <summary> Value written into <c>aria-pressed</c> while following. Written as text because the attribute is tri-state, not a boolean flag. </summary>
+    const string PressedTrue = "true";
+
+    /// <summary> Value written into <c>aria-pressed</c> while not following. </summary>
+    const string PressedFalse = "false";
+
+    /// <summary> Diameter of the throbber that replaces the label while a toggle is in flight; sized to the label's own text. </summary>
+    const int BusySpinnerSizePx = AppMeasures.Size.Px16;
+
+    /// <summary> Ring thickness of that throbber, thinned down from the app default because the throbber itself is small. </summary>
+    const int BusySpinnerBorderWidthPx = AppMeasures.Border.Medium;
+
+    /// <summary> Address of the account this button follows or unfollows. Named in the button's tooltip and spoken name so a row of these is never ambiguous. </summary>
+    [Parameter] public string TargetAddress { get; set; } = string.Empty;
+
+    /// <summary> True when the reader already follows <see cref="TargetAddress"/>. </summary>
+    [Parameter] public bool IsFollowing { get; set; }
+
+    /// <summary> True while a toggle is being written, which swaps the label for a throbber and blocks a second press. </summary>
+    [Parameter] public bool IsBusy { get; set; }
+
+    /// <summary> Raised when the reader presses the button. The caller owns the write and then flips <see cref="IsFollowing"/>. </summary>
+    [Parameter] public EventCallback OnToggle { get; set; }
+
+    /// <summary> The modifier class matching <see cref="IsFollowing"/>. </summary>
+    string StateClass => IsFollowing ? FollowingClass : NotFollowingClass;
+
+    /// <summary> The label matching <see cref="IsFollowing"/>. </summary>
+    string StateLabel => IsFollowing ? FollowingLabel : NotFollowingLabel;
+
+    /// <summary> The emoji matching <see cref="IsFollowing"/>. </summary>
+    string StateEmoji => IsFollowing ? FollowingEmoji : NotFollowingEmoji;
+
+    /// <summary> The <c>aria-pressed</c> text matching <see cref="IsFollowing"/>. </summary>
+    string PressedValue => IsFollowing ? PressedTrue : PressedFalse;
+
+    /// <summary>
+    /// Colour handed to the busy throbber, which builds its ring inline and so cannot inherit the button's text
+    /// colour. Reads the same two tokens the matching rules in <c>FollowButtonCss</c> paint the label with.
+    /// </summary>
+    Color ForegroundColor => IsFollowing ? AppColors.TextSecondary : AppColors.TextOnAccent;
+
+    /// <summary>
+    /// What the button will do, and to whom — "Follow chayA1B2…Y9Z8". Built from the shortened address so a screen
+    /// reader names the account without spelling out forty characters of base32.
+    /// </summary>
+    string AccessibleLabel
+    {
+        get
+        {
+            string action = IsFollowing ? UnfollowActionText : FollowActionText;
+            string account = AddressChip.Shorten(TargetAddress);
+
+            return account.Length == 0 ? action : $"{action} {account}";
+        }
+    }
+}

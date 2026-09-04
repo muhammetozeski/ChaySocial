@@ -1,0 +1,239 @@
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+
+@if (Post is not null)
+{
+    <CoreCard Acrylic="AcrylicLevel.Normal"
+              AcrylicBlur="@AppMeasures.Blur.Normal"
+              TextColor="@AppColors.TextPrimary"
+              BorderRadius="@(AppMeasures.Radius.XLarge + "px")"
+              Padding="@(AppMeasures.Space.Px20 + "px")"
+              CustomClass="post-card">
+
+        <div class="post-card-header">
+            <button type="button" class="post-card-identity" title="@OpenAuthorHint" @onclick="HandleOpenAuthor">
+                <span class="post-card-avatar">@AvatarEmoji</span>
+                <span class="post-card-identity-text">
+                    <span class="post-card-name">@DisplayName</span>
+                    <span class="post-card-address">@ShortenedAddress</span>
+                </span>
+            </button>
+            <span class="post-card-time" title="@PublishedAtHint">@RelativeTime</span>
+        </div>
+
+        @if (!IsSignatureTrusted)
+        {
+            <div class="post-card-badge-row">
+                <CoreChip Icon="@UnverifiedEmoji"
+                          Text="@UnverifiedLabel"
+                          Background="@AppColors.SurfaceTintAccent"
+                          TextColor="@AppColors.TextWarning"
+                          FontSize="@AppMeasures.Font.XSmall"
+                          PaddingX="@AppMeasures.Space.Px10"
+                          PaddingY="@AppMeasures.Space.Px4"
+                          BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                          Border="@UnverifiedChipBorder" />
+            </div>
+        }
+
+        <p class="post-card-text">@Post.Text</p>
+
+        <div class="post-card-actions">
+            <button type="button"
+                    class="post-card-action post-card-action--like @(IsLiked ? LikedModifierClass : string.Empty)"
+                    title="@(IsLiked ? UnlikeHint : LikeHint)"
+                    @onclick="HandleLike">
+                <span class="post-card-action-icon">@(IsLiked ? LikedHeartEmoji : UnlikedHeartEmoji)</span>
+                <span class="post-card-action-count">@LikeCount</span>
+            </button>
+
+            <button type="button" class="post-card-action" title="@CommentsHint" @onclick="HandleOpenComments">
+                <span class="post-card-action-icon">@CommentEmoji</span>
+                <span class="post-card-action-count">@CommentCount</span>
+            </button>
+
+            @if (ShowDeleteAction)
+            {
+                <button type="button"
+                        class="post-card-action post-card-action--danger post-card-action--trailing"
+                        title="@DeleteHint"
+                        @onclick="HandleDelete">
+                    <span class="post-card-action-icon">@DeleteEmoji</span>
+                </button>
+            }
+            else if (ShowReportAction)
+            {
+                <button type="button"
+                        class="post-card-action post-card-action--trailing"
+                        title="@ReportHint"
+                        @onclick="HandleReport">
+                    <span class="post-card-action-icon">@ReportEmoji</span>
+                </button>
+            }
+        </div>
+
+    </CoreCard>
+}
+
+<PostCardCss />
+
+@code {
+    /// <summary> Heart drawn once the signed-in account has liked this post. </summary>
+    const string LikedHeartEmoji = "❤️";
+
+    /// <summary> Hollow heart drawn while this post is not liked. </summary>
+    const string UnlikedHeartEmoji = "🤍";
+
+    /// <summary> Marks the comment count. </summary>
+    const string CommentEmoji = "💬";
+
+    /// <summary> Marks the button that removes one of the reader's own posts. </summary>
+    const string DeleteEmoji = "🗑️";
+
+    /// <summary> Marks the button that reports somebody else's post. </summary>
+    const string ReportEmoji = "🚩";
+
+    /// <summary> Marks the badge shown when the post's signature does not verify. </summary>
+    const string UnverifiedEmoji = "⚠️";
+
+    /// <summary> Badge text shown when the post's signature does not verify against its author's published key. </summary>
+    const string UnverifiedLabel = "unverified signature";
+
+    /// <summary> Class appended to the like button while the post is liked; it carries the filled-heart colours. </summary>
+    const string LikedModifierClass = "is-liked";
+
+    /// <summary> Tooltip on the author button. </summary>
+    const string OpenAuthorHint = "Open this profile";
+
+    /// <summary> Tooltip on the like button while the post is not liked. </summary>
+    const string LikeHint = "Like this post";
+
+    /// <summary> Tooltip on the like button while the post is liked. </summary>
+    const string UnlikeHint = "Remove your like";
+
+    /// <summary> Tooltip on the comment button. </summary>
+    const string CommentsHint = "Read and write comments";
+
+    /// <summary> Tooltip on the delete button. </summary>
+    const string DeleteHint = "Delete this post";
+
+    /// <summary> Tooltip on the report button. </summary>
+    const string ReportHint = "Report this post";
+
+    /// <summary> Characters kept from the start of an address before the ellipsis; enough to include the "chay" label. </summary>
+    const int AddressLeadingCharacterCount = 10;
+
+    /// <summary> Characters kept from the end of an address after the ellipsis. </summary>
+    const int AddressTrailingCharacterCount = 4;
+
+    /// <summary> Placed between the two kept halves of a shortened address. </summary>
+    const string AddressEllipsis = "…";
+
+    /// <summary> The post being drawn. </summary>
+    [Parameter, EditorRequired] public PostData Post { get; set; } = default!;
+
+    /// <summary> Profile of the post's author, or null while it has not been read; the card falls back to address-derived values. </summary>
+    [Parameter] public ProfileData? AuthorProfile { get; set; }
+
+    /// <summary> True when the signed-in account has already liked this post, which fills the heart. </summary>
+    [Parameter] public bool IsLiked { get; set; }
+
+    /// <summary> How many accounts liked this post. </summary>
+    [Parameter] public int LikeCount { get; set; }
+
+    /// <summary> How many comments this post carries. </summary>
+    [Parameter] public int CommentCount { get; set; }
+
+    /// <summary> Raised when the reader taps the heart; the page decides whether that adds or removes the like. </summary>
+    [Parameter] public EventCallback OnLike { get; set; }
+
+    /// <summary> Raised when the author taps delete on their own post. </summary>
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    /// <summary> Raised when the reader reports somebody else's post. </summary>
+    [Parameter] public EventCallback OnReport { get; set; }
+
+    /// <summary> Raised when the reader taps the avatar or name to open the author's profile. </summary>
+    [Parameter] public EventCallback OnOpenAuthor { get; set; }
+
+    /// <summary> Raised when the reader taps the comment count to open the post's comments. </summary>
+    [Parameter] public EventCallback OnOpenComments { get; set; }
+
+    /// <summary> Result of the last signature check, kept between renders so verifying does not run on every repaint. </summary>
+    bool IsSignatureTrusted;
+
+    /// <summary>
+    /// Re-runs the signature check whenever the post or its author profile changes, so the verdict the card draws
+    /// always belongs to the post currently on screen.
+    /// </summary>
+    protected override void OnParametersSet()
+        => IsSignatureTrusted = Post is not null && WallService.VerifyAuthorship(Post, AuthorProfile);
+
+    /// <summary> True when the signed-in account wrote this post, which swaps the report button for a delete button. </summary>
+    bool IsOwnPost => Post is not null && SessionService.IsSignedIn && Post.AuthorAddress == SessionService.CurrentAddress;
+
+    /// <summary> True when the delete button belongs on this card: the reader wrote the post and the page handles removal. </summary>
+    bool ShowDeleteAction => IsOwnPost && OnDelete.HasDelegate;
+
+    /// <summary> True when the report button belongs on this card: somebody else wrote the post and the page handles reports. </summary>
+    bool ShowReportAction => !IsOwnPost && SessionService.IsSignedIn && OnReport.HasDelegate;
+
+    /// <summary> Emoji drawn in the avatar bubble: the author's own pick, or the one their address maps to. </summary>
+    string AvatarEmoji => string.IsNullOrEmpty(AuthorProfile?.Avatar)
+        ? ProfileService.PickAvatar(Post.AuthorAddress)
+        : AuthorProfile.Avatar;
+
+    /// <summary> Name drawn next to the avatar: the author's chosen name, or the readable head of their address. </summary>
+    string DisplayName => string.IsNullOrWhiteSpace(AuthorProfile?.DisplayName)
+        ? ProfileService.FallbackDisplayName(Post.AuthorAddress)
+        : AuthorProfile.DisplayName;
+
+    /// <summary> How long ago the post was published, in the short form the whole app uses. </summary>
+    string RelativeTime => RelativeTimeFormatter.Format(Post.CreatedAtUnixMs);
+
+    /// <summary> Full publication time, shown when the reader hovers the short relative label. </summary>
+    string PublishedAtHint => DateTimeOffset.FromUnixTimeMilliseconds(Post.CreatedAtUnixMs).ToLocalTime().ToString();
+
+    /// <summary> Hairline that outlines the unverified-signature badge in the warning colour. </summary>
+    string UnverifiedChipBorder => $"{AppMeasures.Border.Thin}px solid {AppColors.Warning.ToRgbaHex(true)}";
+
+    /// <summary>
+    /// The author's address with its middle replaced by an ellipsis, so a full-length address still fits one line on
+    /// a phone. Addresses too short to gain anything from the cut are drawn whole.
+    /// </summary>
+    string ShortenedAddress
+    {
+        get
+        {
+            string address = Post.AuthorAddress;
+            int keptCharacterCount = AddressLeadingCharacterCount + AddressTrailingCharacterCount;
+
+            return address.Length <= keptCharacterCount + AddressEllipsis.Length
+                ? address
+                : string.Concat(
+                    address.AsSpan(0, AddressLeadingCharacterCount),
+                    AddressEllipsis,
+                    address.AsSpan(address.Length - AddressTrailingCharacterCount));
+        }
+    }
+
+    /// <summary> Passes the heart tap to the page, doing nothing when the page wired no handler. </summary>
+    /// <returns> A task that completes once the page has handled the tap. </returns>
+    Task HandleLike() => OnLike.HasDelegate ? OnLike.InvokeAsync() : Task.CompletedTask;
+
+    /// <summary> Passes the delete tap to the page, doing nothing when the page wired no handler. </summary>
+    /// <returns> A task that completes once the page has handled the tap. </returns>
+    Task HandleDelete() => OnDelete.HasDelegate ? OnDelete.InvokeAsync() : Task.CompletedTask;
+
+    /// <summary> Passes the report tap to the page, doing nothing when the page wired no handler. </summary>
+    /// <returns> A task that completes once the page has handled the tap. </returns>
+    Task HandleReport() => OnReport.HasDelegate ? OnReport.InvokeAsync() : Task.CompletedTask;
+
+    /// <summary> Passes the author tap to the page, doing nothing when the page wired no handler. </summary>
+    /// <returns> A task that completes once the page has handled the tap. </returns>
+    Task HandleOpenAuthor() => OnOpenAuthor.HasDelegate ? OnOpenAuthor.InvokeAsync() : Task.CompletedTask;
+
+    /// <summary> Passes the comment tap to the page, doing nothing when the page wired no handler. </summary>
+    /// <returns> A task that completes once the page has handled the tap. </returns>
+    Task HandleOpenComments() => OnOpenComments.HasDelegate ? OnOpenComments.InvokeAsync() : Task.CompletedTask;
+}

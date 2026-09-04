@@ -8,11 +8,13 @@
     <ResourcePreloader />
     <link rel="stylesheet" href="ChaySocial.Web.styles.css" />
     <ImportMap />
-    <HeadOutlet @rendermode="InteractiveAuto" />
+    @* WebAssembly, not Auto: every account key is derived and every signature made on the device, so the
+       components must run in the browser from the first render. Auto would start on a server circuit. *@
+    <HeadOutlet @rendermode="InteractiveWebAssembly" />
 </head>
 
 <body>
-    <Routes @rendermode="InteractiveAuto" />
+    <Routes @rendermode="InteractiveWebAssembly" />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>

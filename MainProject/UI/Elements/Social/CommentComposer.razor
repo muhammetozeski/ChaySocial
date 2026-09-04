@@ -1,0 +1,91 @@
+@using ChaySocial.MainProject.DataModels
+
+@*
+    Single-line composer for replying under a post: a frosted pill holding one text field. There is no send
+    button by design — the return key sends, and the disc at the end of the pill lights up in primary the
+    moment the text is long enough to be worth sending, so the reply stays a one-keystroke gesture.
+*@
+<div class="comment-composer" style="@SurfaceStyle">
+    <span class="comment-composer-badge">@ComposerEmoji</span>
+
+    <input class="comment-composer-input"
+           type="text"
+           placeholder="@Placeholder"
+           maxlength="@CommentData.MaximumTextLength"
+           value="@Text"
+           disabled="@IsBusy"
+           @oninput="HandleInputAsync"
+           @onkeydown="HandleKeyDownAsync" />
+
+    @if (IsBusy)
+    {
+        <CoreSpinner SizePx="@BusySpinnerDiameterPx" BorderWidthPx="@BusySpinnerBorderPx" Color="@AppColors.Primary" />
+    }
+    else
+    {
+        <span class="comment-composer-hint @ReadyHintModifier">@ReturnKeyGlyph</span>
+    }
+</div>
+
+<CommentComposerCss />
+
+@code {
+    /// <summary> What the author has typed so far. </summary>
+    [Parameter] public string Text { get; set; } = string.Empty;
+
+    /// <summary> Raised on every keystroke with the field's new contents, so the caller owns the text. </summary>
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+
+    /// <summary> Raised when the author presses return on text worth sending. Publishing the reply belongs to the caller. </summary>
+    [Parameter] public EventCallback OnSubmit { get; set; }
+
+    /// <summary> True while the caller is publishing the reply: the field locks and the return-key disc becomes a spinner. </summary>
+    [Parameter] public bool IsBusy { get; set; }
+
+    /// <summary> Grey prompt shown in the empty field. </summary>
+    [Parameter] public string Placeholder { get; set; } = DefaultPlaceholder;
+
+    /// <summary> Prompt used when the caller does not supply one. </summary>
+    const string DefaultPlaceholder = "Say something kind…";
+
+    /// <summary> Emoji marking the pill as a place to write a reply. </summary>
+    const string ComposerEmoji = "💬";
+
+    /// <summary> Character drawn on the disc that stands in for a send button. </summary>
+    const string ReturnKeyGlyph = "↵";
+
+    /// <summary> Value <see cref="KeyboardEventArgs.Key"/> carries for the return key. </summary>
+    const string ReturnKeyName = "Enter";
+
+    /// <summary> Modifier lighting the return-key disc up once the text is sendable. </summary>
+    const string ReadyHintClass = "comment-composer-hint--ready";
+
+    /// <summary> Diameter of the spinner that replaces the return-key disc while the reply is being published; sized to sit in the same hole. </summary>
+    const int BusySpinnerDiameterPx = AppMeasures.Size.Px20;
+
+    /// <summary> Ring thickness of that spinner, thinned down from the app default so a disc this small still reads as a ring. </summary>
+    const int BusySpinnerBorderPx = AppMeasures.Border.Medium;
+
+    /// <summary> True when there is something to send and the caller is not already busy sending. </summary>
+    bool CanSubmit => !IsBusy && !string.IsNullOrWhiteSpace(Text);
+
+    /// <summary> The modifier class for the return-key disc, empty until the text is sendable. </summary>
+    string ReadyHintModifier => CanSubmit ? ReadyHintClass : string.Empty;
+
+    /// <summary> The pill's frosted glass fill. </summary>
+    string SurfaceStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle);
+
+    /// <summary> Hands every keystroke straight back to the caller. </summary>
+    /// <param name="args"> The input event; its value is the field's new contents. </param>
+    /// <returns> A task that completes once the caller has taken the new text. </returns>
+    Task HandleInputAsync(ChangeEventArgs args) => TextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    /// <summary> Sends on a bare return press, and ignores every other key. Return with shift held is left alone so it keeps its usual meaning. </summary>
+    /// <param name="args"> The key that was pressed. </param>
+    /// <returns> A task that completes once the caller has handled the submission, or immediately when the key was not a bare return. </returns>
+    async Task HandleKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key != ReturnKeyName || args.ShiftKey || !CanSubmit) return;
+        await OnSubmit.InvokeAsync();
+    }
+}

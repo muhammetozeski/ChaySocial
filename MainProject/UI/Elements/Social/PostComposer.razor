@@ -1,0 +1,152 @@
+@using ChaySocial.MainProject.DataModels
+
+<CoreCard Acrylic="AcrylicLevel.Normal"
+          AcrylicBlur="@AppMeasures.Blur.Normal"
+          TextColor="@AppColors.TextPrimary"
+          BorderRadius="@(AppMeasures.Radius.XLarge + "px")"
+          Padding="@(AppMeasures.Space.Px20 + "px")"
+          CustomClass="post-composer">
+
+    <div class="post-composer-row">
+        <span class="post-composer-avatar">@AvatarEmoji</span>
+        <textarea class="post-composer-input"
+                  rows="@VisibleRowCount"
+                  placeholder="@ComposerPlaceholder"
+                  disabled="@IsBusy"
+                  value="@Text"
+                  @oninput="HandleTextInput"></textarea>
+    </div>
+
+    <div class="post-composer-footer">
+        <span class="post-composer-counter" style="@CounterStyle">@CounterLabel</span>
+
+        @* CoreButton is used directly rather than PrimaryButton because the pill radius, padding and font size
+           are written as inline style by CoreButton itself — a class rule could never win against them. *@
+        <CoreButton Disabled="@(!CanSubmit)"
+                    OnClick="HandleSubmit"
+                    Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                    TextColor="@AppColors.TextOnAccent"
+                    BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                    Padding="@ShareButtonPadding"
+                    FontSize="@AppMeasures.Font.Normal"
+                    Shadow="@AppStyles.ShadowPrimaryGlow"
+                    CustomClass="post-composer-share">
+            @if (IsBusy)
+            {
+                <CoreSpinner SizePx="@BusySpinnerSizePx"
+                             BorderWidthPx="@BusySpinnerBorderWidthPx"
+                             Color="@AppColors.TextOnAccent" />
+            }
+            else
+            {
+                <span class="post-composer-share-icon">@ShareEmoji</span>
+                <span>@ShareLabel</span>
+            }
+        </CoreButton>
+    </div>
+
+</CoreCard>
+
+<PostComposerCss />
+
+@code {
+    /// <summary> Invitation shown in the empty textarea; it keeps the app's tea-house voice. </summary>
+    const string ComposerPlaceholder = "What is steeping today?";
+
+    /// <summary> Marks the publish button. </summary>
+    const string ShareEmoji = "✨";
+
+    /// <summary> Text on the publish button. </summary>
+    const string ShareLabel = "Share";
+
+    /// <summary> Word after the count while there is still room left. </summary>
+    const string CharactersLeftLabel = "left";
+
+    /// <summary> Word after the count once the text runs past the limit. </summary>
+    const string CharactersOverLabel = "over";
+
+    /// <summary> Text lines the textarea shows before it starts scrolling. </summary>
+    const int VisibleRowCount = 3;
+
+    /// <summary>
+    /// How close to <see cref="PostData.MaximumTextLength"/> the text gets before the counter turns amber: the
+    /// last stretch where a writer wants warning that they are running out of room.
+    /// </summary>
+    const int WarningRemainingCharacterCount = 60;
+
+    /// <summary> Diameter of the throbber that replaces the button's label while a post is being published. </summary>
+    const int BusySpinnerSizePx = AppMeasures.Size.Px16;
+
+    /// <summary> Ring thickness of that throbber, thinned down so a small circle still reads as a ring. </summary>
+    const int BusySpinnerBorderWidthPx = AppMeasures.Border.Medium;
+
+    /// <summary> Inside spacing of the share button: a wide pill that stays comfortable to tap on a phone. </summary>
+    static readonly string ShareButtonPadding = $"{AppMeasures.Space.Px10}px {AppMeasures.Space.Px20}px";
+
+    /// <summary> What the writer has typed so far. </summary>
+    [Parameter] public string Text { get; set; } = string.Empty;
+
+    /// <summary> Raised on every keystroke with the textarea's new contents, so the page owns the text. </summary>
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+
+    /// <summary> Raised when the writer presses the share button on text that is publishable. </summary>
+    [Parameter] public EventCallback OnSubmit { get; set; }
+
+    /// <summary> True while the page is publishing; the textarea locks and the button shows a throbber. </summary>
+    [Parameter] public bool IsBusy { get; set; }
+
+    /// <summary> Emoji drawn in the composer's bubble, normally the signed-in account's own avatar. </summary>
+    [Parameter] public string Avatar { get; set; } = ProfileData.DefaultAvatar;
+
+    /// <summary> The bubble emoji, falling back to the starter avatar when the page passed nothing. </summary>
+    string AvatarEmoji => string.IsNullOrEmpty(Avatar) ? ProfileData.DefaultAvatar : Avatar;
+
+    /// <summary>
+    /// Length of what would actually be published. The publish path trims before it measures, so counting the
+    /// trimmed text is what makes the counter agree with whether the post is accepted.
+    /// </summary>
+    int PublishableLength => (Text ?? string.Empty).Trim().Length;
+
+    /// <summary> Room left before the limit; negative once the text is too long. </summary>
+    int RemainingCharacterCount => PostData.MaximumTextLength - PublishableLength;
+
+    /// <summary> The counter's text: how much room is left, or how far past the limit the text has gone. </summary>
+    string CounterLabel => RemainingCharacterCount >= 0
+        ? $"{RemainingCharacterCount} {CharactersLeftLabel}"
+        : $"{-RemainingCharacterCount} {CharactersOverLabel}";
+
+    /// <summary>
+    /// Colours the counter by how much room is left: muted with room to spare, amber once the end is in sight,
+    /// and the danger colour once the text no longer fits.
+    /// </summary>
+    string CounterStyle
+    {
+        get
+        {
+            Color counterColor = RemainingCharacterCount switch
+            {
+                < 0 => AppColors.TextDanger,
+                <= WarningRemainingCharacterCount => AppColors.TextWarning,
+                _ => AppColors.TextMuted
+            };
+
+            return $"color:{counterColor.ToRgbaHex(true)};";
+        }
+    }
+
+    /// <summary> True when the share button should accept a tap: text that is neither empty nor over the limit, and no publish already running. </summary>
+    bool CanSubmit => !IsBusy
+        && OnSubmit.HasDelegate
+        && PublishableLength > 0
+        && PublishableLength <= PostData.MaximumTextLength;
+
+    /// <summary> Hands each keystroke's text back to the page that owns it. </summary>
+    /// <param name="args"> The input event carrying the textarea's new contents. </param>
+    /// <returns> A task that completes once the page has taken the new text. </returns>
+    Task HandleTextInput(ChangeEventArgs args)
+        => TextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    /// <summary> Raises <see cref="OnSubmit"/>, and does nothing when the current text is not publishable. </summary>
+    /// <returns> A task that completes once the page has handled the share. </returns>
+    Task HandleSubmit() => CanSubmit ? OnSubmit.InvokeAsync() : Task.CompletedTask;
+}

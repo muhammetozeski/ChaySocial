@@ -1,0 +1,204 @@
+@attribute [Route(NavigationConstants.Messages.Link)]
+@attribute [Route(ConversationRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    Two screens on one component. Without an address in the route this is the postbox: one row per conversation,
+    showing who and when and deliberately not a word of what — the bodies stay sealed here. With an address it is
+    that one conversation, every letter opened on this device and a composer under them.
+
+    The whole page is drawn only for a signed-in reader. SessionPage sends anybody else to the welcome screen, but
+    that navigation finishes after this component has already rendered once, so without this guard the header would
+    read an account that is not there yet.
+*@
+
+<PageTitle>@BrowserTitle</PageTitle>
+
+@if (SessionService.IsSignedIn)
+{
+    @if (IsConversation)
+    {
+        <div class="messages-conversation">
+
+            <header class="messages-conversation-header" style="@HeaderSurfaceStyle">
+                <span class="messages-back" title="@BackToInboxHint">
+                    <BackButton OnClick="GoBackToInbox" />
+                </span>
+
+                <div class="messages-conversation-heading">
+                    <AvatarBubble Emoji="@OtherAvatar" DiameterPx="@ConversationAvatarDiameterPx" IsHighlighted="true" />
+
+                    <div class="messages-conversation-heading-text">
+                        <span class="messages-conversation-name">@OtherName</span>
+                        <AddressChip Address="@Address" />
+                    </div>
+                </div>
+
+                @if (IsRefreshing)
+                {
+                    <CoreSpinner SizePx="@HeaderSpinnerDiameterPx"
+                                 BorderWidthPx="@HeaderSpinnerBorderPx"
+                                 Color="@AppColors.Primary" />
+                }
+            </header>
+
+            <div class="messages-conversation-body">
+                @if (IsFirstLoad)
+                {
+                    <div class="messages-status">
+                        <CoreSpinner />
+                        <p class="messages-status-text">@ConversationLoadingLabel</p>
+                    </div>
+                }
+                else if (LoadFailureMessage is not null)
+                {
+                    <EmptyState Emoji="@LoadFailureEmoji" Headline="@LoadFailureHeadline" Description="@LoadFailureMessage">
+                        <Action>
+                            <CoreButton OnClick="ReloadAsync"
+                                        Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                                        TextColor="@AppColors.TextOnAccent"
+                                        BorderRadius="@ActionButtonRadiusCss"
+                                        Padding="@ActionButtonPaddingCss"
+                                        FontSize="@AppMeasures.Font.Normal"
+                                        Shadow="@AppStyles.ShadowPrimaryGlow">
+                                @RetryLabel
+                            </CoreButton>
+                        </Action>
+                    </EmptyState>
+                }
+                else if (conversation.Count == 0)
+                {
+                    <EmptyState Emoji="@EmptyConversationEmoji"
+                                Headline="@EmptyConversationHeadline"
+                                Description="@EmptyConversationDescription" />
+                }
+                else
+                {
+                    <div class="messages-thread">
+                        @foreach (OpenedMessage letter in conversation)
+                        {
+                            <MessageBubble @key="letter.Envelope.MessageId"
+                                           Text="@letter.Text"
+                                           IsMine="@letter.IsMine"
+                                           CreatedAtUnixMs="@letter.Envelope.CreatedAtUnixMs"
+                                           IsSenderVerified="@letter.IsSenderVerified"
+                                           CouldDecrypt="@letter.CouldDecrypt" />
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (!IsFirstLoad)
+            {
+                <div class="messages-composer">
+                    @if (CanWrite)
+                    {
+                        <MessageComposer Text="@draftText"
+                                         TextChanged="HandleDraftChanged"
+                                         OnSubmit="SendLetterAsync"
+                                         IsBusy="@isSending" />
+                    }
+                    else
+                    {
+                        <p class="messages-unwritable" style="@AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle)">
+                            <span class="messages-unwritable-emoji">@UnwritableEmoji</span>
+                            @UnwritableNotice
+                        </p>
+                    }
+                </div>
+            }
+
+        </div>
+    }
+    else
+    {
+        <div class="messages-inbox">
+
+            <header class="messages-inbox-header">
+                <div class="messages-inbox-header-text">
+                    <h1 class="messages-inbox-title">@InboxHeadline</h1>
+                    <p class="messages-inbox-subtitle">@InboxSubtitle</p>
+                </div>
+
+                <span class="messages-inbox-emoji" role="img" aria-label="@InboxHeadline">@InboxEmoji</span>
+            </header>
+
+            @if (LoadFailureMessage is not null)
+            {
+                <EmptyState Emoji="@LoadFailureEmoji" Headline="@LoadFailureHeadline" Description="@LoadFailureMessage">
+                    <Action>
+                        <CoreButton OnClick="ReloadAsync"
+                                    Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                                    TextColor="@AppColors.TextOnAccent"
+                                    BorderRadius="@ActionButtonRadiusCss"
+                                    Padding="@ActionButtonPaddingCss"
+                                    FontSize="@AppMeasures.Font.Normal"
+                                    Shadow="@AppStyles.ShadowPrimaryGlow">
+                            @RetryLabel
+                        </CoreButton>
+                    </Action>
+                </EmptyState>
+            }
+            else if (IsFirstLoad)
+            {
+                <div class="messages-status">
+                    <CoreSpinner />
+                    <p class="messages-status-text">@InboxLoadingLabel</p>
+                </div>
+            }
+            else if (inbox.Count == 0)
+            {
+                <EmptyState Emoji="@EmptyInboxEmoji" Headline="@EmptyInboxHeadline" Description="@EmptyInboxDescription">
+                    <Action>
+                        <CoreButton OnClick="GoToSearch"
+                                    Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                                    TextColor="@AppColors.TextOnAccent"
+                                    BorderRadius="@ActionButtonRadiusCss"
+                                    Padding="@ActionButtonPaddingCss"
+                                    FontSize="@AppMeasures.Font.Normal"
+                                    Shadow="@AppStyles.ShadowPrimaryGlow">
+                            @GoToSearchLabel
+                        </CoreButton>
+                    </Action>
+                </EmptyState>
+            }
+            else
+            {
+                @* Rows are real buttons, so a keyboard opens a conversation exactly as a tap does without a line
+                   of script. Nothing here is decrypted: a row carries a face, a name and a time, never a body. *@
+                <ul class="messages-inbox-list">
+                    @for (int index = 0; index < inbox.Count; index++)
+                    {
+                        // Declared inside the loop body, so each row's handler captures its own conversation
+                        // rather than the last one.
+                        InboxRow row = inbox[index];
+
+                        <li class="messages-inbox-item" @key="row.Address">
+                            <button type="button"
+                                    class="messages-row"
+                                    style="@BuildArrivalDelayStyle(index)"
+                                    aria-label="@OpenHintFor(row)"
+                                    @onclick="() => OpenConversation(row.Address)">
+
+                                <AvatarBubble Emoji="@row.Avatar" DiameterPx="@InboxRowAvatarDiameterPx" />
+
+                                <span class="messages-row-text">
+                                    <span class="messages-row-name">@row.Name</span>
+                                    <AddressChip Address="@row.Address" />
+                                </span>
+
+                                <span class="messages-row-time">@row.Ago</span>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+
+        </div>
+    }
+}
+
+<MessagesCss />

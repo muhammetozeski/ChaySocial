@@ -1,0 +1,154 @@
+@attribute [Route(NavigationConstants.Wall.Link)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+<PageTitle>@PageHeadline</PageTitle>
+
+@* The whole page is drawn only for a signed-in reader. SessionPage sends anybody else to the welcome
+   screen, but that navigation finishes after this component has already rendered once, so without this
+   guard the composer would read a profile that is not there yet. *@
+@if (SessionService.IsSignedIn)
+{
+    <div class="wall-page">
+
+        <header class="wall-header">
+            <div class="wall-header-text">
+                <h1 class="wall-title">@PageHeadline</h1>
+                <p class="wall-subtitle">@PageSubtitle</p>
+            </div>
+            <span class="wall-header-emoji">@PageEmoji</span>
+        </header>
+
+        <PostComposer Text="@ComposerText"
+                      TextChanged="HandleComposerTextChanged"
+                      OnSubmit="PublishAsync"
+                      IsBusy="@IsPublishing"
+                      Avatar="@ComposerAvatar" />
+
+        <div class="wall-tabs" style="@TabStripStyle" role="tablist">
+            @foreach (WallFeed feed in SelectableFeeds)
+            {
+                <button type="button"
+                        role="tab"
+                        class="wall-tab @(feed == SelectedFeed ? ActiveTabClass : string.Empty)"
+                        aria-selected="@(feed == SelectedFeed ? SelectedTabValue : UnselectedTabValue)"
+                        title="@FeedHint(feed)"
+                        @onclick="() => SelectFeedAsync(feed)">
+                    <span class="wall-tab-emoji">@FeedEmoji(feed)</span>
+                    <span class="wall-tab-label">@FeedLabel(feed)</span>
+                </button>
+            }
+        </div>
+
+        @if (LoadFailureMessage is not null)
+        {
+            <CoreCard Acrylic="AcrylicLevel.Strong"
+                      AcrylicBlur="@AppMeasures.Blur.Strong"
+                      BorderRadius="@(AppMeasures.Radius.XLarge + "px")"
+                      Padding="@(AppMeasures.Space.Px24 + "px")"
+                      CustomClass="wall-status">
+                <span class="wall-status-emoji">@LoadFailureEmoji</span>
+                <p class="wall-status-text">@LoadFailureMessage</p>
+                <CoreButton OnClick="ReloadAsync"
+                            Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                            TextColor="@AppColors.TextOnAccent"
+                            BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                            Padding="@ActionButtonPadding"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow">
+                    @RetryLabel
+                </CoreButton>
+            </CoreCard>
+        }
+        else if (IsLoading && Posts.Count == 0)
+        {
+            <div class="wall-status">
+                <CoreSpinner />
+                <p class="wall-status-text">@LoadingLabel</p>
+            </div>
+        }
+        else if (Posts.Count == 0 && SelectedFeed == WallFeed.Following)
+        {
+            <EmptyState Emoji="@EmptyFollowingEmoji"
+                        Headline="@EmptyFollowingHeadline"
+                        Description="@EmptyFollowingDescription">
+                <Action>
+                    <CoreButton OnClick="ShowDiscoverAsync"
+                                Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                                TextColor="@AppColors.TextOnAccent"
+                                BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                                Padding="@ActionButtonPadding"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Shadow="@AppStyles.ShadowPrimaryGlow">
+                        @GoToDiscoverLabel
+                    </CoreButton>
+                </Action>
+            </EmptyState>
+        }
+        else if (Posts.Count == 0)
+        {
+            <EmptyState Emoji="@EmptyDiscoverEmoji"
+                        Headline="@EmptyDiscoverHeadline"
+                        Description="@EmptyDiscoverDescription" />
+        }
+        else
+        {
+            <div class="wall-feed">
+                @foreach (PostData post in Posts)
+                {
+                    <PostCard @key="post.PostId"
+                              Post="post"
+                              AuthorProfile="@AuthorProfileFor(post)"
+                              IsLiked="@EngagementFor(post).IsLikedByViewer"
+                              LikeCount="@EngagementFor(post).LikeCount"
+                              CommentCount="@EngagementFor(post).CommentCount"
+                              OnLike="() => ToggleLikeAsync(post)"
+                              OnDelete="() => DeletePostAsync(post)"
+                              OnReport="() => OpenReport(post)"
+                              OnOpenAuthor="() => OpenAuthor(post.AuthorAddress)"
+                              OnOpenComments="() => OpenComments(post.PostId)" />
+                }
+            </div>
+        }
+
+    </div>
+
+    <CoreModal IsVisible="@IsReportOpen" IsAcrylic="true" OnBackdropClick="CloseReport">
+        <div class="wall-report">
+            <span class="wall-report-emoji">@ReportEmoji</span>
+            <h2 class="wall-report-title">@ReportTitle</h2>
+            <p class="wall-report-subtitle">@ReportSubtitle</p>
+
+            @if (ReportedPost is not null)
+            {
+                <p class="wall-report-quote">@ReportedPost.Text</p>
+            }
+
+            @if (IsReportInFlight)
+            {
+                <div class="wall-report-busy">
+                    <CoreSpinner />
+                    <p class="wall-status-text">@ReportSendingLabel</p>
+                </div>
+            }
+            else
+            {
+                <div class="wall-report-reasons">
+                    @foreach (ReportReason reason in OfferedReportReasons)
+                    {
+                        <button type="button" class="wall-reason" @onclick="() => SubmitReportAsync(reason)">
+                            <span class="wall-reason-emoji">@ReasonEmoji(reason)</span>
+                            <span class="wall-reason-label">@ReasonLabel(reason)</span>
+                        </button>
+                    }
+                </div>
+
+                <button type="button" class="wall-report-cancel" @onclick="CloseReport">@CancelLabel</button>
+            }
+        </div>
+    </CoreModal>
+}
+
+<WallCss />
