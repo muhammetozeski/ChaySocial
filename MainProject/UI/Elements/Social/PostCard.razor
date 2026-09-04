@@ -48,7 +48,7 @@
 
         @if (Post.Text.Length > 0)
         {
-            <p class="post-card-text">@Post.Text</p>
+            <p class="post-card-text"><WrittenLine Text="@Post.Text" /></p>
         }
 
         @foreach (MediaAttachment attachment in Post.Attachments)

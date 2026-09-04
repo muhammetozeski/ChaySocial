@@ -41,7 +41,7 @@
         {
             @if (Text.Length > 0)
             {
-                <p class="message-bubble-text">@Text</p>
+                <p class="message-bubble-text"><WrittenLine Text="@Text" /></p>
             }
 
             @* A vanishing letter's media is already in hand and exists nowhere else, so it is drawn from the bytes

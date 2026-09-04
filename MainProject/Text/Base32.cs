@@ -14,6 +14,11 @@ namespace ChaySocial.MainProject.Text
         /// <summary> Encodes bytes into base32 text. </summary>
         /// <param name="data"> Bytes to encode. </param>
         /// <returns> The lower-case, unpadded base32 text. </returns>
+        /// <summary> True when a character belongs to this alphabet, for readers that have to find where an encoded run ends. </summary>
+        /// <param name="character"> Character to judge. </param>
+        /// <returns> True when it is one of the alphabet's own. </returns>
+        public static bool IsDigit(char character) => Alphabet.Contains(character);
+
         public static string Encode(ReadOnlySpan<byte> data)
         {
             if (data.IsEmpty) return string.Empty;

@@ -1,0 +1,27 @@
+@*
+    Styling for WrittenLine. WrittenLine renders this component itself, so a written line always arrives with
+    its own CSS attached. Every selector is namespaced "written-line-*" because *Css.razor styles are global.
+*@
+<style>
+    /* A named account: brand-coloured and underlined only under the pointer, so a line full of names still reads
+       as a sentence rather than as a row of buttons. */
+    .written-line-name {
+        color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        font-weight: @(AppMeasures.Weight.Medium);
+        text-decoration: none;
+        overflow-wrap: anywhere;
+    }
+
+    /* A named subject, in the second brand colour so the two kinds of name are told apart at a glance. */
+    .written-line-subject {
+        color: @(AppColors.Secondary.ToRgbaHex(true));
+        font-weight: @(AppMeasures.Weight.Medium);
+        text-decoration: none;
+        overflow-wrap: anywhere;
+    }
+
+        .written-line-name:hover,
+        .written-line-subject:hover {
+            text-decoration: underline;
+        }
+</style>

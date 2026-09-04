@@ -24,7 +24,7 @@
 
         @if (Post.Text.Length > 0)
         {
-            <p class="quoted-post-text">@Post.Text</p>
+            <p class="quoted-post-text"><WrittenLine Text="@Post.Text" /></p>
         }
 
         @if (Post.Attachments.Count > 0)

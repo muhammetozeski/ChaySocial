@@ -23,7 +23,7 @@
                 <span class="comment-row-answering">@AnsweringLabel @RepliedToName</span>
             }
 
-            <p class="comment-row-text">@Comment.Text</p>
+            <p class="comment-row-text"><WrittenLine Text="@Comment.Text" /></p>
 
             @if (OnReply.HasDelegate)
             {

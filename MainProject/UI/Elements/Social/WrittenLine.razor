@@ -1,0 +1,62 @@
+@using ChaySocial.MainProject.Text
+
+@*
+    Draws a line somebody wrote, with the accounts and subjects they named turned into links. Every text in the
+    app goes through this one component — a post, a comment, an answer, a private message — so a mention behaves
+    the same wherever it appears and no page has to know how a mention is spelled.
+
+    The pieces are drawn back to back with no space between them, because each piece carries exactly the
+    characters its writer typed: put together they are the original line and nothing else.
+*@
+
+@foreach (WrittenPiece piece in Pieces)
+{
+    @switch (piece.Kind)
+    {
+        case WrittenPieceKind.Account:
+            <a class="written-line-name" href="@AccountLink(piece.Value)" title="@OpenAccountHint">@piece.Text</a>
+            break;
+
+        case WrittenPieceKind.Subject:
+            <a class="written-line-subject" href="@SubjectLink(piece.Value)" title="@OpenSubjectHint">@piece.Text</a>
+            break;
+
+        default:
+            @piece.Text
+            break;
+    }
+}
+
+<WrittenLineCss />
+
+@code {
+    /// <summary> The line as its writer typed it. </summary>
+    [Parameter, EditorRequired] public string Text { get; set; } = string.Empty;
+
+    /// <summary> Tooltip on a named account. </summary>
+    const string OpenAccountHint = "Open this account";
+
+    /// <summary> Tooltip on a named subject. </summary>
+    const string OpenSubjectHint = "See what else is written under this";
+
+    /// <summary> Where a profile lives; the address is appended. </summary>
+    const string ProfileRoutePrefix = "/profile/";
+
+    /// <summary> Where a subject's own page lives; the subject is appended. </summary>
+    public const string SubjectRoutePrefix = "/subject/";
+
+    /// <summary> The line split into words and named things, recomputed only when the text itself changes. </summary>
+    IReadOnlyList<WrittenPiece> Pieces = [];
+
+    protected override void OnParametersSet() => Pieces = WrittenText.Read(Text);
+
+    /// <summary> Where a named account leads. </summary>
+    /// <param name="address"> The address that was named. </param>
+    /// <returns> That profile's route. </returns>
+    static string AccountLink(string address) => ProfileRoutePrefix + address;
+
+    /// <summary> Where a named subject leads. </summary>
+    /// <param name="subject"> The subject that was named, as written. </param>
+    /// <returns> That subject's route, in the form subjects are stored under. </returns>
+    static string SubjectLink(string subject) => SubjectRoutePrefix + WrittenText.NormaliseSubject(subject);
+}
