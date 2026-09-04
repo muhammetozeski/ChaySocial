@@ -244,10 +244,13 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Line shown while the work runs. </summary>
         const string PermitWorkingLabel = "Working on it…";
 
-        /// <summary> Line under that, telling somebody they are not trapped here. </summary>
+        /// <summary>
+        /// Line under that. It says to stay on the tab because that is true: a browser slows a hidden tab right
+        /// down, and telling somebody to walk away would be telling them to make their own wait longer.
+        /// </summary>
         const string PermitWorkingNote =
-            "Leave this open and go and do something else. Closing the app stops the work, and starting again costs "
-            + "you only the time already spent.";
+            "Keep this tab in front — browsers slow down work in a tab you have switched away from. Closing it stops "
+            + "the work, and starting again costs you only the time already spent.";
 
         /// <summary> Format of the attempt counter; the placeholder takes the count. </summary>
         const string PermitAttemptsFormat = "{0:N0} attempts";

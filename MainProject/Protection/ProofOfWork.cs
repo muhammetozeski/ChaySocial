@@ -96,7 +96,13 @@ namespace ChaySocial.MainProject.Protection
                 }
 
                 onAttempt?.Invoke(nonce + 1);
-                await Task.Yield();
+
+                // Yielded in small batches rather than after every attempt. A browser clamps how often a hidden
+                // tab may resume, so a yield per attempt costs seconds of waiting once somebody switches away —
+                // measured at 0.42 attempts a second hidden against 2.86 in front. Batching pays that clamp once
+                // per batch instead, and an attempt is long enough that yielding this often still keeps the page
+                // drawing while it is being watched.
+                if (nonce % AttemptsBetweenYields == AttemptsBetweenYields - 1) await Task.Yield();
             }
         }
 
@@ -121,6 +127,9 @@ namespace ChaySocial.MainProject.Protection
 
         /// <summary> How often the search reports progress, so the display updates without slowing the search. </summary>
         const int ProgressReportInterval = 8;
+
+        /// <summary> Attempts run between handing the thread back, chosen so a hidden tab's resume clamp is paid once per batch rather than once per attempt. </summary>
+        const int AttemptsBetweenYields = 4;
 
         /// <summary> Hashes one counter value against a challenge's salt. </summary>
         /// <param name="salt"> The challenge's random bytes. </param>
