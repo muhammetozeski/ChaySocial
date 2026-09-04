@@ -1,9 +1,9 @@
 @using ChaySocial.MainProject.DataModels
 
 @*
-    Single-line composer for replying under a post: a frosted pill holding one text field. There is no send
-    button by design — the return key sends, and the disc at the end of the pill lights up in primary the
-    moment the text is long enough to be worth sending, so the reply stays a one-keystroke gesture.
+    Single-line composer for replying under a post: a frosted pill holding one text field and, at its end, the
+    disc that sends. The return key sends too, and the disc lights up in primary the moment there is something
+    worth sending — but it is a real button, because a phone has no return key beside the thumb on the screen.
 *@
 @if (AnsweringName is not null)
 {
@@ -36,7 +36,11 @@
     }
     else
     {
-        <span class="comment-composer-hint @ReadyHintModifier">@ReturnKeyGlyph</span>
+        <button type="button"
+                class="comment-composer-send @ReadyHintModifier"
+                title="@SendHint"
+                disabled="@(!CanSubmit)"
+                @onclick="HandleSendAsync">@ReturnKeyGlyph</button>
     }
 </div>
 
@@ -88,8 +92,11 @@
     /// <summary> Value <see cref="KeyboardEventArgs.Key"/> carries for the return key. </summary>
     const string ReturnKeyName = "Enter";
 
-    /// <summary> Modifier lighting the return-key disc up once the text is sendable. </summary>
-    const string ReadyHintClass = "comment-composer-hint--ready";
+    /// <summary> Modifier lighting the send disc up once the text is sendable. </summary>
+    const string ReadyHintClass = "comment-composer-send--ready";
+
+    /// <summary> Tooltip on the send disc. </summary>
+    const string SendHint = "Post this reply";
 
     /// <summary> Diameter of the spinner that replaces the return-key disc while the reply is being published; sized to sit in the same hole. </summary>
     const int BusySpinnerDiameterPx = AppMeasures.Size.Px20;
@@ -100,8 +107,16 @@
     /// <summary> True when there is something to send and the caller is not already busy sending. </summary>
     bool CanSubmit => !IsBusy && !string.IsNullOrWhiteSpace(Text);
 
-    /// <summary> The modifier class for the return-key disc, empty until the text is sendable. </summary>
+    /// <summary> The modifier class for the send disc, empty until the text is sendable. </summary>
     string ReadyHintModifier => CanSubmit ? ReadyHintClass : string.Empty;
+
+    /// <summary> Sends what has been written, from a tap rather than a keystroke. </summary>
+    /// <returns> A task that completes once the caller has handled the submission. </returns>
+    async Task HandleSendAsync()
+    {
+        if (!CanSubmit) return;
+        await OnSubmit.InvokeAsync();
+    }
 
     /// <summary> The pill's frosted glass fill. </summary>
     string SurfaceStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle);

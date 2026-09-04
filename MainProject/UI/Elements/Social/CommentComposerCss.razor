@@ -83,33 +83,49 @@
             opacity: @(AppMeasures.Opacity.Disabled);
         }
 
-    /* The return-key affordance: a dim disc that lights up in primary once the text is actually sendable. */
-    .comment-composer-hint {
+    /* The send disc: dim while there is nothing to send, lit in primary the moment there is. Its native button
+       styling is stripped back first, the way every other control in the app is built. */
+    .comment-composer-send {
         flex-shrink: 0;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: @(HintDiameterPx)px;
-        height: @(HintDiameterPx)px;
+        width: @(SendDiameterPx)px;
+        height: @(SendDiameterPx)px;
+        padding: 0;
+        border: none;
         border-radius: @(AppMeasures.Radius.Circular)%;
+        font: inherit;
         font-size: @(AppMeasures.Font.Small)px;
         line-height: @(AppMeasures.LineHeight.None);
         color: @(AppColors.TextMuted.ToRgbaHex(true));
         background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        cursor: pointer;
         transition: color @(AppMeasures.Duration.Fast)s, background @(AppMeasures.Duration.Fast)s, transform @(AppMeasures.Duration.Fast)s;
     }
 
-        .comment-composer-hint--ready {
+        .comment-composer-send:disabled {
+            cursor: default;
+        }
+
+        .comment-composer-send--ready {
             color: @(AppColors.TextOnFilledSurface.ToRgbaHex(true));
             background: @(AppColors.Primary.ToRgbaHex(true));
-            transform: scale(@ReadyHintScale);
+            transform: scale(@ReadySendScale);
+        }
+
+        .comment-composer-send--ready:active {
+            transform: scale(@PressedSendScale);
         }
 </style>
 
 @code {
-    /// <summary> Side of the round return-key affordance sitting at the end of the pill. </summary>
-    const int HintDiameterPx = AppMeasures.Size.Px24;
+    /// <summary> Side of the round send disc sitting at the end of the pill. </summary>
+    const int SendDiameterPx = AppMeasures.Size.Px24;
 
-    /// <summary> How much the return-key affordance swells once the text is sendable. A string so the decimal point survives any OS culture. </summary>
-    const string ReadyHintScale = "1.1";
+    /// <summary> How much the send disc swells once the text is sendable. A string so the decimal point survives any OS culture. </summary>
+    const string ReadySendScale = "1.1";
+
+    /// <summary> How far it shrinks while held down, so a tap answers before the reply has finished going out. </summary>
+    const string PressedSendScale = "0.95";
 }
