@@ -76,11 +76,15 @@
             padding-bottom: @(AppMeasures.Space.Px90)px;
         }
 
+    /* clip rather than hidden: "hidden" on one axis silently turns the other into a scroll box, which makes this
+       element the scrollport every sticky descendant sticks to — and since it grows with its content instead of
+       scrolling, a sticky header then rides up the page with everything else. "clip" trims the same overflow
+       without claiming the scrolling. */
     main {
         flex: 1;
         display: flex;
         flex-direction: column;
-        overflow-x: hidden;
+        overflow-x: clip;
     }
 
     .content {
