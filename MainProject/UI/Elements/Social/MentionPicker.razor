@@ -1,0 +1,216 @@
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.Text
+
+@*
+    The way a name gets into a line. An address is forty characters of base32 nobody can recall, let alone type,
+    so naming somebody has to be a search rather than a spelling — this is the button that opens it and the sheet
+    that finds them.
+
+    The picker hands its caller an address and nothing else: where that address goes in the text, and what happens
+    to the composer afterwards, belongs to whoever opened it.
+*@
+
+<button type="button"
+        class="mention-picker-open"
+        title="@OpenHint"
+        disabled="@IsDisabled"
+        @onclick="Open">@MarkGlyph</button>
+
+<CoreModal IsVisible="@isOpen" IsAcrylic="true" OnBackdropClick="Close">
+    <div class="mention-picker">
+        <h2 class="mention-picker-title">@Title</h2>
+        <p class="mention-picker-subtitle">@Subtitle</p>
+
+        <input class="mention-picker-field"
+               type="text"
+               placeholder="@FieldPlaceholder"
+               value="@term"
+               @oninput="HandleTermAsync" />
+
+        @if (isSearching)
+        {
+            <div class="mention-picker-status">
+                <CoreSpinner SizePx="@StatusSpinnerDiameterPx" BorderWidthPx="@StatusSpinnerBorderPx" Color="@AppColors.Primary" />
+            </div>
+        }
+        else if (term.Trim().Length == 0)
+        {
+            <p class="mention-picker-status-text">@PromptLine</p>
+        }
+        else if (found.Count == 0)
+        {
+            <p class="mention-picker-status-text">@NobodyLine</p>
+        }
+        else
+        {
+            <ul class="mention-picker-list">
+                @foreach (ProfileData profile in found)
+                {
+                    @* Declared inside the loop body, so each row's handler carries its own account. *@
+                    ProfileData person = profile;
+
+                    <li @key="person.Address">
+                        <button type="button" class="mention-picker-row" @onclick="() => PickAsync(person.Address)">
+                            <AvatarBubble Emoji="@AvatarOf(person)" DiameterPx="@RowAvatarDiameterPx" />
+
+                            <span class="mention-picker-row-text">
+                                <span class="mention-picker-row-name">@NameOf(person)</span>
+                                <AddressChip Address="@person.Address" />
+                            </span>
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+
+        <CoreButton OnClick="Close"
+                    Background="@AppColors.SurfaceSubtle"
+                    TextColor="@AppColors.TextSecondary"
+                    BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                    Padding="@CancelPaddingCss"
+                    FontSize="@AppMeasures.Font.Normal"
+                    Border="@CancelBorder">
+            @CancelLabel
+        </CoreButton>
+    </div>
+</CoreModal>
+
+<MentionPickerCss />
+
+@code {
+    /// <summary> Raised with the chosen address once somebody has been picked. </summary>
+    [Parameter] public EventCallback<string> OnPick { get; set; }
+
+    /// <summary> True while the composer that owns this picker is busy, which greys the button out. </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+
+    /// <summary> The mark drawn on the button, which is the mark a name is written with. </summary>
+    static readonly string MarkGlyph = WrittenText.AccountMark.ToString();
+
+    /// <summary> Tooltip on that button. </summary>
+    const string OpenHint = "Name somebody";
+
+    /// <summary> Heading of the sheet. </summary>
+    const string Title = "Name somebody";
+
+    /// <summary> Line under that heading, saying what picking does. </summary>
+    const string Subtitle = "Find them and their address drops into what you are writing.";
+
+    /// <summary> Grey prompt in the search field. </summary>
+    const string FieldPlaceholder = "A name or an address…";
+
+    /// <summary> Line shown before anything has been typed. </summary>
+    const string PromptLine = "Type a couple of letters to start looking.";
+
+    /// <summary> Line shown when the search found nobody. </summary>
+    const string NobodyLine = "Nobody here by that name.";
+
+    /// <summary> Label on the button that closes the sheet without naming anybody. </summary>
+    const string CancelLabel = "Never mind";
+
+    /// <summary> Shortest term worth searching for; below this every account would match. </summary>
+    const int ShortestUsefulTerm = 2;
+
+    /// <summary> Largest number of accounts the sheet lists at once. </summary>
+    const int MostResultsShown = 8;
+
+    /// <summary> Diameter of an account's avatar in a row. </summary>
+    const int RowAvatarDiameterPx = AppMeasures.Size.Px36;
+
+    /// <summary> Diameter of the spinner shown while a search runs. </summary>
+    const int StatusSpinnerDiameterPx = AppMeasures.Size.Px20;
+
+    /// <summary> Ring thickness of that spinner. </summary>
+    const int StatusSpinnerBorderPx = AppMeasures.Border.Medium;
+
+    /// <summary> Inside spacing of the cancel button. </summary>
+    static readonly string CancelPaddingCss = $"{AppMeasures.Space.Px10}px {AppMeasures.Space.Px20}px";
+
+    /// <summary> Hairline around the cancel button, so it reads as the quiet way out. </summary>
+    static readonly string CancelBorder = $"{AppMeasures.Border.Thin}px solid {AppColors.BorderSoft.ToRgbaHex(true)}";
+
+    /// <summary> True while the sheet is on screen. </summary>
+    bool isOpen;
+
+    /// <summary> What has been typed into the search field. </summary>
+    string term = string.Empty;
+
+    /// <summary> True while a search is running. </summary>
+    bool isSearching;
+
+    /// <summary> Accounts the last search found. </summary>
+    IReadOnlyList<ProfileData> found = [];
+
+    /// <summary>
+    /// Which search is the current one. A slow search that finishes after a newer one has started would otherwise
+    /// overwrite fresher results with staler ones, so each search checks it is still the latest before it draws.
+    /// </summary>
+    int searchGeneration;
+
+    /// <summary> Opens the sheet on a clean search. </summary>
+    void Open()
+    {
+        if (IsDisabled) return;
+
+        isOpen = true;
+        term = string.Empty;
+        found = [];
+    }
+
+    /// <summary> Closes the sheet without naming anybody. </summary>
+    void Close() => isOpen = false;
+
+    /// <summary> Runs the search for whatever has been typed so far. </summary>
+    /// <param name="args"> The input event; its value is the field's new contents. </param>
+    /// <returns> A task that completes once the results are on screen. </returns>
+    async Task HandleTermAsync(ChangeEventArgs args)
+    {
+        term = args.Value?.ToString() ?? string.Empty;
+
+        string wanted = term.Trim();
+        int generation = ++searchGeneration;
+
+        if (wanted.Length < ShortestUsefulTerm)
+        {
+            found = [];
+            isSearching = false;
+            return;
+        }
+
+        isSearching = true;
+
+        try
+        {
+            IReadOnlyList<ProfileData> results = await SearchService.SearchPeopleAsync(wanted, MostResultsShown);
+            if (generation != searchGeneration) return;
+
+            found = results;
+        }
+        finally
+        {
+            if (generation == searchGeneration) isSearching = false;
+        }
+    }
+
+    /// <summary> Hands the chosen address to the caller and closes the sheet. </summary>
+    /// <param name="address"> Address of the account that was picked. </param>
+    /// <returns> A task that completes once the caller has taken it. </returns>
+    async Task PickAsync(string address)
+    {
+        Close();
+        await OnPick.InvokeAsync(address);
+    }
+
+    /// <summary> Emoji drawn for an account: their own pick, or the one their address maps to. </summary>
+    /// <param name="profile"> The account being drawn. </param>
+    /// <returns> The emoji to show. </returns>
+    static string AvatarOf(ProfileData profile)
+        => string.IsNullOrWhiteSpace(profile.Avatar) ? ProfileService.PickAvatar(profile.Address) : profile.Avatar;
+
+    /// <summary> Name drawn for an account: the one they chose, or the readable head of their address. </summary>
+    /// <param name="profile"> The account being drawn. </param>
+    /// <returns> The name to show. </returns>
+    static string NameOf(ProfileData profile)
+        => string.IsNullOrWhiteSpace(profile.DisplayName) ? ProfileService.FallbackDisplayName(profile.Address) : profile.DisplayName;
+}

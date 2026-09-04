@@ -1,4 +1,5 @@
 @using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Text
 
 @*
     Single-line composer for replying under a post: a frosted pill holding one text field and, at its end, the
@@ -29,6 +30,8 @@
            disabled="@IsBusy"
            @oninput="HandleInputAsync"
            @onkeydown="HandleKeyDownAsync" />
+
+    <MentionPicker OnPick="NameSomebodyAsync" IsDisabled="@IsBusy" />
 
     @if (IsBusy)
     {
@@ -125,6 +128,18 @@
     /// <param name="args"> The input event; its value is the field's new contents. </param>
     /// <returns> A task that completes once the caller has taken the new text. </returns>
     Task HandleInputAsync(ChangeEventArgs args) => TextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    /// <summary>
+    /// Writes a chosen account into what is being typed. The name goes on the end as its own word, with a space
+    /// after it so the writer can keep going.
+    /// </summary>
+    /// <param name="address"> Address of the account that was picked. </param>
+    /// <returns> A task that completes once the caller has taken the longer text. </returns>
+    Task NameSomebodyAsync(string address)
+    {
+        string separator = Text.Length == 0 || char.IsWhiteSpace(Text[^1]) ? string.Empty : " ";
+        return TextChanged.InvokeAsync($"{Text}{separator}{WrittenText.AccountMark}{address} ");
+    }
 
     /// <summary> Sends on a bare return press, and ignores every other key. Return with shift held is left alone so it keeps its usual meaning. </summary>
     /// <param name="args"> The key that was pressed. </param>

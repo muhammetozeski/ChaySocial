@@ -91,6 +91,14 @@
             color: @(AppColors.TextDanger.ToRgbaHex(true));
         }
 
+    /* The two ways of adding something to a post — a name and a file — stand side by side above the counter. */
+    .post-composer-tools {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
     .post-composer-footer {
         display: flex;
         align-items: center;

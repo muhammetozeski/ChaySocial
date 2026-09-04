@@ -1,4 +1,5 @@
 @using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Text
 
 <CoreCard Acrylic="AcrylicLevel.Normal"
           AcrylicBlur="@AppMeasures.Blur.Normal"
@@ -30,9 +31,13 @@
         </div>
     }
 
-    <MediaPicker Attachments="@Attachments"
-                 AttachmentsChanged="@AttachmentsChanged"
-                 IsDisabled="@IsBusy" />
+    <div class="post-composer-tools">
+        <MentionPicker OnPick="NameSomebodyAsync" IsDisabled="@IsBusy" />
+
+        <MediaPicker Attachments="@Attachments"
+                     AttachmentsChanged="@AttachmentsChanged"
+                     IsDisabled="@IsBusy" />
+    </div>
 
     <div class="post-composer-footer">
         <span class="post-composer-counter" style="@CounterStyle">@CounterLabel</span>
@@ -186,6 +191,18 @@
     /// <returns> A task that completes once the page has taken the new text. </returns>
     Task HandleTextInput(ChangeEventArgs args)
         => TextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    /// <summary>
+    /// Writes a chosen account into what is being typed. The name goes on the end with a space before and after,
+    /// so it lands as its own word wherever the writer is in the sentence and they can keep typing straight after.
+    /// </summary>
+    /// <param name="address"> Address of the account that was picked. </param>
+    /// <returns> A task that completes once the page has taken the longer text. </returns>
+    Task NameSomebodyAsync(string address)
+    {
+        string separator = Text.Length == 0 || char.IsWhiteSpace(Text[^1]) ? string.Empty : " ";
+        return TextChanged.InvokeAsync($"{Text}{separator}{WrittenText.AccountMark}{address} ");
+    }
 
     /// <summary> Raises <see cref="OnSubmit"/>, and does nothing when the current text is not publishable. </summary>
     /// <returns> A task that completes once the page has handled the share. </returns>
