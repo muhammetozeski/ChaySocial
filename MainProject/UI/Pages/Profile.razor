@@ -216,7 +216,7 @@
                         <span class="profile-count-label">@FollowingLabel</span>
                     </div>
                     <div class="profile-count">
-                        <span class="profile-count-value">@AuthorPosts.Count</span>
+                        <span class="profile-count-value">@WrittenPostCount</span>
                         <span class="profile-count-label">@PostsCountLabel</span>
                     </div>
                 </div>
@@ -317,7 +317,7 @@
         <section class="profile-posts">
             <h2 class="profile-section-title">@PostsSectionTitle</h2>
 
-            @if (AuthorPosts.Count == 0)
+            @if (WallEntries.Count == 0)
             {
                 @if (IsOwnProfile)
                 {
@@ -344,16 +344,26 @@
             }
             else
             {
-                @foreach (PostData post in AuthorPosts)
+                @foreach (FeedEntry entry in WallEntries)
                 {
-                    <PostCard Post="post"
-                              AuthorProfile="@ShownProfile"
-                              IsLiked="@IsLikedByViewer(post)"
-                              LikeCount="@LikeCountOf(post)"
-                              CommentCount="@CommentCountOf(post)"
+                    @* Declared inside the loop body, so each card's handlers capture their own post rather than
+                       the last one on the wall. *@
+                    PostData post = entry.Post;
+
+                    <PostCard @key="(post.PostId, entry.ReposterAddress)"
+                              Post="post"
+                              AuthorProfile="@AuthorProfileFor(post)"
+                              IsLiked="@EngagementFor(post).IsLikedByViewer"
+                              LikeCount="@EngagementFor(post).LikeCount"
+                              CommentCount="@EngagementFor(post).CommentCount"
+                              IsReposted="@EngagementFor(post).IsRepostedByViewer"
+                              RepostCount="@EngagementFor(post).RepostCount"
+                              RepostedByName="@RepostedByNameFor(entry)"
                               OnLike="() => ToggleLikeAsync(post)"
+                              OnRepost="() => ToggleRepostAsync(post)"
                               OnDelete="() => DeletePostAsync(post)"
-                              OnReport="() => OpenPostReport(post)" />
+                              OnReport="() => OpenPostReport(post)"
+                              OnOpenAuthor="() => OpenAuthor(post.AuthorAddress)" />
                 }
             }
         </section>

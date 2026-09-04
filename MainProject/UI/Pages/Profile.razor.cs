@@ -270,17 +270,14 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Profile of the account this page is about, or null when that account has never published one. </summary>
         ProfileData? ShownProfile;
 
-        /// <summary> That account's posts, newest first. </summary>
-        IReadOnlyList<PostData> AuthorPosts = [];
+        /// <summary> That account's wall, newest first: what they wrote and what they passed on. </summary>
+        IReadOnlyList<FeedEntry> WallEntries = [];
 
-        /// <summary> How many accounts liked each shown post, keyed by post id. </summary>
-        readonly Dictionary<string, int> LikeCountsByPostId = [];
+        /// <summary> The counts drawn under each shown post, keyed by post id. </summary>
+        Dictionary<string, PostEngagement> Engagements = [];
 
-        /// <summary> How many comments each shown post carries, keyed by post id. </summary>
-        readonly Dictionary<string, int> CommentCountsByPostId = [];
-
-        /// <summary> Ids of the shown posts the reader has already liked. </summary>
-        readonly HashSet<string> LikedPostIds = [];
+        /// <summary> Profiles of the accounts named on this page beyond its owner, keyed by address. </summary>
+        Dictionary<string, ProfileData?> NamedProfiles = [];
 
         /// <summary> How many accounts follow the shown account. </summary>
         int FollowerCount;
@@ -490,7 +487,7 @@ namespace ChaySocial.MainProject.UI.Pages
                 IsShownAccountBlocked = await ModerationService.IsBlockedAsync(viewerAddress, address);
             }
 
-            AuthorPosts = await WallService.ReadAuthorPostsAsync(address);
+            WallEntries = await FeedService.ReadAccountWallAsync(address);
             await LoadPostEngagementAsync();
 
             HasCompletedFirstLoad = true;
@@ -510,46 +507,72 @@ namespace ChaySocial.MainProject.UI.Pages
             await ReloadAsync();
         }
 
-        /// <summary> Reads how many likes and comments each shown post carries, and which of them the reader liked. </summary>
+        /// <summary>
+        /// Reads the counts under every post on this wall, and the profiles of the authors this account passed on —
+        /// a passed-on post is drawn under its own author's name, who is somebody other than the page's owner.
+        /// </summary>
         /// <returns> A task that completes once every shown post has its totals. </returns>
         async Task LoadPostEngagementAsync()
         {
-            LikeCountsByPostId.Clear();
-            CommentCountsByPostId.Clear();
-            LikedPostIds.Clear();
+            PostData[] posts = [.. WallEntries.Select(entry => entry.Post).DistinctBy(post => post.PostId)];
 
-            string viewerAddress = SessionService.CurrentAddress;
+            Task<Dictionary<string, PostEngagement>> engagementsRead =
+                FeedService.ReadEngagementsAsync(posts, SessionService.CurrentAddress);
 
-            foreach (PostData post in AuthorPosts)
+            string[] otherAuthors = [.. posts.Select(post => post.AuthorAddress).Where(author => author != TargetAddress).Distinct()];
+            Task<ProfileData?[]> profilesRead = Task.WhenAll(otherAuthors.Select(ProfileService.ReadAsync));
+
+            await Task.WhenAll(engagementsRead, profilesRead);
+
+            Dictionary<string, ProfileData?> byAddress = new(otherAuthors.Length);
+            ProfileData?[] profiles = await profilesRead;
+            for (int index = 0; index < otherAuthors.Length; index++)
             {
-                IReadOnlyList<string> likerAddresses = await WallService.ReadLikersAsync(post.PostId);
-
-                LikeCountsByPostId[post.PostId] = likerAddresses.Count;
-                if (likerAddresses.Contains(viewerAddress)) LikedPostIds.Add(post.PostId);
-
-                CommentCountsByPostId[post.PostId] = await CommentService.CountForPostAsync(post.PostId);
+                byAddress[otherAuthors[index]] = profiles[index];
             }
+
+            Engagements = await engagementsRead;
+            NamedProfiles = byAddress;
         }
 
-        /// <summary> How many accounts liked one shown post. </summary>
-        /// <param name="post"> Post being drawn. </param>
-        /// <returns> The like total, or zero while it has not been read. </returns>
-        int LikeCountOf(PostData post) => LikeCountsByPostId.GetValueOrDefault(post.PostId);
+        /// <summary>
+        /// How many of the shown lines this account actually wrote. The counter over a profile means what somebody
+        /// published, so a post passed on from elsewhere does not add to it.
+        /// </summary>
+        int WrittenPostCount => WallEntries.Count(entry => !entry.IsRepost);
 
-        /// <summary> How many comments one shown post carries. </summary>
+        /// <summary> The counts for one shown post, all zero while they have not been read. </summary>
         /// <param name="post"> Post being drawn. </param>
-        /// <returns> The comment total, or zero while it has not been read. </returns>
-        int CommentCountOf(PostData post) => CommentCountsByPostId.GetValueOrDefault(post.PostId);
+        /// <returns> That post's totals. </returns>
+        PostEngagement EngagementFor(PostData post) => Engagements.GetValueOrDefault(post.PostId);
 
-        /// <summary> Whether the reader has already liked one shown post. </summary>
+        /// <summary>
+        /// Profile of a shown post's author: the page's own profile for what this account wrote, and a separately
+        /// read one for a post it passed on.
+        /// </summary>
         /// <param name="post"> Post being drawn. </param>
-        /// <returns> True when the reader's like is stored against it. </returns>
-        bool IsLikedByViewer(PostData post) => LikedPostIds.Contains(post.PostId);
+        /// <returns> The author's profile, or null when it could not be read. </returns>
+        ProfileData? AuthorProfileFor(PostData post)
+            => post.AuthorAddress == TargetAddress ? ShownProfile : NamedProfiles.GetValueOrDefault(post.AuthorAddress);
+
+        /// <summary>
+        /// Name shown above a post this account passed on. Only a post by somebody else says so: an account
+        /// passing its own post on would just be repeating itself back at its own readers.
+        /// </summary>
+        /// <param name="entry"> The wall line being drawn. </param>
+        /// <returns> The owner's name, or null when the line needs no such header. </returns>
+        string? RepostedByNameFor(FeedEntry entry)
+            => entry.IsRepost && entry.Post.AuthorAddress != TargetAddress ? ShownName : null;
 
         /// <summary> Turns the reader's like on one of these posts on, or off when it was already on. </summary>
         /// <param name="post"> Post whose heart was tapped. </param>
         /// <returns> A task that completes once the like has been written; the wall event then reloads the page. </returns>
         Task ToggleLikeAsync(PostData post) => WallService.ToggleLikeAsync(post, Account.Public);
+
+        /// <summary> Carries a post onto the reader's own wall, or takes it back when it is already there. </summary>
+        /// <param name="post"> Post whose arrows were tapped. </param>
+        /// <returns> A task that completes once the repost has been written; the wall event then reloads the page. </returns>
+        Task ToggleRepostAsync(PostData post) => WallService.ToggleRepostAsync(post, Account);
 
         /// <summary> Removes one of the reader's own posts. </summary>
         /// <param name="post"> Post to remove. </param>
@@ -567,6 +590,10 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> Opens the owner's settings. </summary>
         void OpenSettings() => NavManager.NavigateTo(SettingsRoute);
+
+        /// <summary> Opens another account's profile, from a post this one passed on. </summary>
+        /// <param name="address"> Address of the account whose profile to open. </param>
+        void OpenAuthor(string address) => NavManager.NavigateTo($"{NavigationConstants.Profile.Link}/{address}");
 
         /// <summary> Follows the shown account, or lets it go when the reader already followed it. </summary>
         /// <returns> A task that completes once the change has been written; the follow event then reloads the counts. </returns>

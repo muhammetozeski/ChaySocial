@@ -135,6 +135,28 @@ namespace ChaySocial.MainProject.Services
             return NewestFirst([.. written, .. passedOn], limit);
         }
 
+        /// <summary>
+        /// Reads one account's own wall: what they wrote and what they passed on, in the order the two happened.
+        /// This is a wall rather than a feed, so nothing is filtered — a reader who opens a profile is asking to
+        /// see that account, and the page above decides what to say about a blocked one.
+        /// </summary>
+        /// <param name="accountAddress"> Address of the account whose wall to read. </param>
+        /// <param name="limit"> Largest number of lines to return. </param>
+        /// <returns> That account's wall, newest first. </returns>
+        public static async Task<IReadOnlyList<FeedEntry>> ReadAccountWallAsync(string accountAddress, int limit = FeedPageSize)
+        {
+            if (string.IsNullOrEmpty(accountAddress) || limit <= 0) return [];
+
+            Task<IReadOnlyList<PostData>> postsRead = WallService.ReadAuthorPostsAsync(accountAddress, limit);
+            Task<IReadOnlyList<RepostData>> repostsRead = WallService.ReadAccountRepostsAsync(accountAddress, limit);
+            await Task.WhenAll(postsRead, repostsRead);
+
+            IEnumerable<FeedEntry> written = (await postsRead).Select(FeedEntry.ForPost);
+            IEnumerable<FeedEntry> passedOn = await ResolveRepostsAsync(await repostsRead, []);
+
+            return NewestFirst([.. written, .. passedOn], limit);
+        }
+
         /// <summary> Reads the counts every post in a list needs, all posts at once. </summary>
         /// <param name="posts"> The posts about to be drawn. </param>
         /// <param name="viewerAddress"> Address of the reader, so their own like and repost light up. </param>
