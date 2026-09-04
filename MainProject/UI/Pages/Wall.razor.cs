@@ -22,7 +22,14 @@ namespace ChaySocial.MainProject.UI.Pages
     /// <param name="LikeCount"> How many accounts liked the post. </param>
     /// <param name="IsLikedByViewer"> True when the signed-in account is one of those likers, which fills the heart. </param>
     /// <param name="CommentCount"> How many comments the post carries. </param>
-    public readonly record struct PostEngagement(int LikeCount, bool IsLikedByViewer, int CommentCount);
+    /// <param name="RepostCount"> How many accounts carried the post onto their own wall. </param>
+    /// <param name="IsRepostedByViewer"> True when the signed-in account is one of those, which lights the arrows. </param>
+    public readonly record struct PostEngagement(
+        int LikeCount,
+        bool IsLikedByViewer,
+        int CommentCount,
+        int RepostCount,
+        bool IsRepostedByViewer);
 
     /// <summary>
     /// The wall: what the reader writes, the two feeds they can read, and every post card in whichever feed is
@@ -142,8 +149,8 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> The tab currently showing; the wall opens on the reader's own people. </summary>
         WallFeed SelectedFeed = WallFeed.Following;
 
-        /// <summary> Posts of the selected feed, newest first. </summary>
-        IReadOnlyList<PostData> Posts = [];
+        /// <summary> Lines of the selected feed, newest first; each is a post plus whichever wall carried it here. </summary>
+        IReadOnlyList<FeedEntry> Entries = [];
 
         /// <summary> One profile per distinct author in <see cref="Posts"/>, keyed by address; a value is null when that account has published no profile. </summary>
         Dictionary<string, ProfileData?> AuthorProfiles = [];
@@ -185,26 +192,34 @@ namespace ChaySocial.MainProject.UI.Pages
         string TabStripStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle);
 
         /// <summary>
-        /// Reads the selected feed and everything its cards need to draw: one profile per author, and the like
-        /// and comment counts of every post.
+        /// Reads the selected feed and everything its cards need to draw: one profile per author, and the like,
+        /// comment and repost counts of every post.
         /// </summary>
         /// <returns> A task that completes once the page has all of it. </returns>
         protected override async Task LoadAsync()
         {
             string viewerAddress = SessionService.CurrentAddress;
 
-            IReadOnlyList<PostData> posts = SelectedFeed == WallFeed.Following
+            IReadOnlyList<FeedEntry> entries = SelectedFeed == WallFeed.Following
                 ? await FeedService.ReadFollowingFeedAsync(viewerAddress)
                 : await FeedService.ReadDiscoverFeedAsync(viewerAddress);
 
+            PostData[] posts = [.. entries.Select(entry => entry.Post).DistinctBy(post => post.PostId)];
             Dictionary<string, PostData> quoted = await ReadQuotedPostsAsync(posts);
 
-            // Quoted authors are looked up alongside the feed's own, so a quote of somebody nobody in the feed
-            // follows still draws with their name rather than their address.
-            Dictionary<string, ProfileData?> authorProfiles = await ReadAuthorProfilesAsync([.. posts, .. quoted.Values]);
+            // Quoted authors and the accounts that passed a post on are looked up alongside the feed's own authors,
+            // so every name on a card is a name rather than an address.
+            string[] addresses =
+            [
+                .. posts.Select(post => post.AuthorAddress),
+                .. quoted.Values.Select(post => post.AuthorAddress),
+                .. entries.Where(entry => entry.IsRepost).Select(entry => entry.ReposterAddress)
+            ];
+
+            Dictionary<string, ProfileData?> authorProfiles = await ReadProfilesAsync(addresses);
             Dictionary<string, PostEngagement> engagements = await ReadEngagementsAsync(posts, viewerAddress);
 
-            Posts = posts;
+            Entries = entries;
             QuotedPosts = quoted;
             AuthorProfiles = authorProfiles;
             Engagements = engagements;
@@ -234,20 +249,20 @@ namespace ChaySocial.MainProject.UI.Pages
         }
 
         /// <summary>
-        /// Reads one profile per distinct author. Several posts by the same person share the one read, which is
+        /// Reads one profile per distinct address. Several posts by the same person share the one read, which is
         /// what keeps a feed full of one prolific author down to a single profile fetch.
         /// </summary>
-        /// <param name="posts"> The posts about to be drawn. </param>
-        /// <returns> Each author's profile keyed by address; a value is null when that account published none. </returns>
-        static async Task<Dictionary<string, ProfileData?>> ReadAuthorProfilesAsync(IReadOnlyList<PostData> posts)
+        /// <param name="addresses"> The accounts named anywhere on the cards about to be drawn. </param>
+        /// <returns> Each account's profile keyed by address; a value is null when that account published none. </returns>
+        static async Task<Dictionary<string, ProfileData?>> ReadProfilesAsync(IReadOnlyList<string> addresses)
         {
-            string[] authorAddresses = [.. posts.Select(post => post.AuthorAddress).Distinct()];
-            ProfileData?[] profiles = await Task.WhenAll(authorAddresses.Select(ProfileService.ReadAsync));
+            string[] distinct = [.. addresses.Distinct()];
+            ProfileData?[] profiles = await Task.WhenAll(distinct.Select(ProfileService.ReadAsync));
 
-            Dictionary<string, ProfileData?> byAddress = new(authorAddresses.Length);
-            for (int index = 0; index < authorAddresses.Length; index++)
+            Dictionary<string, ProfileData?> byAddress = new(distinct.Length);
+            for (int index = 0; index < distinct.Length; index++)
             {
-                byAddress[authorAddresses[index]] = profiles[index];
+                byAddress[distinct[index]] = profiles[index];
             }
 
             return byAddress;
@@ -270,24 +285,48 @@ namespace ChaySocial.MainProject.UI.Pages
             return byPostId;
         }
 
-        /// <summary> Reads one post's likers and comment count, both at once because neither needs the other. </summary>
+        /// <summary> Reads one post's likers, reposters and comment count, all at once because none needs the others. </summary>
         /// <param name="post"> The post to measure. </param>
-        /// <param name="viewerAddress"> Address of the reader, looked for among the likers. </param>
-        /// <returns> The three numbers that post's card draws. </returns>
+        /// <param name="viewerAddress"> Address of the reader, looked for among the likers and the reposters. </param>
+        /// <returns> The numbers that post's card draws. </returns>
         static async Task<PostEngagement> MeasureEngagementAsync(PostData post, string viewerAddress)
         {
             Task<IReadOnlyList<string>> likersRead = WallService.ReadLikersAsync(post.PostId);
+            Task<IReadOnlyList<string>> repostersRead = WallService.ReadRepostersAsync(post.PostId);
             Task<int> commentCountRead = CommentService.CountForPostAsync(post.PostId);
-            await Task.WhenAll(likersRead, commentCountRead);
+            await Task.WhenAll(likersRead, repostersRead, commentCountRead);
 
             IReadOnlyList<string> likers = await likersRead;
-            return new PostEngagement(likers.Count, likers.Contains(viewerAddress), await commentCountRead);
+            IReadOnlyList<string> reposters = await repostersRead;
+
+            return new PostEngagement(
+                likers.Count,
+                likers.Contains(viewerAddress),
+                await commentCountRead,
+                reposters.Count,
+                reposters.Contains(viewerAddress));
         }
 
         /// <summary> The profile of a post's author, or null while it has not been read or was never published. </summary>
         /// <param name="post"> The post being drawn. </param>
         /// <returns> The author's profile, or null. </returns>
         ProfileData? AuthorProfileFor(PostData post) => AuthorProfiles.GetValueOrDefault(post.AuthorAddress);
+
+        /// <summary>
+        /// Name of the account that passed a post on, or null when it arrived on its own — which is also what
+        /// tells the card whether to draw that line at all.
+        /// </summary>
+        /// <param name="entry"> The feed line being drawn. </param>
+        /// <returns> The reposter's chosen name, the readable head of their address, or null. </returns>
+        string? ReposterNameFor(FeedEntry entry)
+        {
+            if (!entry.IsRepost) return null;
+
+            ProfileData? profile = AuthorProfiles.GetValueOrDefault(entry.ReposterAddress);
+            return string.IsNullOrWhiteSpace(profile?.DisplayName)
+                ? ProfileService.FallbackDisplayName(entry.ReposterAddress)
+                : profile.DisplayName;
+        }
 
         /// <summary> The counts for one post, all zero while they have not been read. </summary>
         /// <param name="post"> The post being drawn. </param>
@@ -393,7 +432,7 @@ namespace ChaySocial.MainProject.UI.Pages
             if (feed == SelectedFeed) return;
 
             SelectedFeed = feed;
-            Posts = [];
+            Entries = [];
             AuthorProfiles = [];
             Engagements = [];
 
@@ -438,6 +477,11 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="post"> The post whose heart was tapped. </param>
         /// <returns> A task that completes once the like has been written. </returns>
         Task ToggleLikeAsync(PostData post) => WallService.ToggleLikeAsync(post, Account.Public);
+
+        /// <summary> Carries a post onto the reader's own wall, or takes it back when it is already there. </summary>
+        /// <param name="post"> The post whose arrows were tapped. </param>
+        /// <returns> A task that completes once the repost has been written. </returns>
+        Task ToggleRepostAsync(PostData post) => WallService.ToggleRepostAsync(post, Account);
 
         /// <summary> Removes one of the reader's own posts. </summary>
         /// <param name="post"> The post to remove. </param>

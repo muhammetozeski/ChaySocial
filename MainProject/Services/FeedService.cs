@@ -3,6 +3,32 @@ using ChaySocial.MainProject.DataModels;
 namespace ChaySocial.MainProject.Services
 {
     /// <summary>
+    /// One line of a feed: a post, plus how it got there. A post written by somebody the reader follows and a post
+    /// passed on by them are the same post drawn the same way — what differs is whose wall carried it and when,
+    /// which is what a feed is ordered by.
+    /// </summary>
+    /// <param name="Post"> The post to draw. </param>
+    /// <param name="ReposterAddress"> Address of the account that passed it on, or empty when it arrived on its own. </param>
+    /// <param name="SortedAtUnixMs"> When it reached the feed: the repost's time, or the post's own. </param>
+    public readonly record struct FeedEntry(PostData Post, string ReposterAddress, long SortedAtUnixMs)
+    {
+        /// <summary> True when this line reached the feed through somebody else's wall. </summary>
+        public bool IsRepost => ReposterAddress.Length > 0;
+
+        /// <summary> A post that arrived on its own. </summary>
+        /// <param name="post"> The post. </param>
+        /// <returns> The feed line for it. </returns>
+        public static FeedEntry ForPost(PostData post) => new(post, string.Empty, post.CreatedAtUnixMs);
+
+        /// <summary> A post that somebody passed on. </summary>
+        /// <param name="post"> The original post. </param>
+        /// <param name="repost"> The record that carried it. </param>
+        /// <returns> The feed line for it, timed by the passing on rather than the writing. </returns>
+        public static FeedEntry ForRepost(PostData post, RepostData repost)
+            => new(post, repost.ReposterAddress, repost.CreatedAtUnixMs);
+    }
+
+    /// <summary>
     /// Builds the two lists of posts a reader is shown: the following feed, made only of the accounts they chose to
     /// follow, and the discover feed, which is the wall everybody shares. Both are assembled on the reader's own
     /// device — the store is asked for ordinary pages of posts and this class decides which of them survive — so an
@@ -16,6 +42,9 @@ namespace ChaySocial.MainProject.Services
 
         /// <summary> Posts read from each followed account before the merged list is cut down to the page size. </summary>
         const int PostsReadPerFollowedAccount = 20;
+
+        /// <summary> Reposts read from each followed account, alongside their own posts. </summary>
+        const int RepostsReadPerFollowedAccount = 20;
 
         /// <summary>
         /// Followed accounts the feed is built from. Named here rather than left to
@@ -44,7 +73,7 @@ namespace ChaySocial.MainProject.Services
         /// <param name="viewerAddress"> Address of the reader whose follow list and blocks apply; empty when nobody is signed in. </param>
         /// <param name="limit"> Largest number of posts to return. </param>
         /// <returns> Posts by followed accounts, newest first, with blocked accounts on either side left out. </returns>
-        public static async Task<IReadOnlyList<PostData>> ReadFollowingFeedAsync(string viewerAddress, int limit = FeedPageSize)
+        public static async Task<IReadOnlyList<FeedEntry>> ReadFollowingFeedAsync(string viewerAddress, int limit = FeedPageSize)
         {
             if (string.IsNullOrEmpty(viewerAddress) || limit <= 0) return [];
 
@@ -55,22 +84,39 @@ namespace ChaySocial.MainProject.Services
             string[] authors = [.. following.Distinct().Where(address => !hidden.Contains(address))];
             if (authors.Length == 0) return [];
 
-            return NewestFirst(await ReadPostsByAuthorsAsync(authors), limit);
+            Task<List<PostData>> postsRead = ReadPostsByAuthorsAsync(authors);
+            Task<List<RepostData>> repostsRead = ReadRepostsByAccountsAsync(authors);
+            await Task.WhenAll(postsRead, repostsRead);
+
+            IEnumerable<FeedEntry> written = (await postsRead).Select(FeedEntry.ForPost);
+            IEnumerable<FeedEntry> passedOn = await ResolveRepostsAsync(await repostsRead, hidden);
+
+            return NewestFirst([.. written, .. passedOn], limit);
         }
 
         /// <summary> Reads the newest posts from the whole app, for a reader who is looking beyond the accounts they follow. </summary>
         /// <param name="viewerAddress"> Address of the reader whose blocks apply; empty when nobody is signed in, and then nothing is hidden. </param>
         /// <param name="limit"> Largest number of posts to return. </param>
         /// <returns> Posts from every account, newest first, with blocked accounts on either side left out. </returns>
-        public static async Task<IReadOnlyList<PostData>> ReadDiscoverFeedAsync(string viewerAddress, int limit = FeedPageSize)
+        public static async Task<IReadOnlyList<FeedEntry>> ReadDiscoverFeedAsync(string viewerAddress, int limit = FeedPageSize)
         {
             if (limit <= 0) return [];
 
             HashSet<string> hidden = await ReadHiddenAddressesAsync(viewerAddress);
-            IReadOnlyList<PostData> wall = await WallService.ReadWallAsync(
-                hidden.Count == 0 ? limit : limit * DiscoverReadMultiplier);
+            int readSize = hidden.Count == 0 ? limit : limit * DiscoverReadMultiplier;
 
-            return NewestFirst(wall.Where(post => !hidden.Contains(post.AuthorAddress)), limit);
+            Task<IReadOnlyList<PostData>> wallRead = WallService.ReadWallAsync(readSize);
+            Task<IReadOnlyList<RepostData>> repostsRead = WallService.ReadRecentRepostsAsync(readSize);
+            await Task.WhenAll(wallRead, repostsRead);
+
+            IEnumerable<FeedEntry> written = (await wallRead)
+                .Where(post => !hidden.Contains(post.AuthorAddress))
+                .Select(FeedEntry.ForPost);
+
+            IEnumerable<FeedEntry> passedOn = await ResolveRepostsAsync(
+                (await repostsRead).Where(repost => !hidden.Contains(repost.ReposterAddress)), hidden);
+
+            return NewestFirst([.. written, .. passedOn], limit);
         }
 
         /// <summary>
@@ -114,11 +160,75 @@ namespace ChaySocial.MainProject.Services
             return collected;
         }
 
-        /// <summary> Orders posts newest first, drops any post that arrived twice, and cuts the result to one page. </summary>
-        /// <param name="posts"> Posts gathered from one or more reads. </param>
-        /// <param name="limit"> Largest number of posts to keep. </param>
+        /// <summary>
+        /// Reads each account's own reposts and pours them into one list, in batches for the same reason the posts
+        /// are read in batches.
+        /// </summary>
+        /// <param name="accounts"> Addresses whose reposts to read. </param>
+        /// <returns> Every repost read, in no particular order. </returns>
+        static async Task<List<RepostData>> ReadRepostsByAccountsAsync(IReadOnlyList<string> accounts)
+        {
+            List<RepostData> collected = [];
+
+            for (int firstInBatch = 0; firstInBatch < accounts.Count; firstInBatch += AuthorsReadAtOnce)
+            {
+                IEnumerable<string> batch = accounts.Skip(firstInBatch).Take(AuthorsReadAtOnce);
+
+                IReadOnlyList<RepostData>[] pages = await Task.WhenAll(
+                    batch.Select(account => WallService.ReadAccountRepostsAsync(account, RepostsReadPerFollowedAccount)));
+
+                foreach (IReadOnlyList<RepostData> page in pages) collected.AddRange(page);
+            }
+
+            return collected;
+        }
+
+        /// <summary>
+        /// Turns reposts into feed lines by reading the posts they point at. A repost whose original is gone simply
+        /// produces no line — the post was deleted, and a feed should not resurrect it — and so does one whose
+        /// original author the reader has blocked, since passing a post on must not carry it past a block.
+        /// </summary>
+        /// <param name="reposts"> The reposts to resolve. </param>
+        /// <param name="hidden"> Addresses whose posts this reader must not see. </param>
+        /// <returns> One line per repost that still has a post behind it. </returns>
+        static async Task<List<FeedEntry>> ResolveRepostsAsync(IEnumerable<RepostData> reposts, HashSet<string> hidden)
+        {
+            RepostData[] wanted = [.. reposts];
+            if (wanted.Length == 0) return [];
+
+            // Several accounts passing the same post on share one read of it.
+            string[] postIds = [.. wanted.Select(repost => repost.PostId).Distinct()];
+            PostData?[] originals = await Task.WhenAll(postIds.Select(WallService.ReadAsync));
+
+            Dictionary<string, PostData> byPostId = new(postIds.Length);
+            foreach (PostData? original in originals)
+            {
+                if (original is not null && !hidden.Contains(original.AuthorAddress)) byPostId[original.PostId] = original;
+            }
+
+            List<FeedEntry> lines = new(wanted.Length);
+            foreach (RepostData repost in wanted)
+            {
+                if (byPostId.TryGetValue(repost.PostId, out PostData? post)) lines.Add(FeedEntry.ForRepost(post, repost));
+            }
+
+            return lines;
+        }
+
+        /// <summary>
+        /// Orders lines newest first, drops any that arrived twice, and cuts the result to one page. Two accounts
+        /// passing the same post on are two lines, so the key is the pair rather than the post alone.
+        /// </summary>
+        /// <param name="entries"> Lines gathered from one or more reads. </param>
+        /// <param name="limit"> Largest number of lines to keep. </param>
         /// <returns> The page to show. </returns>
-        static IReadOnlyList<PostData> NewestFirst(IEnumerable<PostData> posts, int limit)
-            => [.. posts.DistinctBy(post => post.PostId).OrderByDescending(post => post.CreatedAtUnixMs).Take(limit)];
+        static IReadOnlyList<FeedEntry> NewestFirst(IEnumerable<FeedEntry> entries, int limit)
+            =>
+            [
+                .. entries
+                    .DistinctBy(entry => (entry.Post.PostId, entry.ReposterAddress))
+                    .OrderByDescending(entry => entry.SortedAtUnixMs)
+                    .Take(limit)
+            ];
     }
 }

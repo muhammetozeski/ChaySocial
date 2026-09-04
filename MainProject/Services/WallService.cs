@@ -225,6 +225,18 @@ namespace ChaySocial.MainProject.Services
             return [.. (await AppServices.Documents.QueryAsync(query)).Documents.Select(repost => repost.ReposterAddress)];
         }
 
+        /// <summary> Reads the newest reposts across the whole app, the way <see cref="ReadWallAsync"/> reads posts. </summary>
+        /// <param name="limit"> Largest number of reposts to return. </param>
+        /// <returns> Reposts, newest first. </returns>
+        public static async Task<IReadOnlyList<RepostData>> ReadRecentRepostsAsync(int limit = WallPageSize)
+        {
+            DocumentQuery<RepostData> query = new DocumentQuery<RepostData>()
+                .WithSort(RepostData.CreatedAtField, descending: true)
+                .WithLimit(limit);
+
+            return (await AppServices.Documents.QueryAsync(query)).Documents;
+        }
+
         /// <summary> Reads what one account has carried onto its own wall, newest first. </summary>
         /// <param name="reposterAddress"> Address of the account. </param>
         /// <param name="limit"> Largest number of reposts to return. </param>

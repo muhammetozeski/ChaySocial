@@ -67,14 +67,14 @@
                 </CoreButton>
             </CoreCard>
         }
-        else if (IsLoading && Posts.Count == 0)
+        else if (IsLoading && Entries.Count == 0)
         {
             <div class="wall-status">
                 <CoreSpinner />
                 <p class="wall-status-text">@LoadingLabel</p>
             </div>
         }
-        else if (Posts.Count == 0 && SelectedFeed == WallFeed.Following)
+        else if (Entries.Count == 0 && SelectedFeed == WallFeed.Following)
         {
             <EmptyState Emoji="@EmptyFollowingEmoji"
                         Headline="@EmptyFollowingHeadline"
@@ -92,7 +92,7 @@
                 </Action>
             </EmptyState>
         }
-        else if (Posts.Count == 0)
+        else if (Entries.Count == 0)
         {
             <EmptyState Emoji="@EmptyDiscoverEmoji"
                         Headline="@EmptyDiscoverHeadline"
@@ -101,18 +101,27 @@
         else
         {
             <div class="wall-feed">
-                @foreach (PostData post in Posts)
+                @foreach (FeedEntry entry in Entries)
                 {
-                    <PostCard @key="post.PostId"
+                    @* Declared inside the loop body, so each card's handlers capture their own post rather than
+                       the last one in the feed. *@
+                    PostData post = entry.Post;
+
+                    <PostCard @key="(post.PostId, entry.ReposterAddress)"
                               Post="post"
                               AuthorProfile="@AuthorProfileFor(post)"
                               IsLiked="@EngagementFor(post).IsLikedByViewer"
                               LikeCount="@EngagementFor(post).LikeCount"
                               CommentCount="@EngagementFor(post).CommentCount"
+                              IsReposted="@EngagementFor(post).IsRepostedByViewer"
+                              RepostCount="@EngagementFor(post).RepostCount"
+                              RepostedByName="@ReposterNameFor(entry)"
                               OnLike="() => ToggleLikeAsync(post)"
+                              OnRepost="() => ToggleRepostAsync(post)"
                               OnDelete="() => DeletePostAsync(post)"
                               OnReport="() => OpenReport(post)"
                               OnOpenAuthor="() => OpenAuthor(post.AuthorAddress)"
+                              OnOpenReposter="() => OpenAuthor(entry.ReposterAddress)"
                               OnOpenComments="() => OpenComments(post.PostId)"
                               OnQuote="() => StartQuoting(post)"
                               QuotedPost="@QuotedPostFor(post)"
