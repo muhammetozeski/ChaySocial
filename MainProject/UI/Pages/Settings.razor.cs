@@ -1,6 +1,7 @@
 using ChaySocial.MainProject.Constants.ThemeConstants;
 using ChaySocial.MainProject.DataModels;
 using ChaySocial.MainProject.Events;
+using ChaySocial.MainProject.Protection;
 using ChaySocial.MainProject.Services;
 
 namespace ChaySocial.MainProject.UI.Pages
@@ -215,6 +216,116 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> Hairline around a quiet button, following the active theme rather than freezing one glass edge. </summary>
         static string QuietButtonBorder => $"{AppMeasures.Border.Thin}px solid {AppColors.GlassBorderDefault.ToRgbaHex(true)}";
+
+        /// <summary> Emoji beside the writing-permit heading. </summary>
+        const string PermitSectionEmoji = "✍️";
+
+        /// <summary> Heading of the writing-permit card. </summary>
+        const string PermitSectionHeadline = "Permission to write";
+
+        /// <summary> Line under it, saying plainly what the cost is and why anybody would pay it. </summary>
+        const string PermitSectionDescription =
+            "Reading costs nothing and never will. Writing is earned once: this device works on a puzzle for a few "
+            + "minutes, and after that everything you post or send goes out instantly, forever. It is what stops one "
+            + "person quietly running a thousand accounts.";
+
+        /// <summary> Mark on the settled state once a permit is held. </summary>
+        const string PermitGrantedEmoji = "✅";
+
+        /// <summary> Text beside that mark. </summary>
+        const string PermitGrantedLabel = "You can write. Nothing here will ask you to wait again.";
+
+        /// <summary> Emoji on the button that starts the work. </summary>
+        const string PermitStartEmoji = "⏳";
+
+        /// <summary> Label on that button. </summary>
+        const string PermitStartLabel = "Earn it now";
+
+        /// <summary> Line shown while the work runs. </summary>
+        const string PermitWorkingLabel = "Working on it…";
+
+        /// <summary> Line under that, telling somebody they are not trapped here. </summary>
+        const string PermitWorkingNote =
+            "Leave this open and go and do something else. Closing the app stops the work, and starting again costs "
+            + "you only the time already spent.";
+
+        /// <summary> Format of the attempt counter; the placeholder takes the count. </summary>
+        const string PermitAttemptsFormat = "{0:N0} attempts";
+
+        /// <summary> Message shown when the work finished but the server would not grant the permit. </summary>
+        const string PermitFailureMessage = "That didn't go through. Give it another try?";
+
+        /// <summary> Diameter of the throbber shown while the permit is being earned. </summary>
+        const int PermitSpinnerDiameterPx = AppMeasures.Size.Px24;
+
+        /// <summary> Ring thickness of that throbber. </summary>
+        const int PermitSpinnerBorderPx = AppMeasures.Border.Medium;
+
+        /// <summary> True while the permit is being worked on, which swaps the button for a progress display. </summary>
+        bool _isEarningPermit;
+
+        /// <summary> How many attempts the search has made, shown so the wait visibly does something. </summary>
+        long _permitAttempts;
+
+        /// <summary> Message drawn when earning the permit failed, or null when it did not. </summary>
+        string? _permitErrorMessage;
+
+        /// <summary> True when this account already holds a writing permit. </summary>
+        bool HasWritingPermit => AppServices.ProofOfWork?.HasWritingPermit == true;
+
+        /// <summary> True while the work is running. </summary>
+        bool IsEarningPermit => _isEarningPermit;
+
+        /// <summary> The attempt counter as it is read. </summary>
+        string PermitAttemptsLabel => string.Format(PermitAttemptsFormat, _permitAttempts);
+
+        /// <summary> Message drawn when earning the permit failed, or null when it did not. </summary>
+        string? PermitErrorMessage => _permitErrorMessage;
+
+        /// <summary>
+        /// Works through the permit puzzle and claims the permit with the answer. This is the one long wait in the
+        /// app; the screen shows the attempt count throughout so nobody is left wondering whether it has hung.
+        /// </summary>
+        /// <returns> A task that completes once the permit is granted or the attempt has failed. </returns>
+        async Task EarnWritingPermitAsync()
+        {
+            if (_isEarningPermit || AppServices.ProofOfWork is not ProofOfWorkClient proof) return;
+
+            _isEarningPermit = true;
+            _permitAttempts = 0;
+            _permitErrorMessage = null;
+
+            try
+            {
+                bool granted = await proof.EarnWritingPermitAsync(SessionService.CurrentAddress, ReportPermitProgress);
+                if (!granted) _permitErrorMessage = PermitFailureMessage;
+            }
+            catch (Exception error)
+            {
+                _permitErrorMessage = PermitFailureMessage;
+                Log($"{nameof(Settings)} could not earn a writing permit.\n{error}", LogLevel.Error);
+            }
+            finally
+            {
+                _isEarningPermit = false;
+                if (!HasNavigatedAway) StateHasChanged();
+            }
+        }
+
+        /// <summary>
+        /// Takes an attempt count from the search and redraws. The search hands the thread back between attempts,
+        /// which is what lets this repaint at all while the work is running.
+        /// </summary>
+        /// <param name="attempts"> Attempts made so far. </param>
+        void ReportPermitProgress(long attempts)
+        {
+            _permitAttempts = attempts;
+
+            if (attempts % PermitRedrawInterval == 0) StateHasChanged();
+        }
+
+        /// <summary> Attempts between redraws, so a counter climbing through thousands does not repaint per attempt. </summary>
+        const int PermitRedrawInterval = 4;
 
         /// <summary> The accounts this owner has blocked, with whatever profile each of them published. </summary>
         IReadOnlyList<BlockedAccount> _blocked = [];

@@ -21,16 +21,23 @@
             <span class="wall-header-emoji">@PageEmoji</span>
         </header>
 
-        <PostComposer Text="@ComposerText"
-                      TextChanged="HandleComposerTextChanged"
-                      Attachments="@ComposerAttachments"
-                      AttachmentsChanged="HandleComposerAttachmentsChanged"
-                      QuotedPost="@ComposerQuotedPost"
-                      QuotedAuthorProfile="@ComposerQuotedAuthorProfile"
-                      OnCancelQuote="StopQuoting"
-                      OnSubmit="PublishAsync"
-                      IsBusy="@IsPublishing"
-                      Avatar="@ComposerAvatar" />
+        @if (WritingLocked.IsLocked)
+        {
+            <WritingLocked />
+        }
+        else
+        {
+            <PostComposer Text="@ComposerText"
+                          TextChanged="HandleComposerTextChanged"
+                          Attachments="@ComposerAttachments"
+                          AttachmentsChanged="HandleComposerAttachmentsChanged"
+                          QuotedPost="@ComposerQuotedPost"
+                          QuotedAuthorProfile="@ComposerQuotedAuthorProfile"
+                          OnCancelQuote="StopQuoting"
+                          OnSubmit="PublishAsync"
+                          IsBusy="@IsPublishing"
+                          Avatar="@ComposerAvatar" />
+        }
 
         <div class="wall-tabs" style="@TabStripStyle" role="tablist">
             @foreach (WallFeed feed in SelectableFeeds)

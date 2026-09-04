@@ -102,7 +102,11 @@
             @if (!IsFirstLoad)
             {
                 <div class="messages-composer">
-                    @if (CanWrite)
+                    @if (WritingLocked.IsLocked)
+                    {
+                        <WritingLocked />
+                    }
+                    else if (CanWrite)
                     {
                         <MessageComposer Text="@draftText"
                                          TextChanged="HandleDraftChanged"

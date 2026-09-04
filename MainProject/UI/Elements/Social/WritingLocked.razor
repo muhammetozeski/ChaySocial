@@ -1,0 +1,60 @@
+@using ChaySocial.MainProject.Protection
+@inject NavigationManager NavManager
+
+@*
+    Stands where a composer would, for an account that has not earned its writing permit. It is drawn instead of
+    the composer rather than beside it, so nobody types a paragraph and only then finds out it will be refused.
+
+    Every screen that can write uses this one component, so the offer reads the same wherever somebody meets it.
+*@
+
+<div class="writing-locked" style="@SurfaceStyle">
+    <span class="writing-locked-emoji">@Emoji</span>
+
+    <div class="writing-locked-text">
+        <span class="writing-locked-headline">@Headline</span>
+        <span class="writing-locked-description">@Description</span>
+    </div>
+
+    <CoreButton OnClick="OpenSettings"
+                Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                TextColor="@AppColors.TextOnAccent"
+                BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                Padding="@ActionPadding"
+                FontSize="@AppMeasures.Font.Small"
+                Shadow="@AppStyles.ShadowPrimaryGlow"
+                CustomClass="writing-locked-action">
+        @ActionLabel
+    </CoreButton>
+</div>
+
+<WritingLockedCss />
+
+@code {
+    /// <summary> True when the signed-in account still needs to earn its permit, which is when this belongs on screen. </summary>
+    public static bool IsLocked => AppServices.ProofOfWork is { HasWritingPermit: false };
+
+    /// <summary> Emoji beside the offer. </summary>
+    const string Emoji = "✍️";
+
+    /// <summary> First line: what the state is. </summary>
+    const string Headline = "Writing is earned once";
+
+    /// <summary> Second line: what it costs and what it buys. </summary>
+    const string Description = "A few minutes of this device's time, once. After that everything you write goes out instantly.";
+
+    /// <summary> Label on the button that leads to where it is earned. </summary>
+    const string ActionLabel = "Earn it";
+
+    /// <summary> Where that button leads. </summary>
+    const string SettingsRoute = "/settings";
+
+    /// <summary> Inside spacing of that button. </summary>
+    static readonly string ActionPadding = $"{AppMeasures.Space.Px8}px {AppMeasures.Space.Px16}px";
+
+    /// <summary> The frosted ground this sits on, the same glass a composer uses. </summary>
+    string SurfaceStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle);
+
+    /// <summary> Opens the screen where the permit is earned. </summary>
+    void OpenSettings() => NavManager.NavigateTo(SettingsRoute);
+}

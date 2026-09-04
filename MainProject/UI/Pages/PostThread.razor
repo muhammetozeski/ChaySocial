@@ -110,12 +110,19 @@
         </section>
 
         <div class="post-thread-composer">
-            <CommentComposer Text="@draftText"
-                             TextChanged="HandleDraftChanged"
-                             AnsweringName="@AnsweringName"
-                             OnCancelAnswer="StopAnswering"
-                             OnSubmit="PublishReplyAsync"
-                             IsBusy="@isPublishing" />
+            @if (WritingLocked.IsLocked)
+            {
+                <WritingLocked />
+            }
+            else
+            {
+                <CommentComposer Text="@draftText"
+                                 TextChanged="HandleDraftChanged"
+                                 AnsweringName="@AnsweringName"
+                                 OnCancelAnswer="StopAnswering"
+                                 OnSubmit="PublishReplyAsync"
+                                 IsBusy="@isPublishing" />
+            }
         </div>
     }
 

@@ -74,6 +74,65 @@
 
         </CoreCard>
 
+        @*
+            The one thing in this app that costs anybody anything. It is asked for here rather than at the door,
+            because somebody who only wants to read should never meet it at all.
+        *@
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
+                <span class="settings-section-emoji">@PermitSectionEmoji</span>
+                <h2 class="settings-section-title">@PermitSectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@PermitSectionDescription</p>
+
+            @if (HasWritingPermit)
+            {
+                <div class="settings-permit-granted">
+                    <span class="settings-permit-granted-mark">@PermitGrantedEmoji</span>
+                    <span class="settings-permit-granted-text">@PermitGrantedLabel</span>
+                </div>
+            }
+            else if (IsEarningPermit)
+            {
+                <div class="settings-permit-working">
+                    <CoreSpinner SizePx="@PermitSpinnerDiameterPx"
+                                 BorderWidthPx="@PermitSpinnerBorderPx"
+                                 Color="@AppColors.Primary" />
+
+                    <div class="settings-permit-working-text">
+                        <span class="settings-permit-working-line">@PermitWorkingLabel</span>
+                        <span class="settings-permit-working-count">@PermitAttemptsLabel</span>
+                    </div>
+                </div>
+
+                <p class="settings-section-description">@PermitWorkingNote</p>
+            }
+            else
+            {
+                @if (PermitErrorMessage is not null)
+                {
+                    <p class="settings-permit-error">@PermitErrorMessage</p>
+                }
+
+                <CoreButton OnClick="EarnWritingPermitAsync"
+                            Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                            TextColor="@AppColors.TextOnAccent"
+                            BorderRadius="@ButtonRadius"
+                            Padding="@ActionButtonPadding"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow">
+                    <span class="settings-action-emoji">@PermitStartEmoji</span>
+                    <span>@PermitStartLabel</span>
+                </CoreButton>
+            }
+
+        </CoreCard>
+
         <CoreCard Acrylic="AcrylicLevel.Normal"
                   AcrylicBlur="AppMeasures.Blur.Strong"
                   BorderRadius="@CardRadius"

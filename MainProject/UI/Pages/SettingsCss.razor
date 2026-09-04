@@ -244,6 +244,72 @@
         color: @(AppColors.TextDanger.ToRgbaHex(true));
     }
 
+    /* The permit, once it has been earned: a settled state rather than a control, so it reads as a fact about the
+       account instead of something still asking to be done. */
+    .settings-permit-granted {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px10)px;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.Success.ToRgbaHex(true));
+        background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+    }
+
+    .settings-permit-granted-mark {
+        flex: none;
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .settings-permit-granted-text {
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    /* While the work runs. The attempt counter is the honest part: it is the only thing on screen that proves the
+       wait is doing something rather than hanging. */
+    .settings-permit-working {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+    }
+
+    .settings-permit-working-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px2)px;
+        min-width: 0;
+    }
+
+    .settings-permit-working-line {
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    /* Tabular figures so a counter climbing through thousands does not jitter the line it sits on. */
+    .settings-permit-working-count {
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-variant-numeric: tabular-nums;
+    }
+
+    .settings-permit-error {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextDanger.ToRgbaHex(true));
+    }
+
     /* Shared by the throbber and the failure line inside the blocked-accounts card. */
     .settings-status {
         display: flex;

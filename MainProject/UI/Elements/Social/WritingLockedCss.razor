@@ -1,0 +1,63 @@
+@*
+    Styling for WritingLocked. WritingLocked renders this component itself, so the offer always arrives with its
+    own CSS attached. Every selector is namespaced "writing-locked-*" because *Css.razor styles are global.
+*@
+<style>
+    .writing-locked {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+        box-sizing: border-box;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+    }
+
+    .writing-locked-emoji {
+        flex: none;
+        font-size: @(AppMeasures.Font.Headline)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    /* min-width:0 lets the two lines shrink instead of pushing the button off the row on a narrow screen. */
+    .writing-locked-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px2)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .writing-locked-headline {
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .writing-locked-description {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .writing-locked-action {
+        flex: none;
+    }
+
+    /* Phone width: the button drops under the words rather than squeezing them into a column of single letters. */
+    @@media (max-width: @(NarrowScreenBreakpointPx)px) {
+        .writing-locked {
+            flex-wrap: wrap;
+        }
+
+        .writing-locked-action {
+            width: @(AppMeasures.Percent.Full)%;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Widest viewport still treated as a phone, below which the button takes its own row. </summary>
+    const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
+}
