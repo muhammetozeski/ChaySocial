@@ -31,7 +31,17 @@ namespace ChaySocial.MainProject.UI.Pages
         /// Account whose conversation is open, taken from the route. Empty on the postbox route, which is what the
         /// whole page switches on.
         /// </summary>
-        [Parameter] public string Address { get; set; } = string.Empty;
+        [Parameter]
+        public string Address
+        {
+            get => routeAddress;
+            // Blazor assigns null to an unmatched route parameter, overwriting any field initializer, so the
+            // postbox route would otherwise leave this null and every read of it would throw.
+            set => routeAddress = value ?? string.Empty;
+        }
+
+        /// <summary> Backing value for <see cref="Address"/>, never null so the rest of the page can read it plainly. </summary>
+        string routeAddress = string.Empty;
 
         /// <summary>
         /// One row of the postbox: a conversation, plus the profile of whoever is on the other side of it. The
