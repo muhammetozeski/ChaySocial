@@ -34,6 +34,33 @@
         background-size: cover;
     }
 
+    /* The screen shown while the stored session is being read back, before any page is allowed to draw. */
+    .app-waking {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: @(AppMeasures.Space.Medium)px;
+        min-height: @(AppMeasures.Viewport.Most)vh;
+    }
+
+    .app-waking-mark {
+        font-size: @(AppMeasures.Font.Hero)px;
+        animation: app-waking-breathe @(AppMeasures.Duration.VerySlow)s ease-in-out infinite;
+    }
+
+    @@keyframes app-waking-breathe {
+        0%, 100% {
+            opacity: @(AppMeasures.Opacity.Dim);
+            transform: scale(1);
+        }
+
+        50% {
+            opacity: 1;
+            transform: scale(1.08);
+        }
+    }
+
     .app-page {
         display: flex;
         flex-direction: column;

@@ -2,6 +2,10 @@
     The shell every page is drawn inside: the aurora background and body typography come from
     <MainLayoutCss />, the routed page fills the content area, and the bottom navigation appears only once
     somebody is signed in — a signed-out visitor sees the welcome screen with nothing to navigate to yet.
+
+    Nothing routed is drawn until the stored session has been read back. Reading it needs the browser storage,
+    which is only reachable once the app is running, so any page rendered before that would decide the visitor
+    is a stranger and bounce them to the welcome screen — which is what used to happen to every deep link.
 *@
 @inherits LayoutComponentBase
 @implements IDisposable
@@ -9,7 +13,17 @@
 <div class="app-page @(ShowBottomNavigation ? HasBottomNavClass : string.Empty)">
     <main>
         <article class="content">
-            @Body
+            @if (_isSessionReady)
+            {
+                @Body
+            }
+            else
+            {
+                <div class="app-waking">
+                    <span class="app-waking-mark">@WakingEmoji</span>
+                    <CoreSpinner SizePx="@WakingSpinnerSizePx" />
+                </div>
+            }
         </article>
     </main>
 
@@ -25,13 +39,41 @@
     /// <summary> Class added to the page shell so its bottom padding clears the navigation bar. </summary>
     const string HasBottomNavClass = "has-bottom-nav";
 
+    /// <summary> Mark shown while the stored session is being read back. </summary>
+    const string WakingEmoji = "🫖";
+
+    /// <summary> Diameter of the throbber on the waking screen. </summary>
+    const int WakingSpinnerSizePx = 28;
+
     /// <summary> True while the navigation bar belongs on screen, which is exactly while an account is unlocked. </summary>
     bool ShowBottomNavigation;
 
-    protected override void OnInitialized()
+    /// <summary> False until the stored session has been read back, which is what gates the routed page. </summary>
+    bool _isSessionReady;
+
+    protected override void OnInitialized() => MainEvents.Subscribe(HandleAppEvent);
+
+    /// <summary>
+    /// Reads the stored session once the app is running and the browser storage is reachable, then lets the
+    /// routed page draw. A session that cannot be reopened is not a failure: the app simply opens signed out.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
     {
-        MainEvents.Subscribe(HandleAppEvent);
-        ShowBottomNavigation = SessionService.IsSignedIn;
+        try
+        {
+            await SessionService.RestoreAsync();
+        }
+        catch (Exception error)
+        {
+            Log($"Restoring the stored session failed; opening signed out.\n{error}", LogLevel.Error);
+        }
+        finally
+        {
+            ShowBottomNavigation = SessionService.IsSignedIn;
+            _isSessionReady = true;
+        }
+
+        AppServices.ProofOfWork?.PrepareInBackground();
     }
 
     /// <summary>

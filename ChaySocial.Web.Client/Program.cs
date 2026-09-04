@@ -1,5 +1,6 @@
 using Blazored.LocalStorage;
 using ChaySocial.MainProject.Persistence;
+using ChaySocial.MainProject.Protection;
 using ChaySocial.MainProject.Services;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,21 +27,15 @@ namespace ChaySocial.Web.Client
             WebAssemblyHost host = builder.Build();
 
             HttpClient http = new() { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
+            ProofOfWorkClient proofOfWork = new(http);
+
             AppServices.Configure(
-                new HttpDocumentStore(http),
-                new BrowserLocalStore(host.Services.GetRequiredService<ILocalStorageService>()));
+                new HttpDocumentStore(http, proofOfWork),
+                new BrowserLocalStore(host.Services.GetRequiredService<ILocalStorageService>()),
+                proofOfWork);
 
-            // A session that cannot be reopened is not a startup failure: the app opens signed out and the welcome
-            // screen asks for the seed again. Swallowing it here is what keeps a bad stored seed from blocking boot.
-            try
-            {
-                await SessionService.RestoreAsync();
-            }
-            catch (Exception error)
-            {
-                Log($"Restoring the stored session failed; starting signed out.\n{error}", Logger.LogLevel.Error);
-            }
-
+            // The stored session is read by MainLayout on its first render, not here: reaching browser storage
+            // needs the app to be running, and doing it before RunAsync leaves every visitor looking signed out.
             await host.RunAsync();
         }
     }

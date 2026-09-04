@@ -9,14 +9,22 @@
     <link rel="stylesheet" href="ChaySocial.Web.styles.css" />
     <ImportMap />
     @* WebAssembly, not Auto: every account key is derived and every signature made on the device, so the
-       components must run in the browser from the first render. Auto would start on a server circuit. *@
-    <HeadOutlet @rendermode="InteractiveWebAssembly" />
+       components must run in the browser from the first render. Auto would start on a server circuit.
+       Prerendering is off as well: the server cannot see the session, which lives in the visitor's own browser,
+       so a prerendered page decides every visitor is a stranger and redirects deep links to the welcome screen
+       before the browser ever gets a say. *@
+    <HeadOutlet @rendermode="@RenderModeWithoutPrerender" />
 </head>
 
 <body>
-    <Routes @rendermode="InteractiveWebAssembly" />
+    <Routes @rendermode="@RenderModeWithoutPrerender" />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
 
 </html>
+
+@code {
+    /// <summary> The one render mode this app uses: WebAssembly with prerendering switched off. </summary>
+    static readonly InteractiveWebAssemblyRenderMode RenderModeWithoutPrerender = new(prerender: false);
+}
