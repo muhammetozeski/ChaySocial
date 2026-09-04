@@ -180,8 +180,116 @@ namespace ChaySocial.MainProject.Services
             return [.. (await AppServices.Documents.QueryAsync(query)).Documents.Select(like => like.LikerAddress)];
         }
 
+        /// <summary>
+        /// Carries a post onto the reposter's own wall, or takes it back when it is already there. A post carries
+        /// its own author's name wherever it goes, so this stores a pointer rather than a copy.
+        /// </summary>
+        /// <param name="post"> Post being carried over. </param>
+        /// <param name="reposter"> The unlocked account carrying it. </param>
+        /// <returns> True when the post ended up on the reposter's wall. </returns>
+        public static async Task<bool> ToggleRepostAsync(PostData post, PrivateIdentity reposter)
+        {
+            DocumentId<RepostData> repostId = RepostData.IdFor(post.PostId, reposter.Public.Address);
+
+            if (await AppServices.Documents.ReadAsync(repostId) is not null)
+            {
+                await AppServices.Documents.DeleteAsync(repostId);
+                MainEvents.Trigger(MainEvents.Names.WallChanged);
+                return false;
+            }
+
+            long createdAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            byte[] transcript = BuildRepostTranscript(post.PostId, reposter.Public.Address, createdAt);
+
+            await AppServices.Documents.WriteAsync(repostId, new RepostData
+            {
+                PostId = post.PostId,
+                ReposterAddress = reposter.Public.Address,
+                CreatedAtUnixMs = createdAt,
+                Signature = Convert.ToBase64String(reposter.Sign(transcript))
+            });
+
+            MainEvents.Trigger(MainEvents.Names.WallChanged);
+            return true;
+        }
+
+        /// <summary> Reads who carried a post onto their own wall. </summary>
+        /// <param name="postId"> Post to count. </param>
+        /// <returns> Addresses of the accounts that reposted it. </returns>
+        public static async Task<IReadOnlyList<string>> ReadRepostersAsync(string postId)
+        {
+            DocumentQuery<RepostData> query = new DocumentQuery<RepostData>()
+                .WithMatch(RepostData.PostField, postId)
+                .WithLimit(MaximumRepostsPerPost);
+
+            return [.. (await AppServices.Documents.QueryAsync(query)).Documents.Select(repost => repost.ReposterAddress)];
+        }
+
+        /// <summary> Reads what one account has carried onto its own wall, newest first. </summary>
+        /// <param name="reposterAddress"> Address of the account. </param>
+        /// <param name="limit"> Largest number of reposts to return. </param>
+        /// <returns> That account's reposts, newest first. </returns>
+        public static async Task<IReadOnlyList<RepostData>> ReadAccountRepostsAsync(string reposterAddress, int limit = WallPageSize)
+        {
+            DocumentQuery<RepostData> query = new DocumentQuery<RepostData>()
+                .WithMatch(RepostData.ReposterField, reposterAddress)
+                .WithSort(RepostData.CreatedAtField, descending: true)
+                .WithLimit(limit);
+
+            return (await AppServices.Documents.QueryAsync(query)).Documents;
+        }
+
+        /// <summary>
+        /// Checks that a repost really was made by the account it names. A repost that fails this was put on that
+        /// account's wall by somebody else.
+        /// </summary>
+        /// <param name="repost"> Repost to check. </param>
+        /// <param name="reposterProfile"> Profile of the account the repost names, or null when it could not be read. </param>
+        /// <returns> True when the signature verifies against the reposter's published key. </returns>
+        public static bool VerifyReposter(RepostData repost, ProfileData? reposterProfile)
+        {
+            if (reposterProfile is null || reposterProfile.Address != repost.ReposterAddress) return false;
+
+            try
+            {
+                PublicIdentity reposter = new(
+                    reposterProfile.Address,
+                    Convert.FromBase64String(reposterProfile.SigningPublicKey),
+                    Convert.FromBase64String(reposterProfile.EncryptionPublicKey));
+
+                byte[] transcript = BuildRepostTranscript(repost.PostId, repost.ReposterAddress, repost.CreatedAtUnixMs);
+                return AppCryptography.Identities.Verify(transcript, Convert.FromBase64String(repost.Signature), reposter);
+            }
+            catch (FormatException error)
+            {
+                Log($"Repost of '{repost.PostId}' carries malformed base64.\n{error}", LogLevel.Warning);
+                return false;
+            }
+        }
+
         /// <summary> Random bytes behind a post id — enough that two posts never collide. </summary>
         const int PostIdBytes = 12;
+
+        /// <summary> Largest number of reposts read back for one post. </summary>
+        const int MaximumRepostsPerPost = 200;
+
+        /// <summary> Separates a repost's signature from every other signature the app produces. </summary>
+        static readonly byte[] RepostSignatureDomain = "ChaySocial/Repost/v1"u8.ToArray();
+
+        /// <summary> Builds the exact bytes a reposter signs and a reader verifies. </summary>
+        /// <param name="postId"> Post being carried over. </param>
+        /// <param name="reposterAddress"> Address of the account carrying it. </param>
+        /// <param name="createdAtUnixMs"> When it was carried over. </param>
+        /// <returns> The transcript to sign. </returns>
+        static byte[] BuildRepostTranscript(string postId, string reposterAddress, long createdAtUnixMs)
+        {
+            TranscriptWriter transcript = new();
+            transcript.WriteBytes(RepostSignatureDomain);
+            transcript.WriteText(postId);
+            transcript.WriteText(reposterAddress);
+            transcript.WriteInt64(createdAtUnixMs);
+            return transcript.ToArray();
+        }
 
         /// <summary> Largest number of likes read back for one post. </summary>
         const int MaximumLikesPerPost = 200;

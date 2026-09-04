@@ -95,4 +95,48 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> Liker address, for finding what one account liked. </summary>
         public static readonly DocumentField<LikeData> LikerField = new(nameof(LikerAddress), like => like.LikerAddress);
     }
+
+    /// <summary>
+    /// One account carrying somebody else's post onto its own wall. Nothing of the original is copied — only a
+    /// pointer to it — so a repost follows the post it names, including when that post is edited away or deleted.
+    /// Keyed by post and reposter, so reposting twice is the same document and taking it back is a delete.
+    /// </summary>
+    /// <remarks>
+    /// It is signed, unlike a like: a repost puts the original in front of the reposter's own followers under the
+    /// reposter's name, and that is a published act somebody could otherwise invent on their behalf.
+    /// </remarks>
+    public sealed record RepostData : IStoredDocument<RepostData>
+    {
+        public static string CollectionName => "reposts";
+
+        /// <summary> Post that was carried over. </summary>
+        public required string PostId { get; init; }
+
+        /// <summary> Address of the account that carried it. </summary>
+        public required string ReposterAddress { get; init; }
+
+        /// <summary> When it was carried over; this, not the original's time, is where it lands in a feed. </summary>
+        public required long CreatedAtUnixMs { get; init; }
+
+        /// <summary> Base64 signature over this record's own fields, produced by the reposter's signing key. </summary>
+        public required string Signature { get; init; }
+
+        /// <summary> Id this repost is stored under. </summary>
+        public DocumentId<RepostData> Id => IdFor(PostId, ReposterAddress);
+
+        /// <summary> Builds the id one account's repost of one post is stored under. </summary>
+        /// <param name="postId"> Post being carried over. </param>
+        /// <param name="reposterAddress"> Account carrying it. </param>
+        /// <returns> The document id. </returns>
+        public static DocumentId<RepostData> IdFor(string postId, string reposterAddress) => new($"{postId}:{reposterAddress}");
+
+        /// <summary> Post id, for counting how often one post was carried over. </summary>
+        public static readonly DocumentField<RepostData> PostField = new(nameof(PostId), repost => repost.PostId);
+
+        /// <summary> Reposter address, for reading what one account carried onto its wall. </summary>
+        public static readonly DocumentField<RepostData> ReposterField = new(nameof(ReposterAddress), repost => repost.ReposterAddress);
+
+        /// <summary> Time it was carried over, for ordering a wall newest-first. </summary>
+        public static readonly DocumentField<RepostData> CreatedAtField = new(nameof(CreatedAtUnixMs), repost => repost.CreatedAtUnixMs);
+    }
 }
