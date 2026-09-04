@@ -36,6 +36,7 @@ namespace ChaySocial.MainProject.Events
 
             /// <summary> A block or a report was recorded. Payload is the address that was blocked or reported. </summary>
             public const string ModerationChanged = nameof(ModerationChanged);
+            public const string GroupsChanged = nameof(GroupsChanged);
         }
 
         /// <summary> Registers a handler that receives every triggered event. </summary>

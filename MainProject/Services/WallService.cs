@@ -25,7 +25,26 @@ namespace ChaySocial.MainProject.Services
         /// <returns> Posts, newest first. </returns>
         public static async Task<IReadOnlyList<PostData>> ReadWallAsync(int limit = WallPageSize)
         {
+            // Group posts are read a page at a time along with everything else and dropped here rather than being
+            // excluded by the query, because the store matches on equality and "written nowhere in particular" is
+            // an empty value some stores will not match on. Reading extra covers what falls away.
             DocumentQuery<PostData> query = new DocumentQuery<PostData>()
+                .WithSort(PostData.CreatedAtField, descending: true)
+                .WithLimit(limit * GroupPostReadMultiplier);
+
+            return [.. (await AppServices.Documents.QueryAsync(query)).Documents.Where(post => !post.IsInGroup).Take(limit)];
+        }
+
+        /// <summary> Reads one group's wall, which is the only place its posts appear. </summary>
+        /// <param name="groupAddress"> The group whose posts are wanted. </param>
+        /// <param name="limit"> Largest number of posts to return. </param>
+        /// <returns> That group's posts, newest first. </returns>
+        public static async Task<IReadOnlyList<PostData>> ReadGroupPostsAsync(string groupAddress, int limit = WallPageSize)
+        {
+            if (groupAddress.Length == 0 || limit <= 0) return [];
+
+            DocumentQuery<PostData> query = new DocumentQuery<PostData>()
+                .WithMatch(PostData.GroupField, groupAddress)
                 .WithSort(PostData.CreatedAtField, descending: true)
                 .WithLimit(limit);
 
@@ -44,12 +63,13 @@ namespace ChaySocial.MainProject.Services
         /// <returns> That account's posts, newest first. </returns>
         public static async Task<IReadOnlyList<PostData>> ReadAuthorPostsAsync(string authorAddress, int limit = WallPageSize)
         {
+            // What somebody said inside a group belongs to that group, so it stays off their public wall.
             DocumentQuery<PostData> query = new DocumentQuery<PostData>()
                 .WithMatch(PostData.AuthorField, authorAddress)
                 .WithSort(PostData.CreatedAtField, descending: true)
-                .WithLimit(limit);
+                .WithLimit(limit * GroupPostReadMultiplier);
 
-            return (await AppServices.Documents.QueryAsync(query)).Documents;
+            return [.. (await AppServices.Documents.QueryAsync(query)).Documents.Where(post => !post.IsInGroup).Take(limit)];
         }
 
         /// <summary> Signs a post as the given account and stores it. </summary>
@@ -57,12 +77,14 @@ namespace ChaySocial.MainProject.Services
         /// <param name="text"> What to publish; trimmed, and refused when empty or over <see cref="PostData.MaximumTextLength"/>. </param>
         /// <param name="attachments"> Media already uploaded for this post, or null for a post that is only text. </param>
         /// <param name="quotedPostId"> Post this one quotes, or empty when it quotes nothing. </param>
+        /// <param name="groupAddress"> Group to write it in, or empty to write it on the wall. </param>
         /// <returns> The stored post, or null when the post was not publishable. </returns>
         public static async Task<PostData?> PublishAsync(
             PrivateIdentity author,
             string text,
             IReadOnlyList<MediaAttachment>? attachments = null,
-            string quotedPostId = "")
+            string quotedPostId = "",
+            string groupAddress = "")
         {
             string trimmed = text.Trim();
 
@@ -76,7 +98,8 @@ namespace ChaySocial.MainProject.Services
             long createdAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             IReadOnlyList<MediaAttachment> media = attachments ?? [];
 
-            byte[] transcript = BuildTranscript(postId, author.Public.Address, trimmed, createdAt, string.Empty, media, quotedPostId);
+            byte[] transcript = BuildTranscript(
+                postId, author.Public.Address, trimmed, createdAt, string.Empty, media, quotedPostId, groupAddress);
 
             PostData post = new()
             {
@@ -86,15 +109,18 @@ namespace ChaySocial.MainProject.Services
                 CreatedAtUnixMs = createdAt,
                 Attachments = media,
                 QuotedPostId = quotedPostId,
+                GroupAddress = groupAddress,
                 Signature = Convert.ToBase64String(author.Sign(transcript))
             };
 
             await AppServices.Documents.WriteAsync(post.Id, post);
-            await IndexSubjectsAsync(post);
+
+            // A subject named inside a group belongs to that group's wall, not to a listing the whole app reads.
+            if (!post.IsInGroup) await IndexSubjectsAsync(post);
 
             await NotificationService.NotifyMentionedAsync(trimmed, author.Public.Address, postId, trimmed);
 
-            MainEvents.Trigger(MainEvents.Names.WallChanged);
+            MainEvents.Trigger(post.IsInGroup ? MainEvents.Names.GroupsChanged : MainEvents.Names.WallChanged, groupAddress);
             return post;
         }
 
@@ -202,7 +228,8 @@ namespace ChaySocial.MainProject.Services
                     Convert.FromBase64String(authorProfile.EncryptionPublicKey));
 
                 byte[] transcript = BuildTranscript(
-                    post.PostId, post.AuthorAddress, post.Text, post.CreatedAtUnixMs, post.Topic, post.Attachments, post.QuotedPostId);
+                    post.PostId, post.AuthorAddress, post.Text, post.CreatedAtUnixMs, post.Topic,
+                    post.Attachments, post.QuotedPostId, post.GroupAddress);
 
                 return AppCryptography.Identities.Verify(transcript, Convert.FromBase64String(post.Signature), author);
             }
@@ -353,6 +380,12 @@ namespace ChaySocial.MainProject.Services
         /// <summary> Random bytes behind a post id — enough that two posts never collide. </summary>
         const int PostIdBytes = 12;
 
+        /// <summary>
+        /// How many times the requested page a wall reads before group posts are dropped from it. Reading extra is
+        /// what keeps a page full when somebody the reader follows has been busy inside a group.
+        /// </summary>
+        const int GroupPostReadMultiplier = 3;
+
         /// <summary> Largest number of reposts read back for one post. </summary>
         const int MaximumRepostsPerPost = 200;
 
@@ -385,6 +418,7 @@ namespace ChaySocial.MainProject.Services
         /// <param name="topic"> The post's topic, empty while there are no categories. </param>
         /// <param name="attachments"> Media hanging off the post; covered by the signature so nobody can swap a picture under it. </param>
         /// <param name="quotedPostId"> Post this one quotes; covered too, so nobody can point a quote at something else. </param>
+        /// <param name="groupAddress"> Group the post was written in; covered so nobody can move a post into a group, or out of one. </param>
         /// <returns> The transcript to sign. </returns>
         static byte[] BuildTranscript(
             string postId,
@@ -393,7 +427,8 @@ namespace ChaySocial.MainProject.Services
             long createdAtUnixMs,
             string topic,
             IReadOnlyList<MediaAttachment> attachments,
-            string quotedPostId)
+            string quotedPostId,
+            string groupAddress)
         {
             TranscriptWriter transcript = new();
             transcript.WriteBytes(PostSignatureDomain);
@@ -416,6 +451,7 @@ namespace ChaySocial.MainProject.Services
             // Named rather than positional, so the next field a post grows leaves every signature written before it
             // untouched. See TranscriptWriter.WriteNamedText.
             transcript.WriteNamedText(nameof(PostData.QuotedPostId), quotedPostId);
+            transcript.WriteNamedText(nameof(PostData.GroupAddress), groupAddress);
             return transcript.ToArray();
         }
     }

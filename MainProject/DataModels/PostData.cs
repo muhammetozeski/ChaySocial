@@ -47,6 +47,16 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> True when this post carries somebody else's post inside it. </summary>
         public bool IsQuoting => QuotedPostId.Length > 0;
 
+        /// <summary>
+        /// Group this post was written in, or empty when it was written on the wall. A post belongs to one place
+        /// only: a group post stays inside its group rather than also appearing in the feeds, which is what makes
+        /// a group somewhere to speak rather than a second name for a hashtag.
+        /// </summary>
+        public string GroupAddress { get; init; } = string.Empty;
+
+        /// <summary> True when this post was written inside a group. </summary>
+        public bool IsInGroup => GroupAddress.Length > 0;
+
         /// <summary> Longest post accepted. </summary>
         public const int MaximumTextLength = 500;
 
@@ -61,6 +71,9 @@ namespace ChaySocial.MainProject.DataModels
 
         /// <summary> Topic, for the category filter that will exist later. </summary>
         public static readonly DocumentField<PostData> TopicField = new(nameof(Topic), post => post.Topic);
+
+        /// <summary> Group address, for reading one group's wall and for keeping group posts out of the feeds. </summary>
+        public static readonly DocumentField<PostData> GroupField = new(nameof(GroupAddress), post => post.GroupAddress);
     }
 
     /// <summary>
