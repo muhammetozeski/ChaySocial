@@ -22,6 +22,16 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> What was written. </summary>
         public required string Text { get; init; }
 
+        /// <summary>
+        /// Comment this one answers, or empty when it answers the post itself. It names the real parent even when
+        /// that parent is itself an answer, so who was speaking to whom survives; a thread is still drawn two deep,
+        /// because a conversation indented six times is a conversation nobody can read.
+        /// </summary>
+        public string ParentCommentId { get; init; } = string.Empty;
+
+        /// <summary> True when this comment answers another comment rather than the post. </summary>
+        public bool IsReply => ParentCommentId.Length > 0;
+
         /// <summary> When the author published it. </summary>
         public required long CreatedAtUnixMs { get; init; }
 
