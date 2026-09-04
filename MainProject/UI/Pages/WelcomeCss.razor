@@ -245,6 +245,27 @@
         animation: welcome-reveal @(AppMeasures.Duration.Fast)s @ArrivalEasing both;
     }
 
+    /* The line that explains the pause while an account's proof of work is being solved. It pulses gently so a
+       wait of a few seconds reads as work in progress rather than a frozen screen. */
+    .welcome-proof {
+        margin: 0;
+        text-align: center;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        animation: welcome-proof-pulse @(AppMeasures.Duration.Longer)s ease-in-out infinite;
+    }
+
+    @@keyframes welcome-proof-pulse {
+        0%, 100% {
+            opacity: @(AppMeasures.Opacity.Dim);
+        }
+
+        50% {
+            opacity: 1;
+        }
+    }
+
     @@keyframes welcome-arrive {
         from {
             opacity: 0;

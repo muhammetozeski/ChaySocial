@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ChaySocial.MainProject.Persistence;
+using ChaySocial.MainProject.Protection;
 
 namespace ChaySocial.Web.Api
 {
@@ -200,11 +201,22 @@ namespace ChaySocial.Web.Api
     /// <summary> Publishes <see cref="JsonDocumentStore"/> over the routes <see cref="DocumentRoutes"/> describes. </summary>
     public static class DocumentApi
     {
+        /// <summary>
+        /// Collections whose writes cost proof-of-work. Reading is always free, and the bookkeeping collections
+        /// (likes, follows, blocks, notifications) are left free too, so the cost lands on producing content
+        /// rather than on every tap.
+        /// </summary>
+        static readonly string[] ProtectedCollections = ["posts", "comments", "messages", "profiles"];
+
+        /// <summary> Collection whose first write is an account being created, and therefore costs the heavier proof. </summary>
+        const string ProfileCollection = "profiles";
+
         /// <summary> Registers every document route on the application. </summary>
         /// <param name="app"> Application to register on. </param>
         public static void MapDocumentApi(this WebApplication app)
         {
             JsonDocumentStore store = app.Services.GetRequiredService<JsonDocumentStore>();
+            ProofChallengeRegistry proofRegistry = app.Services.GetRequiredService<ProofChallengeRegistry>();
 
             app.MapGet($"{DocumentRoutes.Base}/{{collection}}/{{documentId}}", (string collection, string documentId) =>
             {
@@ -214,6 +226,8 @@ namespace ChaySocial.Web.Api
 
             app.MapPut($"{DocumentRoutes.Base}/{{collection}}/{{documentId}}", async (string collection, string documentId, HttpRequest request) =>
             {
+                if (!IsWriteAllowed(store, proofRegistry, collection, documentId, request)) return Results.StatusCode(StatusCodes.Status402PaymentRequired);
+
                 JsonNode? document = await JsonNode.ParseAsync(request.Body);
                 if (document is null) return Results.BadRequest();
 
@@ -239,6 +253,33 @@ namespace ChaySocial.Web.Api
 
                 return Results.Content(answer.ToJsonString(), "application/json");
             });
+        }
+
+        /// <summary>
+        /// Decides whether a write may proceed. Free collections always may; a protected one needs a valid,
+        /// unexpired, unused proof, and creating a profile that does not exist yet needs the heavier one because
+        /// that write is what brings an account into being.
+        /// </summary>
+        /// <param name="store"> Store consulted to see whether the document already exists. </param>
+        /// <param name="proofRegistry"> Registry that redeems the answer. </param>
+        /// <param name="collection"> Collection being written to. </param>
+        /// <param name="documentId"> Id being written. </param>
+        /// <param name="request"> Request carrying the answer in its header. </param>
+        /// <returns> True when the write is paid for. </returns>
+        static bool IsWriteAllowed(
+            JsonDocumentStore store,
+            ProofChallengeRegistry proofRegistry,
+            string collection,
+            string documentId,
+            HttpRequest request)
+        {
+            if (!ProtectedCollections.Contains(collection)) return true;
+
+            bool isNewAccount = collection == ProfileCollection && store.Read(collection, documentId) is null;
+            int requiredDifficulty = isNewAccount ? ProofDifficulty.Account : ProofDifficulty.Write;
+
+            return ProofRoutes.TryParseSolution(request.Headers[ProofRoutes.SolutionHeader], out ProofSolution solution)
+                && proofRegistry.Redeem(solution, requiredDifficulty, DateTimeOffset.UtcNow);
         }
     }
 }

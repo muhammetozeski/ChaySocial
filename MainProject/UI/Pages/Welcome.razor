@@ -68,6 +68,11 @@
                 }
             </CoreButton>
 
+            @if (IsSolvingProof)
+            {
+                <p class="welcome-proof">@ProofProgressText</p>
+            }
+
             <button type="button"
                     class="welcome-recall-toggle"
                     disabled="@IsBusy"

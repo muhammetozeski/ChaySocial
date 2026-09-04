@@ -15,16 +15,21 @@ namespace ChaySocial.MainProject.Services
         /// <summary> Where this device keeps what must never be sent anywhere — the master seed. </summary>
         public static ILocalStore LocalStore = default!;
 
+        /// <summary> Pays the server's computational price for writing, or null when the host runs against a store that charges none. </summary>
+        public static Protection.ProofOfWorkClient? ProofOfWork;
+
         /// <summary> True once the host has supplied both stores. </summary>
         public static bool IsConfigured => Documents is not null && LocalStore is not null;
 
         /// <summary> Supplies the stores the app runs against. Called once, by the host, before the first page renders. </summary>
         /// <param name="documents"> Store holding posts, profiles and likes. </param>
         /// <param name="localStore"> Device storage for the master seed. </param>
-        public static void Configure(IDocumentStore documents, ILocalStore localStore)
+        /// <param name="proofOfWork"> Supplies the proof the server charges for writes; null when it charges none. </param>
+        public static void Configure(IDocumentStore documents, ILocalStore localStore, Protection.ProofOfWorkClient? proofOfWork = null)
         {
             Documents = documents;
             LocalStore = localStore;
+            ProofOfWork = proofOfWork;
         }
     }
 }

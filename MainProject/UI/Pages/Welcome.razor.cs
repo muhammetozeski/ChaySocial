@@ -136,6 +136,26 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> True while either flow is running, which locks every control on the screen. </summary>
         bool IsBusy => _work != WelcomeWork.None;
 
+        /// <summary> Proof-of-work attempts made so far while creating an account, shown so the wait is explained rather than mysterious. </summary>
+        long _proofAttempts;
+
+        /// <summary> Line drawn under the create button while the account's proof of work is being solved. </summary>
+        string ProofProgressText => string.Format(ProofProgressFormat, _proofAttempts);
+
+        /// <summary> True while the screen should show how far the account's proof of work has come. </summary>
+        bool IsSolvingProof => IsBusy && _proofAttempts > 0;
+
+        /// <summary> Wording of the progress line; the placeholder takes the attempt count. </summary>
+        const string ProofProgressFormat = "Minting your account — {0} attempts so far. This is what keeps bot farms out.";
+
+        /// <summary> Redraws the progress line as the search runs, hopping back onto the render thread to do it. </summary>
+        /// <param name="attempts"> Attempts made so far. </param>
+        void ReportProofProgress(long attempts)
+        {
+            _proofAttempts = attempts;
+            InvokeAsync(StateHasChanged);
+        }
+
         /// <summary> True when the pasted text is worth sending to <see cref="SessionService.SignInAsync"/>. </summary>
         bool CanRecall => !IsBusy && !string.IsNullOrWhiteSpace(_recalledSecret);
 
@@ -161,7 +181,8 @@ namespace ChaySocial.MainProject.UI.Pages
 
             try
             {
-                _secretText = await SessionService.CreateAccountAsync();
+                _proofAttempts = 0;
+                _secretText = await SessionService.CreateAccountAsync(ReportProofProgress);
                 _stage = WelcomeStage.KeepSecret;
             }
             catch (Exception error)
@@ -190,7 +211,7 @@ namespace ChaySocial.MainProject.UI.Pages
 
             try
             {
-                if (await SessionService.SignInAsync(_recalledSecret))
+                if (await SessionService.SignInAsync(_recalledSecret, ReportProofProgress))
                 {
                     NavManager.NavigateTo(WallRoute);
                     return;

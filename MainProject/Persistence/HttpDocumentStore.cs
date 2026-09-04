@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ChaySocial.MainProject.Protection;
 
 namespace ChaySocial.MainProject.Persistence
 {
@@ -10,7 +11,8 @@ namespace ChaySocial.MainProject.Persistence
     /// which instance is constructed and nothing else.
     /// </summary>
     /// <param name="httpClient"> Client whose <c>BaseAddress</c> points at the document server. </param>
-    public sealed class HttpDocumentStore(HttpClient httpClient) : IDocumentStore
+    /// <param name="proofOfWork"> Supplies the proof the server charges for writes, or null when the server asks for none. </param>
+    public sealed class HttpDocumentStore(HttpClient httpClient, ProofOfWorkClient? proofOfWork = null) : IDocumentStore
     {
         static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
@@ -37,9 +39,15 @@ namespace ChaySocial.MainProject.Persistence
         public async Task WriteAsync<TDocument>(DocumentId<TDocument> id, TDocument document, CancellationToken cancellationToken = default)
             where TDocument : IStoredDocument<TDocument>
         {
-            HttpResponseMessage response = await httpClient.PutAsJsonAsync(
-                DocumentRoutes.Document(TDocument.CollectionName, id.Value), document, SerializerOptions, cancellationToken);
+            HttpRequestMessage request = new(HttpMethod.Put, DocumentRoutes.Document(TDocument.CollectionName, id.Value))
+            {
+                Content = JsonContent.Create(document, options: SerializerOptions)
+            };
 
+            string? answer = proofOfWork is null ? null : await proofOfWork.TakeWriteAnswerAsync(cancellationToken);
+            if (answer is not null) request.Headers.Add(ProofRoutes.SolutionHeader, answer);
+
+            HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
         }
 
