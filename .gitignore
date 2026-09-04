@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 # Review board runtime state
 Board/replies.json
+
+# Server-side stored documents
+ChaySocial.Web/StoredDocuments/

@@ -5,14 +5,42 @@ using ChaySocial.MainProject.Persistence;
 namespace ChaySocial.Web.Api
 {
     /// <summary>
-    /// The document server, holding everything in memory for now. It stores documents as raw JSON and never
-    /// deserializes them into app types: it knows only that a document has fields it can sort and filter by. That
-    /// keeps it free of the app's model, so replacing it with Firestore changes no shape the client depends on.
+    /// The document server. It stores documents as raw JSON and never deserializes them into app types: it knows
+    /// only that a document has fields it can sort and filter by. That keeps it free of the app's model, so
+    /// replacing it with Firestore changes no shape the client depends on.
+    /// Documents are held in memory for fast queries and mirrored to disk on every write, so a restart reloads
+    /// everything instead of starting empty.
     /// </summary>
-    public sealed class JsonDocumentStore
+    /// <param name="storage"> Where documents are persisted, or null to keep them only for the life of the process. </param>
+    public sealed class JsonDocumentStore(DocumentFileStorage? storage = null)
     {
         readonly Dictionary<string, Dictionary<string, JsonNode>> _collections = [];
         readonly Lock _gate = new();
+
+        /// <summary> Reads everything back off disk into memory. Called once at startup, before the first request. </summary>
+        /// <returns> How many documents were restored. </returns>
+        public int RestoreFromDisk()
+        {
+            if (storage is null) return 0;
+
+            List<(string Collection, string DocumentId, JsonNode Document)> loaded = storage.LoadAll();
+
+            lock (_gate)
+            {
+                foreach ((string collection, string documentId, JsonNode document) in loaded)
+                {
+                    if (!_collections.TryGetValue(collection, out Dictionary<string, JsonNode>? documents))
+                    {
+                        documents = [];
+                        _collections[collection] = documents;
+                    }
+
+                    documents[documentId] = document;
+                }
+            }
+
+            return loaded.Count;
+        }
 
         /// <summary> Fetches one document. </summary>
         /// <param name="collection"> Collection holding it. </param>
@@ -45,6 +73,10 @@ namespace ChaySocial.Web.Api
 
                 documents[documentId] = document;
             }
+
+            // Written after the in-memory update and outside the lock: a failed disk write must not lose the
+            // document the client just stored, and a slow disk must not block every other reader.
+            Persist(() => storage?.Save(collection, documentId, document), $"save {collection}/{documentId}");
         }
 
         /// <summary> Removes a document. Removing an absent id is not an error. </summary>
@@ -58,6 +90,26 @@ namespace ChaySocial.Web.Api
                 {
                     documents.Remove(documentId);
                 }
+            }
+
+            Persist(() => storage?.Remove(collection, documentId), $"remove {collection}/{documentId}");
+        }
+
+        /// <summary>
+        /// Runs one disk operation. A disk failure is reported and swallowed on purpose: the in-memory copy is
+        /// already correct, so the request should still succeed and only durability is lost.
+        /// </summary>
+        /// <param name="operation"> The disk write or delete to attempt. </param>
+        /// <param name="description"> What was being attempted, for the failure line. </param>
+        static void Persist(Action operation, string description)
+        {
+            try
+            {
+                operation();
+            }
+            catch (Exception error)
+            {
+                Console.Error.WriteLine($"Could not {description} to disk: {error.Message}");
             }
         }
 

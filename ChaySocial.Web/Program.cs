@@ -9,6 +9,9 @@ namespace ChaySocial
     /// </summary>
     public class Program
     {
+        /// <summary> Folder under the app's content root where stored documents live. </summary>
+        const string StoredDataFolderName = "StoredDocuments";
+
         /// <summary> Builds the host, registers the document store, maps both the components and the document routes, and runs. </summary>
         /// <param name="args"> Host arguments handed over by the runtime. </param>
         public static void Main(string[] args)
@@ -21,10 +24,15 @@ namespace ChaySocial
                 .AddInteractiveWebAssemblyComponents();
 
             // One store for the whole host: every browser talking to this server sees the same documents, which is
-            // what makes two accounts on two tabs able to read each other's posts.
-            builder.Services.AddSingleton<JsonDocumentStore>();
+            // what makes two accounts on two tabs able to read each other's posts. It writes through to a folder
+            // next to the app so a restart reloads what was there instead of starting empty.
+            string documentDirectory = Path.Combine(builder.Environment.ContentRootPath, StoredDataFolderName);
+            builder.Services.AddSingleton(new JsonDocumentStore(new DocumentFileStorage(documentDirectory)));
 
             var app = builder.Build();
+
+            int restoredDocuments = app.Services.GetRequiredService<JsonDocumentStore>().RestoreFromDisk();
+            app.Logger.LogInformation("Restored {DocumentCount} documents from {Directory}.", restoredDocuments, documentDirectory);
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())

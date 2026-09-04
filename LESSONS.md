@@ -1,0 +1,9 @@
+# Lessons
+
+Kisa "sorun -> cozum" notlari, ayni duvara ikinci kez carpmamak icin.
+
+- **Blazor eslesmeyen route parametresine null atar ve alan baslaticiyi ezer.** `[Parameter] public string Address { get; set; } = string.Empty;` iki rotali bir sayfada (`/Messages` ve `/messages/{Address}`) parametresiz rotada null olur; `Address.Length` NullReferenceException firlatir ve sayfa hic cizilmez. Cozum: property'yi alanla yaz ve setter'da `value ?? string.Empty` ile normalize et.
+- **`-t:CoreCompile` tek basina referanslari cozmez.** csc `/reference:` almadan cagrilir, bos bir `dotnet new classlib` bile `CS0400: System bulunamadi` verir. Hizli derleme denetimi icin `-t:Compile` kullanilir; o `ResolveReferences`'i bagimlilik olarak tasir.
+- **RID bildiren bir kutuphane MAUI Android basligini kirar.** `MainProject.csproj` icinde `<RuntimeIdentifiers>` bildirilince .NET Android SDK kutuphaneyi RID'e ozel sayar ve per-RID ic derlemeye `RuntimeIdentifier` gecirir; o gecis derleyici calistirmadigi icin `MSB3030: obj\Debug\net10.0\android-arm64\MainProject.dll bulunamadi` ile patlar. Kutuphane RID-agnostik birakilir.
+- **Tarayici otomasyonunda `computer.type` yerine `form_input`.** `find` ile alinan ref'in koordinati sayfa kaydirilinca kayabiliyor; tiklama baska yere gidiyor ve metin hic girilmiyor, hata da vermiyor. Blazor'a metin girmek icin `form_input` dogrudan degeri set eder ve input olayini tetikler.
+- **Sunucu deposu bellekteyse her yeniden baslatma butun veriyi siler.** `JsonDocumentStore` artik `DocumentFileStorage` ile diske yaziyor (koleksiyon basina klasor, dokuman basina dosya, gecici dosya + `File.Move` ile atomik yazma) ve acilista geri yukluyor. Dosya adi `Uri.EscapeDataString` ile kaciriliyor, cunku dokuman kimlikleri `:` ve `|` icerebiliyor ve bunlar Windows'ta dosya adinda yasak.
