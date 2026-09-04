@@ -8,9 +8,33 @@
 *@
 <div class="message-bubble-line @LineSideClass">
     <div class="message-bubble @BubbleSideClass" style="@BubbleStyle">
-        @if (CouldDecrypt)
+        @if (IsVanishing && !IsVanishingOpened)
+        {
+            @* A vanishing message stays behind a deliberate tap: opening it destroys it on the server, so it
+               must never happen just because the conversation scrolled past. *@
+            <button type="button"
+                    class="message-bubble-vanishing"
+                    disabled="@(IsMine || IsOpening)"
+                    @onclick="OnOpenVanishing">
+                @if (IsOpening)
+                {
+                    <CoreSpinner SizePx="@VanishingSpinnerSizePx" BorderWidthPx="@VanishingSpinnerBorderPx" />
+                }
+                else
+                {
+                    <span class="message-bubble-vanishing-emoji">@VanishingEmoji</span>
+                }
+                <span>@(IsMine ? VanishingSentLabel : VanishingOpenLabel)</span>
+            </button>
+        }
+        else if (CouldDecrypt)
         {
             <p class="message-bubble-text">@Text</p>
+
+            @if (IsVanishing)
+            {
+                <p class="message-bubble-vanishing-note">@VanishingGoneNote</p>
+            }
         }
         else
         {
@@ -52,6 +76,36 @@
 
     /// <summary> False when this device could not turn the stored ciphertext back into text; the bubble then shows the padlocked line instead of <see cref="Text"/>. </summary>
     [Parameter] public bool CouldDecrypt { get; set; } = true;
+
+    /// <summary> True when this message may be read exactly once, which puts it behind a tap. </summary>
+    [Parameter] public bool IsVanishing { get; set; }
+
+    /// <summary> True once the reader has opened this vanishing message and <see cref="Text"/> holds its body. </summary>
+    [Parameter] public bool IsVanishingOpened { get; set; }
+
+    /// <summary> True while the vanishing body is being fetched, which shows a throbber in place of the invitation. </summary>
+    [Parameter] public bool IsOpening { get; set; }
+
+    /// <summary> Raised when the reader taps a vanishing message, which is what destroys it on the server. </summary>
+    [Parameter] public EventCallback OnOpenVanishing { get; set; }
+
+    /// <summary> Mark on the invitation to open a vanishing message. </summary>
+    const string VanishingEmoji = "👁️";
+
+    /// <summary> Wording on that invitation, for the reader it was sent to. </summary>
+    const string VanishingOpenLabel = "Tap to read once";
+
+    /// <summary> Wording shown to the sender, who cannot open their own vanishing message. </summary>
+    const string VanishingSentLabel = "Sent to be read once";
+
+    /// <summary> Line under a vanishing message that has been opened, saying it is now gone. </summary>
+    const string VanishingGoneNote = "This message is gone from the server.";
+
+    /// <summary> Diameter of the throbber shown while a vanishing body is fetched. </summary>
+    const int VanishingSpinnerSizePx = 14;
+
+    /// <summary> Ring thickness of that throbber. </summary>
+    const int VanishingSpinnerBorderPx = 2;
 
     /// <summary> Modifier pushing the bubble to the right edge of the conversation column. </summary>
     const string MineLineClass = "message-bubble-line--mine";

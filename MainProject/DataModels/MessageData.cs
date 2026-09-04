@@ -30,8 +30,30 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> Base64 nonce used for this one message. </summary>
         public required string Nonce { get; init; }
 
-        /// <summary> Base64 ciphertext with its authentication tag. The message body, unreadable without the recipient's seed. </summary>
+        /// <summary>
+        /// Base64 ciphertext with its authentication tag. The message body, unreadable without the recipient's
+        /// seed. Empty for a vanishing message, whose body is not kept in the document at all — see
+        /// <see cref="VanishingBlobId"/>.
+        /// </summary>
         public required string Ciphertext { get; init; }
+
+        /// <summary>
+        /// For a vanishing message, the blob holding the encrypted body; empty for an ordinary one. The body lives
+        /// outside the document because reading a blob can destroy it in the same step, which a document read
+        /// cannot. Once the recipient opens it, the server no longer has the bytes to hand to anyone — including
+        /// the recipient a second time.
+        /// </summary>
+        public string VanishingBlobId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Base64 SHA-256 of the ciphertext, and what the sender's signature actually covers. It is kept as its
+        /// own field because a vanishing message's ciphertext is not in the document at all — without this, that
+        /// message's signature could never be checked again once the body was gone.
+        /// </summary>
+        public required string CiphertextDigest { get; init; }
+
+        /// <summary> True when this message is meant to be readable exactly once. </summary>
+        public bool IsVanishing => VanishingBlobId.Length > 0;
 
         /// <summary> When the sender sent it. </summary>
         public required long CreatedAtUnixMs { get; init; }

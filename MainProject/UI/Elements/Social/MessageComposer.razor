@@ -6,6 +6,12 @@
     than the only way through.
 *@
 <div class="message-composer" style="@SurfaceStyle">
+    <button type="button"
+            class="message-composer-vanish @(IsVanishing ? VanishOnClass : string.Empty)"
+            title="@(IsVanishing ? VanishOnTitle : VanishOffTitle)"
+            disabled="@IsBusy"
+            @onclick="ToggleVanishingAsync">@VanishEmoji</button>
+
     <input class="message-composer-input"
            type="text"
            placeholder="@Placeholder"
@@ -51,6 +57,28 @@
 
     /// <summary> Grey prompt shown in the empty field. </summary>
     [Parameter] public string Placeholder { get; set; } = DefaultPlaceholder;
+
+    /// <summary> True while the next message will be sent to be read exactly once. </summary>
+    [Parameter] public bool IsVanishing { get; set; }
+
+    /// <summary> Raised when the sender flips the read-once switch, so the caller owns that choice. </summary>
+    [Parameter] public EventCallback<bool> IsVanishingChanged { get; set; }
+
+    /// <summary> Class added to the read-once switch while it is on. </summary>
+    const string VanishOnClass = "message-composer-vanish--on";
+
+    /// <summary> Mark on the read-once switch. </summary>
+    const string VanishEmoji = "👁️";
+
+    /// <summary> Hover text while the switch is on. </summary>
+    const string VanishOnTitle = "This message can be read once, then it is gone";
+
+    /// <summary> Hover text while the switch is off. </summary>
+    const string VanishOffTitle = "Send so it can be read only once";
+
+    /// <summary> Flips the read-once switch and hands the new setting to the caller. </summary>
+    /// <returns> A task that completes once the caller has taken the setting. </returns>
+    Task ToggleVanishingAsync() => IsBusy ? Task.CompletedTask : IsVanishingChanged.InvokeAsync(!IsVanishing);
 
     /// <summary> Prompt used when the caller does not supply one. </summary>
     const string DefaultPlaceholder = "Write a private message…";

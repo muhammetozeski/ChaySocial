@@ -2,6 +2,11 @@
     Styling for MessageComposer. MessageComposer renders this component itself, so the composer always
     arrives with its own CSS attached.
 *@
+@{
+    const int VanishSwitchDiameterPx = 34;
+    const float VanishSwitchGlowOpacity = 0.3f;
+}
+
 <style>
     .message-composer {
         display: flex;
@@ -14,6 +19,35 @@
     }
 
     /* min-width:0 lets the field shrink inside the flex row instead of pushing the send button out of the pill. */
+    /* The read-once switch. Off it is a quiet outline; on it fills amber, because a message that destroys
+       itself is worth seeing before the send button is pressed rather than after. */
+    .message-composer-vanish {
+        flex: 0 0 auto;
+        width: @(VanishSwitchDiameterPx)px;
+        height: @(VanishSwitchDiameterPx)px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        background: transparent;
+        font-size: @(AppMeasures.Font.Normal)px;
+        cursor: pointer;
+        opacity: @(AppMeasures.Opacity.Dim);
+        transition: opacity @(AppMeasures.Duration.Fast)s ease, border-color @(AppMeasures.Duration.Fast)s ease, background @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .message-composer-vanish:hover:not(:disabled) {
+            opacity: 1;
+        }
+
+    .message-composer-vanish--on {
+        opacity: 1;
+        border-color: @(AppColors.Accent.ToRgbaHex(true));
+        background: @(AppColors.SurfaceTintAccent.ToRgbaHex(true));
+        box-shadow: @(AppStyles.GetGlow(AppColors.Accent, VanishSwitchGlowOpacity));
+    }
+
     .message-composer-input {
         flex: 1;
         min-width: 0;

@@ -22,6 +22,9 @@ namespace ChaySocial.Web.Api
         /// <summary> Extension of the half-written file an upload uses before it is moved into place. </summary>
         const string PendingExtension = ".writing";
 
+        /// <summary> Extension a blob is renamed to the instant one reader claims it, which is what makes the claim exclusive. </summary>
+        const string ClaimedExtension = ".claimed";
+
         /// <summary> Where the blobs live, so a caller can report it at startup. </summary>
         public string RootDirectory => rootDirectory;
 
@@ -56,6 +59,39 @@ namespace ChaySocial.Web.Api
         /// <summary> Removes stored bytes. Removing something absent is not an error. </summary>
         /// <param name="blobId"> Id from <see cref="SaveAsync"/>. </param>
         public void Remove(string blobId) => File.Delete(PathFor(blobId));
+
+        /// <summary>
+        /// Reads bytes and deletes them in one step. The move to a temporary name happens before the read, so two
+        /// requests racing for the same blob cannot both come away with a copy — the loser finds nothing, which is
+        /// exactly the guarantee a one-time message needs.
+        /// </summary>
+        /// <param name="blobId"> Id from <see cref="SaveAsync"/>. </param>
+        /// <param name="cancellationToken"> Cancels the read. </param>
+        /// <returns> The bytes, or null when they were already taken or never existed. </returns>
+        public async Task<byte[]?> ConsumeAsync(string blobId, CancellationToken cancellationToken = default)
+        {
+            string blobPath = PathFor(blobId);
+            string claimedPath = blobPath + ClaimedExtension;
+
+            try
+            {
+                File.Move(blobPath, claimedPath);
+            }
+            catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException or IOException)
+            {
+                // Already taken, or never there: both mean this reader gets nothing, which is the point.
+                return null;
+            }
+
+            try
+            {
+                return await File.ReadAllBytesAsync(claimedPath, cancellationToken);
+            }
+            finally
+            {
+                File.Delete(claimedPath);
+            }
+        }
 
         /// <summary>
         /// Builds the path one blob lives at, refusing any id that is not the shape this class hands out. Ids
@@ -104,6 +140,12 @@ namespace ChaySocial.Web.Api
             app.MapGet($"{BlobRoutes.Base}/{{blobId}}", async (string blobId, CancellationToken cancellationToken) =>
             {
                 byte[]? content = await storage.ReadAsync(blobId, cancellationToken);
+                return content is null ? Results.NotFound() : Results.Bytes(content);
+            });
+
+            app.MapPost($"{BlobRoutes.Base}/{{blobId}}/{BlobRoutes.ConsumeSegment}", async (string blobId, CancellationToken cancellationToken) =>
+            {
+                byte[]? content = await storage.ConsumeAsync(blobId, cancellationToken);
                 return content is null ? Results.NotFound() : Results.Bytes(content);
             });
 

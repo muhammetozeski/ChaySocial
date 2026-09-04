@@ -81,11 +81,15 @@
                         @foreach (OpenedMessage letter in conversation)
                         {
                             <MessageBubble @key="letter.Envelope.MessageId"
-                                           Text="@letter.Text"
+                                           Text="@TextFor(letter)"
                                            IsMine="@letter.IsMine"
                                            CreatedAtUnixMs="@letter.Envelope.CreatedAtUnixMs"
                                            IsSenderVerified="@letter.IsSenderVerified"
-                                           CouldDecrypt="@letter.CouldDecrypt" />
+                                           CouldDecrypt="@CanDrawText(letter)"
+                                           IsVanishing="@letter.Envelope.IsVanishing"
+                                           IsVanishingOpened="@IsOpened(letter)"
+                                           IsOpening="@(openingMessageId == letter.Envelope.MessageId)"
+                                           OnOpenVanishing="() => OpenVanishingAsync(letter)" />
                         }
                     </div>
                 }
@@ -98,6 +102,8 @@
                     {
                         <MessageComposer Text="@draftText"
                                          TextChanged="HandleDraftChanged"
+                                         IsVanishing="@isDraftVanishing"
+                                         IsVanishingChanged="HandleDraftVanishingChanged"
                                          OnSubmit="SendLetterAsync"
                                          IsBusy="@isSending" />
                     }

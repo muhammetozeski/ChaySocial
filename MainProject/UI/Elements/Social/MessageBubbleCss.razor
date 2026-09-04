@@ -38,6 +38,56 @@
         }
 
     /* pre-wrap keeps the sender's own line breaks; overflow-wrap stops a pasted key or address from widening the bubble past its max. */
+    /* The tap target that opens a one-time message. It is deliberately a button and not the whole bubble, so
+       nothing about scrolling past a conversation can consume a message by accident. */
+    .message-bubble-vanishing {
+        display: inline-flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Small)px;
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px10)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px dashed @(AppColors.GlassBorderTop.ToRgbaHex(true));
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        cursor: pointer;
+        transition: border-color @(AppMeasures.Duration.Fast)s ease, transform @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .message-bubble-vanishing:hover:not(:disabled) {
+            border-color: @(AppColors.Accent.ToRgbaHex(true));
+            transform: translateY(-1px);
+        }
+
+        .message-bubble-vanishing:disabled {
+            cursor: default;
+            opacity: @(AppMeasures.Opacity.Muted);
+            border-style: solid;
+        }
+
+    .message-bubble-vanishing-emoji {
+        font-size: @(AppMeasures.Font.Normal)px;
+        animation: message-bubble-vanishing-blink @(AppMeasures.Duration.VerySlow)s ease-in-out infinite;
+    }
+
+    .message-bubble-vanishing-note {
+        margin: @(AppMeasures.Space.Px6)px 0 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        opacity: @(AppMeasures.Opacity.Muted);
+    }
+
+    @@keyframes message-bubble-vanishing-blink {
+        0%, 100% {
+            opacity: @(AppMeasures.Opacity.Dim);
+        }
+
+        50% {
+            opacity: 1;
+        }
+    }
+
     .message-bubble-text {
         margin: 0;
         font-size: @(AppMeasures.Font.Normal)px;

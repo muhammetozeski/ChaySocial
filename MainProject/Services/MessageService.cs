@@ -63,10 +63,16 @@ namespace ChaySocial.MainProject.Services
         /// The stored envelope, or null when the text was not sendable or the recipient's profile could not be
         /// trusted to carry that account's real encryption key.
         /// </returns>
-        public static async Task<MessageData?> SendAsync(PrivateIdentity sender, ProfileData recipientProfile, string text)
+        /// <param name="isVanishing">
+        /// True sends a message the recipient may read exactly once. Its encrypted body is stored as a blob rather
+        /// than inside the document, because a blob read can destroy the bytes in the same step — so once it has
+        /// been opened the server has nothing left to serve, to anyone.
+        /// </param>
+        public static async Task<MessageData?> SendAsync(PrivateIdentity sender, ProfileData recipientProfile, string text, bool isVanishing = false)
         {
             string trimmed = text.Trim();
             if (trimmed.Length == 0 || trimmed.Length > MessageData.MaximumTextLength) return null;
+            if (isVanishing && AppServices.Blobs is null) return null;
 
             if (!TryReadPublishedKeys(recipientProfile, out PublicIdentity? recipient)) return null;
 
@@ -92,6 +98,8 @@ namespace ChaySocial.MainProject.Services
                 nonce,
                 associatedData);
 
+            string ciphertextDigest = DigestOf(ciphertext);
+
             byte[] transcript = BuildTranscript(
                 messageId,
                 conversationId,
@@ -99,8 +107,19 @@ namespace ChaySocial.MainProject.Services
                 recipientAddress,
                 secret.Encapsulation,
                 nonce,
-                ciphertext,
+                ciphertextDigest,
                 createdAt);
+
+            // A vanishing body goes to the blob store and leaves the document empty; an ordinary one rides inside
+            // the document as usual. Either way the signature above already covers the same ciphertext.
+            string vanishingBlobId = string.Empty;
+            if (isVanishing)
+            {
+                string? uploaded = await AppServices.Blobs!.UploadAsync(ciphertext);
+                if (uploaded is null) return null;
+
+                vanishingBlobId = uploaded;
+            }
 
             MessageData message = new()
             {
@@ -110,7 +129,9 @@ namespace ChaySocial.MainProject.Services
                 RecipientAddress = recipientAddress,
                 Encapsulation = Convert.ToBase64String(secret.Encapsulation),
                 Nonce = Convert.ToBase64String(nonce),
-                Ciphertext = Convert.ToBase64String(ciphertext),
+                Ciphertext = isVanishing ? string.Empty : Convert.ToBase64String(ciphertext),
+                VanishingBlobId = vanishingBlobId,
+                CiphertextDigest = ciphertextDigest,
                 CreatedAtUnixMs = createdAt,
                 Signature = Convert.ToBase64String(sender.Sign(transcript))
             };
@@ -171,6 +192,55 @@ namespace ChaySocial.MainProject.Services
         }
 
         /// <summary>
+        /// Opens a vanishing message, destroying it as it is read. The server hands the bytes over and deletes
+        /// them in the same step, so calling this twice returns nothing the second time — the message is gone
+        /// whether or not the reader ever managed to look at it, which is what "read once" has to mean if it is
+        /// to mean anything.
+        /// </summary>
+        /// <param name="reader"> The unlocked account the message was addressed to. </param>
+        /// <param name="message"> The vanishing envelope to open. </param>
+        /// <param name="cancellationToken"> Cancels the fetch. </param>
+        /// <returns> The message body, or null when it was already opened, addressed elsewhere, or could not be decrypted. </returns>
+        public static async Task<string?> ConsumeVanishingAsync(PrivateIdentity reader, MessageData message, CancellationToken cancellationToken = default)
+        {
+            if (!message.IsVanishing || AppServices.Blobs is null) return null;
+            if (message.RecipientAddress != reader.Public.Address) return null;
+
+            byte[]? ciphertext = await AppServices.Blobs.ConsumeAsync(message.VanishingBlobId, cancellationToken);
+            if (ciphertext is null) return null;
+
+            // The body arrived separately from the document that vouches for it, so it is checked against the
+            // digest the sender signed before any of it is trusted.
+            if (DigestOf(ciphertext) != message.CiphertextDigest)
+            {
+                Log($"Vanishing message '{message.MessageId}' arrived with a body its signature does not cover.", LogLevel.Warning);
+                return null;
+            }
+
+            // The document is dropped too, so the conversation stops listing an envelope whose body no longer exists.
+            // No event is raised: the only screen that cares is the one that just did this, and telling it to reload
+            // would pull the message out from under the reader before they had read it.
+            await AppServices.Documents.DeleteAsync(message.Id, cancellationToken);
+
+            if (!TryDecodeBase64(message.Encapsulation, nameof(message.Encapsulation), message.MessageId, out byte[] encapsulation)
+                || !TryDecodeBase64(message.Nonce, nameof(message.Nonce), message.MessageId, out byte[] nonce)
+                || encapsulation.Length != AppCryptography.KeyExchange.EncapsulationSize)
+            {
+                return null;
+            }
+
+            byte[] associatedData = BuildAssociatedData(
+                message.ConversationId,
+                message.SenderAddress,
+                message.RecipientAddress,
+                message.CreatedAtUnixMs);
+
+            return AppCryptography.Cipher.TryDecrypt(ciphertext, reader.Decapsulate(encapsulation), nonce, associatedData, out byte[] plaintext)
+                ? Encoding.UTF8.GetString(plaintext)
+                : null;
+        }
+
+        /// <summary>
         /// Checks that a message really was sent by the account it names, using the signing key published in that
         /// account's profile. A message that fails this was altered or forged after it left its sender, whether or
         /// not it still decrypts.
@@ -185,10 +255,17 @@ namespace ChaySocial.MainProject.Services
 
             if (!TryDecodeBase64(message.Encapsulation, nameof(message.Encapsulation), message.MessageId, out byte[] encapsulation)
                 || !TryDecodeBase64(message.Nonce, nameof(message.Nonce), message.MessageId, out byte[] nonce)
-                || !TryDecodeBase64(message.Ciphertext, nameof(message.Ciphertext), message.MessageId, out byte[] ciphertext)
                 || !TryDecodeBase64(message.Signature, nameof(message.Signature), message.MessageId, out byte[] signature))
             {
                 return false;
+            }
+
+            // An ordinary message still carries its body, so the digest it claims is checked against the real
+            // bytes; a vanishing one has none left, and the digest is all there is to verify against.
+            if (message.Ciphertext.Length > 0)
+            {
+                if (!TryDecodeBase64(message.Ciphertext, nameof(message.Ciphertext), message.MessageId, out byte[] ciphertext)) return false;
+                if (DigestOf(ciphertext) != message.CiphertextDigest) return false;
             }
 
             byte[] transcript = BuildTranscript(
@@ -198,7 +275,7 @@ namespace ChaySocial.MainProject.Services
                 message.RecipientAddress,
                 encapsulation,
                 nonce,
-                ciphertext,
+                message.CiphertextDigest,
                 message.CreatedAtUnixMs);
 
             return AppCryptography.Identities.Verify(transcript, signature, sender);
@@ -316,7 +393,7 @@ namespace ChaySocial.MainProject.Services
         /// <param name="recipientAddress"> Address of the recipient. </param>
         /// <param name="encapsulation"> Value the recipient decapsulates to recover the secret. </param>
         /// <param name="nonce"> Nonce this one message was encrypted under. </param>
-        /// <param name="ciphertext"> The encrypted body with its authentication tag. </param>
+        /// <param name="ciphertextDigest"> Base64 SHA-256 of the encrypted body. </param>
         /// <param name="createdAtUnixMs"> When the message was sent. </param>
         /// <returns> The transcript to sign. </returns>
         static byte[] BuildTranscript(
@@ -326,7 +403,7 @@ namespace ChaySocial.MainProject.Services
             string recipientAddress,
             byte[] encapsulation,
             byte[] nonce,
-            byte[] ciphertext,
+            string ciphertextDigest,
             long createdAtUnixMs)
         {
             TranscriptWriter transcript = new();
@@ -337,10 +414,19 @@ namespace ChaySocial.MainProject.Services
             transcript.WriteText(recipientAddress);
             transcript.WriteBytes(encapsulation);
             transcript.WriteBytes(nonce);
-            transcript.WriteBytes(ciphertext);
+            transcript.WriteText(ciphertextDigest);
             transcript.WriteInt64(createdAtUnixMs);
             return transcript.ToArray();
         }
+
+        /// <summary>
+        /// Summarises a ciphertext into the value the signature covers. The signature names the body by its digest
+        /// rather than carrying it, which is what lets a vanishing message stay verifiable after its body is gone.
+        /// </summary>
+        /// <param name="ciphertext"> The encrypted body with its authentication tag. </param>
+        /// <returns> Base64 SHA-256 of those bytes. </returns>
+        static string DigestOf(byte[] ciphertext)
+            => Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(ciphertext));
 
         /// <summary>
         /// Rebuilds the published half of an identity out of a profile, the way a reader verifies a post's author.

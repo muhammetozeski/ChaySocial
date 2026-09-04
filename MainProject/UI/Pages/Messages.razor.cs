@@ -201,6 +201,21 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> True while a letter is being sealed and stored, which locks the composer. </summary>
         bool isSending;
 
+        /// <summary> True while the next letter should be sent to be read exactly once. </summary>
+        bool isDraftVanishing;
+
+        /// <summary>
+        /// Vanishing letters this reader has opened, kept only for as long as the page is on screen. The server no
+        /// longer holds them, so leaving the conversation is what finally loses them.
+        /// </summary>
+        readonly Dictionary<string, OpenedMessage> openedVanishing = [];
+
+        /// <summary> Id of the vanishing letter currently being fetched, or null when none is. </summary>
+        string? openingMessageId;
+
+        /// <summary> Shown in place of a vanishing letter that had already been opened, or could not be decrypted. </summary>
+        const string VanishingAlreadyGoneText = "This message was already opened, and it is gone.";
+
         /// <summary> Route value the last load ran for; a different one means the reader moved between the postbox and a conversation. </summary>
         string loadedAddress = string.Empty;
 
@@ -319,7 +334,16 @@ namespace ChaySocial.MainProject.UI.Pages
             await Task.WhenAll(profileRead, lettersRead);
 
             otherProfile = await profileRead;
-            conversation = [.. (await lettersRead).Select(Open)];
+
+            List<OpenedMessage> letters = [.. (await lettersRead).Select(Open)];
+
+            // A vanishing letter is deleted the moment it is opened, so a later reload no longer finds it. Keeping
+            // the ones this reader already opened means an unrelated refresh — a new letter arriving, say — does not
+            // wipe a message off the screen while they are still reading it.
+            letters.AddRange(openedVanishing.Values.Where(opened =>
+                letters.All(letter => letter.Envelope.MessageId != opened.Envelope.MessageId)));
+
+            conversation = [.. letters.OrderBy(letter => letter.Envelope.CreatedAtUnixMs)];
         }
 
         /// <summary>
@@ -366,6 +390,69 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="text"> The field's new contents. </param>
         void HandleDraftChanged(string text) => draftText = text;
 
+        /// <summary> Keeps the read-once choice on the page, so it survives a redraw and resets after a send. </summary>
+        /// <param name="isVanishing"> True when the next letter should be readable exactly once. </param>
+        void HandleDraftVanishingChanged(bool isVanishing) => isDraftVanishing = isVanishing;
+
+        /// <summary>
+        /// Opens a vanishing letter, which destroys it on the server as it is read. The body is kept only on this
+        /// page, in memory: there is nowhere left to fetch it from, so leaving the conversation loses it — which
+        /// is what the sender asked for.
+        /// </summary>
+        /// <param name="letter"> The vanishing letter the reader tapped. </param>
+        async Task OpenVanishingAsync(OpenedMessage letter)
+        {
+            if (letter.IsMine || openingMessageId is not null || openedVanishing.ContainsKey(letter.Envelope.MessageId)) return;
+
+            openingMessageId = letter.Envelope.MessageId;
+
+            try
+            {
+                string? body = await MessageService.ConsumeVanishingAsync(Account, letter.Envelope);
+
+                // The load marked this letter unreadable because its body was not in the document. Now that the
+                // body is in hand, the bubble has to be told it may draw text instead of the padlocked line.
+                openedVanishing[letter.Envelope.MessageId] = letter with
+                {
+                    Text = body ?? VanishingAlreadyGoneText,
+                    CouldDecrypt = true
+                };
+            }
+            catch (Exception error)
+            {
+                openedVanishing[letter.Envelope.MessageId] = letter with { Text = VanishingAlreadyGoneText, CouldDecrypt = true };
+                Log($"{nameof(Messages)} could not open a vanishing letter.\n{error}", LogLevel.Error);
+            }
+            finally
+            {
+                openingMessageId = null;
+            }
+        }
+
+        /// <summary> True once this reader has opened that vanishing letter on this page. </summary>
+        /// <param name="letter"> The letter being drawn. </param>
+        /// <returns> True when its body is already in hand. </returns>
+        bool IsOpened(OpenedMessage letter) => openedVanishing.ContainsKey(letter.Envelope.MessageId);
+
+        /// <summary> The body a bubble should draw: the opened vanishing text when there is one, otherwise what the load decrypted. </summary>
+        /// <param name="letter"> The letter being drawn. </param>
+        /// <returns> The text to show. </returns>
+        string TextFor(OpenedMessage letter) => Current(letter).Text;
+
+        /// <summary> Whether a bubble may draw text rather than the padlocked line, which changes once a vanishing letter is opened. </summary>
+        /// <param name="letter"> The letter being drawn. </param>
+        /// <returns> True when its body is in hand. </returns>
+        bool CanDrawText(OpenedMessage letter) => Current(letter).CouldDecrypt;
+
+        /// <summary>
+        /// The version of a letter the screen should trust: the opened one when this reader has already consumed
+        /// it, otherwise the one the last load produced.
+        /// </summary>
+        /// <param name="letter"> The letter being drawn. </param>
+        /// <returns> The letter to read the body and the seal from. </returns>
+        OpenedMessage Current(OpenedMessage letter)
+            => openedVanishing.TryGetValue(letter.Envelope.MessageId, out OpenedMessage opened) ? opened : letter;
+
         /// <summary>
         /// Seals what the reader wrote to the other account and stores it. The conversation is not re-read here:
         /// sending raises the messages event this page already reloads on, so the new letter arrives the same way one
@@ -381,7 +468,7 @@ namespace ChaySocial.MainProject.UI.Pages
 
             try
             {
-                MessageData? sent = await MessageService.SendAsync(Account, otherProfile, draftText);
+                MessageData? sent = await MessageService.SendAsync(Account, otherProfile, draftText, isDraftVanishing);
 
                 if (sent is null)
                 {
@@ -390,6 +477,7 @@ namespace ChaySocial.MainProject.UI.Pages
                 }
 
                 draftText = string.Empty;
+                isDraftVanishing = false;
             }
             catch (Exception error)
             {

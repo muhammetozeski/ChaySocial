@@ -62,6 +62,23 @@ namespace ChaySocial.MainProject.Persistence
             }
         }
 
+        public async Task<byte[]?> ConsumeAsync(string blobId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                HttpResponseMessage response = await httpClient.PostAsync(BlobRoutes.ConsumeBlob(blobId), content: null, cancellationToken);
+                if (response.StatusCode == HttpStatusCode.NotFound) return null;
+
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            }
+            catch (Exception error) when (error is not OperationCanceledException)
+            {
+                Log($"Consuming blob '{blobId}' failed.\n{error}", LogLevel.Error);
+                return null;
+            }
+        }
+
         public async Task DeleteAsync(string blobId, CancellationToken cancellationToken = default)
         {
             try
