@@ -1,0 +1,111 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+
+@{
+    const int AddControlPaddingYPx = 6;
+    const int AddControlPaddingXPx = 12;
+    const int ChipPaddingYPx = 5;
+    const int ChipPaddingXPx = 10;
+    const int ChipGapPx = 6;
+    const int RemoveControlSizePx = 18;
+}
+
+<style>
+    .media-picker {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: @(AppMeasures.Space.Small)px;
+    }
+
+    /* The label wraps the file input so the whole pill is the click target; the input itself is hidden because
+       a browser's own file button cannot be styled to match anything else on screen. */
+    .media-picker-add {
+        display: inline-flex;
+        align-items: center;
+        gap: @(ChipGapPx)px;
+        padding: @(AddControlPaddingYPx)px @(AddControlPaddingXPx)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        cursor: pointer;
+        transition: border-color @(AppMeasures.Duration.Fast)s ease, color @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .media-picker-add:hover {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
+    .media-picker-add--disabled {
+        opacity: @(AppMeasures.Opacity.Disabled);
+        cursor: not-allowed;
+    }
+
+    .media-picker-input {
+        display: none;
+    }
+
+    .media-picker-add-emoji {
+        font-size: @(AppMeasures.Font.Normal)px;
+    }
+
+    .media-picker-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: @(ChipGapPx)px;
+        padding: @(ChipPaddingYPx)px @(ChipPaddingXPx)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        animation: media-picker-arrive @(AppMeasures.Duration.Fast)s ease both;
+    }
+
+    .media-picker-chip--working {
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+    }
+
+    .media-picker-chip-emoji {
+        font-size: @(AppMeasures.Font.Normal)px;
+    }
+
+    .media-picker-chip-size {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .media-picker-chip-remove {
+        width: @(RemoveControlSizePx)px;
+        height: @(RemoveControlSizePx)px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: none;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        background: transparent;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Small)px;
+        cursor: pointer;
+        transition: background @(AppMeasures.Duration.Fast)s ease, color @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .media-picker-chip-remove:hover {
+            background: @(AppColors.SurfaceStrong.ToRgbaHex(true));
+            color: @(AppColors.TextDanger.ToRgbaHex(true));
+        }
+
+    .media-picker-message {
+        margin: @(AppMeasures.Space.Small)px 0 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextWarning.ToRgbaHex(true));
+    }
+
+    @@keyframes media-picker-arrive {
+        from {
+            opacity: 0;
+            transform: scale(0.92);
+        }
+    }
+</style>

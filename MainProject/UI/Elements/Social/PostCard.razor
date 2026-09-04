@@ -36,7 +36,15 @@
             </div>
         }
 
-        <p class="post-card-text">@Post.Text</p>
+        @if (Post.Text.Length > 0)
+        {
+            <p class="post-card-text">@Post.Text</p>
+        }
+
+        @foreach (MediaAttachment attachment in Post.Attachments)
+        {
+            <MediaView Attachment="@attachment" @key="attachment.BlobId" />
+        }
 
         <div class="post-card-actions">
             <button type="button"

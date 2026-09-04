@@ -32,7 +32,8 @@ namespace ChaySocial.Web.Client
             AppServices.Configure(
                 new HttpDocumentStore(http, proofOfWork),
                 new BrowserLocalStore(host.Services.GetRequiredService<ILocalStorageService>()),
-                proofOfWork);
+                proofOfWork,
+                new HttpBlobStore(http, proofOfWork));
 
             // The stored session is read by MainLayout on its first render, not here: reaching browser storage
             // needs the app to be running, and doing it before RunAsync leaves every visitor looking signed out.

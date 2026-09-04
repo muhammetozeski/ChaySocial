@@ -17,6 +17,10 @@
                   @oninput="HandleTextInput"></textarea>
     </div>
 
+    <MediaPicker Attachments="@Attachments"
+                 AttachmentsChanged="@AttachmentsChanged"
+                 IsDisabled="@IsBusy" />
+
     <div class="post-composer-footer">
         <span class="post-composer-counter" style="@CounterStyle">@CounterLabel</span>
 
@@ -98,6 +102,12 @@
     /// <summary> Emoji drawn in the composer's bubble, normally the signed-in account's own avatar. </summary>
     [Parameter] public string Avatar { get; set; } = ProfileData.DefaultAvatar;
 
+    /// <summary> Media already attached to the post being written. </summary>
+    [Parameter] public IReadOnlyList<MediaAttachment> Attachments { get; set; } = [];
+
+    /// <summary> Raised whenever the attached set changes, so the page owns it alongside the text. </summary>
+    [Parameter] public EventCallback<IReadOnlyList<MediaAttachment>> AttachmentsChanged { get; set; }
+
     /// <summary> The bubble emoji, falling back to the starter avatar when the page passed nothing. </summary>
     string AvatarEmoji => string.IsNullOrEmpty(Avatar) ? ProfileData.DefaultAvatar : Avatar;
 
@@ -134,10 +144,13 @@
         }
     }
 
-    /// <summary> True when the share button should accept a tap: text that is neither empty nor over the limit, and no publish already running. </summary>
+    /// <summary>
+    /// True when the share button should accept a tap. A post needs something to say — words or media — and must
+    /// not run past the text limit, and no publish may already be running.
+    /// </summary>
     bool CanSubmit => !IsBusy
         && OnSubmit.HasDelegate
-        && PublishableLength > 0
+        && (PublishableLength > 0 || Attachments.Count > 0)
         && PublishableLength <= PostData.MaximumTextLength;
 
     /// <summary> Hands each keystroke's text back to the page that owns it. </summary>

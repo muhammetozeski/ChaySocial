@@ -31,6 +31,12 @@ namespace ChaySocial.MainProject.DataModels
         /// </summary>
         public string Topic { get; init; } = string.Empty;
 
+        /// <summary>
+        /// Pictures, recordings and video hanging off this post. Each carries the key its bytes were encrypted
+        /// with, so anybody who can read the post can open its media and the server can open neither.
+        /// </summary>
+        public IReadOnlyList<MediaAttachment> Attachments { get; init; } = [];
+
         /// <summary> Longest post accepted. </summary>
         public const int MaximumTextLength = 500;
 

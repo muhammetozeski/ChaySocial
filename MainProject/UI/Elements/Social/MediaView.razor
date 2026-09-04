@@ -1,0 +1,83 @@
+@using ChaySocial.MainProject.Services
+
+@*
+    Draws one attachment once its bytes have been fetched and opened. The media is not loaded until the element
+    is actually rendered, so a wall of posts does not pull every picture down at once.
+*@
+
+<div class="media-view media-view--@(Attachment.Kind.ToString().ToLowerInvariant())">
+    @if (_dataUri is null)
+    {
+        <div class="media-view-waiting">
+            @if (_hasFailed)
+            {
+                <span class="media-view-failed">@FailedEmoji @FailedLabel</span>
+            }
+            else
+            {
+                <CoreSpinner SizePx="@WaitingSpinnerSizePx" />
+            }
+        </div>
+    }
+    else
+    {
+        @switch (Attachment.Kind)
+        {
+            case MediaKind.Image:
+                <img class="media-view-image" src="@_dataUri" alt="@Attachment.Description" loading="lazy" />
+                break;
+
+            case MediaKind.Audio:
+                <audio class="media-view-audio" src="@_dataUri" controls preload="none"></audio>
+                break;
+
+            case MediaKind.Video:
+                <video class="media-view-video" src="@_dataUri" controls preload="metadata" playsinline></video>
+                break;
+        }
+    }
+</div>
+
+<MediaViewCss />
+
+@code {
+    /// <summary> Mark shown when the media cannot be fetched or opened. </summary>
+    const string FailedEmoji = "🫧";
+
+    /// <summary> Wording shown when the media cannot be fetched or opened. </summary>
+    const string FailedLabel = "This attachment could not be opened.";
+
+    /// <summary> Diameter of the throbber drawn while the media is being fetched. </summary>
+    const int WaitingSpinnerSizePx = 24;
+
+    /// <summary> The attachment to draw. </summary>
+    [Parameter, EditorRequired] public MediaAttachment Attachment { get; set; }
+
+    /// <summary> The decrypted media as a data URI, or null while it is still being fetched. </summary>
+    string? _dataUri;
+
+    /// <summary> True once fetching or opening the media has failed, which replaces the throbber with a quiet notice. </summary>
+    bool _hasFailed;
+
+    /// <summary> Blob the current data URI belongs to, so a reused element re-fetches when its attachment changes. </summary>
+    string _loadedBlobId = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedBlobId == Attachment.BlobId) return;
+
+        _loadedBlobId = Attachment.BlobId;
+        _dataUri = null;
+        _hasFailed = false;
+
+        byte[]? content = await MediaService.OpenAsync(Attachment);
+
+        if (content is null)
+        {
+            _hasFailed = true;
+            return;
+        }
+
+        _dataUri = MediaService.BuildDataUri(content, Attachment.ContentType);
+    }
+}

@@ -23,6 +23,8 @@
 
         <PostComposer Text="@ComposerText"
                       TextChanged="HandleComposerTextChanged"
+                      Attachments="@ComposerAttachments"
+                      AttachmentsChanged="HandleComposerAttachmentsChanged"
                       OnSubmit="PublishAsync"
                       IsBusy="@IsPublishing"
                       Avatar="@ComposerAvatar" />

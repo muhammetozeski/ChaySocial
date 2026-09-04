@@ -1,0 +1,185 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using ChaySocial.MainProject.Services
+
+@*
+    Picks files, encrypts them on this device and hands back the attachments a post can carry. Each chosen file
+    is shown as a chip with its own remove control, so somebody can change their mind before publishing.
+*@
+
+<div class="media-picker">
+    <label class="media-picker-add @(CanAddMore ? string.Empty : DisabledClass)">
+        <InputFile OnChange="HandleFilesChosen"
+                   multiple
+                   accept="@AcceptList"
+                   disabled="@(!CanAddMore)"
+                   class="media-picker-input" />
+        <span class="media-picker-add-emoji">@AddEmoji</span>
+        <span>@AddLabel</span>
+    </label>
+
+    @foreach (MediaAttachment attachment in Attachments)
+    {
+        <div class="media-picker-chip" @key="attachment.BlobId">
+            <span class="media-picker-chip-emoji">@EmojiFor(attachment.Kind)</span>
+            <span class="media-picker-chip-size">@FormatSize(attachment.ByteCount)</span>
+            <button type="button"
+                    class="media-picker-chip-remove"
+                    title="@RemoveTitle"
+                    @onclick="() => RemoveAsync(attachment)">@RemoveEmoji</button>
+        </div>
+    }
+
+    @if (_isUploading)
+    {
+        <div class="media-picker-chip media-picker-chip--working">
+            <CoreSpinner SizePx="@WorkingSpinnerSizePx" BorderWidthPx="@WorkingSpinnerBorderPx" />
+            <span class="media-picker-chip-size">@UploadingLabel</span>
+        </div>
+    }
+</div>
+
+@if (_message is not null)
+{
+    <p class="media-picker-message">@_message</p>
+}
+
+<MediaPickerCss />
+
+@code {
+    /// <summary> Class added to the add control while no more files may be chosen. </summary>
+    const string DisabledClass = "media-picker-add--disabled";
+
+    /// <summary> Mark on the control that opens the file picker. </summary>
+    const string AddEmoji = "🖇️";
+
+    /// <summary> Wording on the control that opens the file picker. </summary>
+    const string AddLabel = "Attach";
+
+    /// <summary> Mark on the control that drops a chosen file. </summary>
+    const string RemoveEmoji = "✕";
+
+    /// <summary> Tooltip on the control that drops a chosen file. </summary>
+    const string RemoveTitle = "Remove this attachment";
+
+    /// <summary> Wording shown beside the throbber while a file is being encrypted and uploaded. </summary>
+    const string UploadingLabel = "sealing…";
+
+    /// <summary> Shown when a file is refused because too many are already attached. </summary>
+    const string TooManyMessage = "That is as many as one post carries.";
+
+    /// <summary> Shown when a file is refused for its size or type. </summary>
+    const string RefusedMessage = "That file could not be attached — check its size and type.";
+
+    /// <summary> Diameter of the throbber shown while a file uploads. </summary>
+    const int WorkingSpinnerSizePx = 14;
+
+    /// <summary> Ring thickness of that throbber. </summary>
+    const int WorkingSpinnerBorderPx = 2;
+
+    /// <summary> Bytes in a kibibyte, for turning a byte count into something readable. </summary>
+    const double BytesPerKibibyte = 1024;
+
+    /// <summary> Attachments chosen so far. </summary>
+    [Parameter] public IReadOnlyList<MediaAttachment> Attachments { get; set; } = [];
+
+    /// <summary> Raised whenever the chosen set changes, so the composer can keep it. </summary>
+    [Parameter] public EventCallback<IReadOnlyList<MediaAttachment>> AttachmentsChanged { get; set; }
+
+    /// <summary> True while the composer is busy publishing, which locks this control too. </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+
+    /// <summary> True while a chosen file is being encrypted and uploaded. </summary>
+    bool _isUploading;
+
+    /// <summary> Line drawn under the picker after a file was refused, or null when nothing was. </summary>
+    string? _message;
+
+    /// <summary> Media types the file picker offers. </summary>
+    static readonly string AcceptList = MediaService.BuildAcceptList();
+
+    /// <summary> True while another file may still be attached. </summary>
+    bool CanAddMore => !IsDisabled && !_isUploading && Attachments.Count < MediaAttachment.MaximumPerPost;
+
+    /// <summary> Encrypts and uploads every chosen file, adding each one as it lands. </summary>
+    /// <param name="change"> The files the picker handed over. </param>
+    async Task HandleFilesChosen(InputFileChangeEventArgs change)
+    {
+        _message = null;
+        _isUploading = true;
+
+        try
+        {
+            List<MediaAttachment> chosen = [.. Attachments];
+
+            foreach (IBrowserFile file in change.GetMultipleFiles(MediaAttachment.MaximumPerPost))
+            {
+                if (chosen.Count >= MediaAttachment.MaximumPerPost)
+                {
+                    _message = TooManyMessage;
+                    break;
+                }
+
+                MediaAttachment? attachment = await UploadOneAsync(file);
+                if (attachment is null)
+                {
+                    _message = RefusedMessage;
+                    continue;
+                }
+
+                chosen.Add(attachment.Value);
+                await AttachmentsChanged.InvokeAsync(chosen);
+            }
+        }
+        catch (Exception error)
+        {
+            _message = RefusedMessage;
+            Log($"{nameof(MediaPicker)} could not attach a file.\n{error}", LogLevel.Error);
+        }
+        finally
+        {
+            _isUploading = false;
+        }
+    }
+
+    /// <summary> Reads one file into memory and hands it to the media service. </summary>
+    /// <param name="file"> File the picker offered. </param>
+    /// <returns> The attachment, or null when the file was refused. </returns>
+    static async Task<MediaAttachment?> UploadOneAsync(IBrowserFile file)
+    {
+        if (file.Size > MediaAttachment.MaximumByteCount) return null;
+
+        using MemoryStream buffer = new();
+        await file.OpenReadStream(MediaAttachment.MaximumByteCount).CopyToAsync(buffer);
+
+        return await MediaService.UploadAsync(buffer.ToArray(), file.ContentType, file.Name);
+    }
+
+    /// <summary> Drops one attachment and deletes the bytes it pointed at. </summary>
+    /// <param name="attachment"> Attachment to drop. </param>
+    async Task RemoveAsync(MediaAttachment attachment)
+    {
+        if (IsDisabled) return;
+
+        await MediaService.RemoveAsync(attachment);
+        await AttachmentsChanged.InvokeAsync([.. Attachments.Where(candidate => candidate.BlobId != attachment.BlobId)]);
+    }
+
+    /// <summary> Picks the mark shown for a kind of media. </summary>
+    /// <param name="kind"> Kind of the attachment. </param>
+    /// <returns> The emoji standing in for it. </returns>
+    static string EmojiFor(MediaKind kind) => kind switch
+    {
+        MediaKind.Audio => "🎧",
+        MediaKind.Video => "🎬",
+        _ => "🖼️"
+    };
+
+    /// <summary> Turns a byte count into a short readable size. </summary>
+    /// <param name="byteCount"> Size of the media. </param>
+    /// <returns> The size in kibibytes or mebibytes. </returns>
+    static string FormatSize(long byteCount)
+    {
+        double kibibytes = byteCount / BytesPerKibibyte;
+        return kibibytes < BytesPerKibibyte ? $"{kibibytes:F0} KB" : $"{kibibytes / BytesPerKibibyte:F1} MB";
+    }
+}

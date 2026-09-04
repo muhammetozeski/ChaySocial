@@ -18,6 +18,9 @@ namespace ChaySocial.MainProject.Services
         /// <summary> Pays the server's computational price for writing, or null when the host runs against a store that charges none. </summary>
         public static Protection.ProofOfWorkClient? ProofOfWork;
 
+        /// <summary> Where encrypted media lives, or null when the host has no media storage wired up. </summary>
+        public static IBlobStore? Blobs;
+
         /// <summary> True once the host has supplied both stores. </summary>
         public static bool IsConfigured => Documents is not null && LocalStore is not null;
 
@@ -25,11 +28,17 @@ namespace ChaySocial.MainProject.Services
         /// <param name="documents"> Store holding posts, profiles and likes. </param>
         /// <param name="localStore"> Device storage for the master seed. </param>
         /// <param name="proofOfWork"> Supplies the proof the server charges for writes; null when it charges none. </param>
-        public static void Configure(IDocumentStore documents, ILocalStore localStore, Protection.ProofOfWorkClient? proofOfWork = null)
+        /// <param name="blobs"> Where encrypted media lives; null when this host stores no media. </param>
+        public static void Configure(
+            IDocumentStore documents,
+            ILocalStore localStore,
+            Protection.ProofOfWorkClient? proofOfWork = null,
+            IBlobStore? blobs = null)
         {
             Documents = documents;
             LocalStore = localStore;
             ProofOfWork = proofOfWork;
+            Blobs = blobs;
         }
     }
 }

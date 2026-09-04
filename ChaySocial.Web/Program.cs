@@ -12,6 +12,9 @@ namespace ChaySocial
         /// <summary> Folder under the app's content root where stored documents live. </summary>
         const string StoredDataFolderName = "StoredDocuments";
 
+        /// <summary> Folder under the app's content root where uploaded media lives. </summary>
+        const string StoredMediaFolderName = "StoredMedia";
+
         /// <summary> Path prefix every API route sits under, used to keep page-oriented middleware away from them. </summary>
         const string ApiPathPrefix = "/api";
 
@@ -35,6 +38,11 @@ namespace ChaySocial
             // Writing costs computer time instead of an identity: one registry hands out the challenges and
             // redeems the answers, so a bot farm pays for every account and every post it creates.
             builder.Services.AddSingleton<ProofChallengeRegistry>();
+
+            // Media is stored beside the documents, as opaque encrypted files: the server holds the bytes and
+            // cannot tell a picture from a recording, because it never receives either in the clear.
+            builder.Services.AddSingleton(new BlobFileStorage(
+                Path.Combine(builder.Environment.ContentRootPath, StoredMediaFolderName)));
 
             var app = builder.Build();
 
@@ -65,6 +73,7 @@ namespace ChaySocial
 
             app.MapStaticAssets();
             app.MapProofApi();
+            app.MapBlobApi();
             app.MapDocumentApi();
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode()

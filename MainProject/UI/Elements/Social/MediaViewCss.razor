@@ -1,0 +1,62 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+
+@{
+    const int ImageMaximumHeightPx = 420;
+    const int VideoMaximumHeightPx = 420;
+    const int WaitingHeightPx = 120;
+    const int AudioHeightPx = 44;
+}
+
+<style>
+    .media-view {
+        margin-top: @(AppMeasures.Space.Small)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        overflow: hidden;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        animation: media-view-arrive @(AppMeasures.Duration.Normal)s ease both;
+    }
+
+    .media-view-waiting {
+        display: grid;
+        place-items: center;
+        min-height: @(WaitingHeightPx)px;
+    }
+
+    .media-view-failed {
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .media-view-image {
+        display: block;
+        width: @(AppMeasures.Percent.Full)%;
+        max-height: @(ImageMaximumHeightPx)px;
+        object-fit: cover;
+    }
+
+    .media-view-video {
+        display: block;
+        width: @(AppMeasures.Percent.Full)%;
+        max-height: @(VideoMaximumHeightPx)px;
+        background: @(AppColors.BackgroundDeep.ToRgbaHex(true));
+    }
+
+    /* The audio player keeps the card's own padding: unlike a picture it is a control, not a surface. */
+    .media-view--audio {
+        padding: @(AppMeasures.Space.Small)px;
+    }
+
+    .media-view-audio {
+        display: block;
+        width: @(AppMeasures.Percent.Full)%;
+        height: @(AudioHeightPx)px;
+    }
+
+    @@keyframes media-view-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(AppMeasures.Space.Px6)px);
+        }
+    }
+</style>

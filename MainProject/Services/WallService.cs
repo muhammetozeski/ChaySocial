@@ -49,16 +49,23 @@ namespace ChaySocial.MainProject.Services
         /// <summary> Signs a post as the given account and stores it. </summary>
         /// <param name="author"> The unlocked account writing the post. </param>
         /// <param name="text"> What to publish; trimmed, and refused when empty or over <see cref="PostData.MaximumTextLength"/>. </param>
-        /// <returns> The stored post, or null when the text was not publishable. </returns>
-        public static async Task<PostData?> PublishAsync(PrivateIdentity author, string text)
+        /// <param name="attachments"> Media already uploaded for this post, or null for a post that is only text. </param>
+        /// <returns> The stored post, or null when the post was not publishable. </returns>
+        public static async Task<PostData?> PublishAsync(PrivateIdentity author, string text, IReadOnlyList<MediaAttachment>? attachments = null)
         {
             string trimmed = text.Trim();
-            if (trimmed.Length == 0 || trimmed.Length > PostData.MaximumTextLength) return null;
+
+            // A post has to say something: either words or media. Text alone is capped; media alone is fine.
+            bool hasMedia = attachments is { Count: > 0 };
+            if (trimmed.Length > PostData.MaximumTextLength) return null;
+            if (trimmed.Length == 0 && !hasMedia) return null;
+            if (attachments is { Count: > MediaAttachment.MaximumPerPost }) return null;
 
             string postId = Base32.Encode(RandomSource.Next(PostIdBytes));
             long createdAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            IReadOnlyList<MediaAttachment> media = attachments ?? [];
 
-            byte[] transcript = BuildTranscript(postId, author.Public.Address, trimmed, createdAt, string.Empty);
+            byte[] transcript = BuildTranscript(postId, author.Public.Address, trimmed, createdAt, string.Empty, media);
 
             PostData post = new()
             {
@@ -66,6 +73,7 @@ namespace ChaySocial.MainProject.Services
                 AuthorAddress = author.Public.Address,
                 Text = trimmed,
                 CreatedAtUnixMs = createdAt,
+                Attachments = media,
                 Signature = Convert.ToBase64String(author.Sign(transcript))
             };
 
@@ -82,6 +90,13 @@ namespace ChaySocial.MainProject.Services
             if (post.AuthorAddress != author.Address) return;
 
             await AppServices.Documents.DeleteAsync(post.Id);
+
+            // The media goes with the post; leaving the blobs behind would fill the disk with bytes nothing points at.
+            foreach (MediaAttachment attachment in post.Attachments)
+            {
+                await MediaService.RemoveAsync(attachment);
+            }
+
             MainEvents.Trigger(MainEvents.Names.WallChanged);
         }
 
@@ -103,7 +118,9 @@ namespace ChaySocial.MainProject.Services
                     Convert.FromBase64String(authorProfile.SigningPublicKey),
                     Convert.FromBase64String(authorProfile.EncryptionPublicKey));
 
-                byte[] transcript = BuildTranscript(post.PostId, post.AuthorAddress, post.Text, post.CreatedAtUnixMs, post.Topic);
+                byte[] transcript = BuildTranscript(
+                    post.PostId, post.AuthorAddress, post.Text, post.CreatedAtUnixMs, post.Topic, post.Attachments);
+
                 return AppCryptography.Identities.Verify(transcript, Convert.FromBase64String(post.Signature), author);
             }
             catch (FormatException error)
@@ -163,8 +180,15 @@ namespace ChaySocial.MainProject.Services
         /// <param name="text"> The post's text. </param>
         /// <param name="createdAtUnixMs"> Publication time. </param>
         /// <param name="topic"> The post's topic, empty while there are no categories. </param>
+        /// <param name="attachments"> Media hanging off the post; covered by the signature so nobody can swap a picture under it. </param>
         /// <returns> The transcript to sign. </returns>
-        static byte[] BuildTranscript(string postId, string authorAddress, string text, long createdAtUnixMs, string topic)
+        static byte[] BuildTranscript(
+            string postId,
+            string authorAddress,
+            string text,
+            long createdAtUnixMs,
+            string topic,
+            IReadOnlyList<MediaAttachment> attachments)
         {
             TranscriptWriter transcript = new();
             transcript.WriteBytes(PostSignatureDomain);
@@ -173,6 +197,17 @@ namespace ChaySocial.MainProject.Services
             transcript.WriteText(text);
             transcript.WriteInt64(createdAtUnixMs);
             transcript.WriteText(topic);
+
+            transcript.WriteInt64(attachments.Count);
+            foreach (MediaAttachment attachment in attachments)
+            {
+                transcript.WriteText(attachment.BlobId);
+                transcript.WriteText(attachment.ContentType);
+                transcript.WriteText(attachment.Key);
+                transcript.WriteText(attachment.Nonce);
+                transcript.WriteInt64(attachment.ByteCount);
+            }
+
             return transcript.ToArray();
         }
     }

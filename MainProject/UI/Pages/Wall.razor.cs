@@ -154,6 +154,9 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> What the reader has typed into the composer but not published yet. </summary>
         string ComposerText = string.Empty;
 
+        /// <summary> Media already uploaded for the post being written but not published yet. </summary>
+        IReadOnlyList<MediaAttachment> ComposerAttachments = [];
+
         /// <summary> True while a post is being signed and stored, which locks the composer. </summary>
         bool IsPublishing;
 
@@ -311,6 +314,10 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="text"> The textarea's new contents. </param>
         void HandleComposerTextChanged(string text) => ComposerText = text;
 
+        /// <summary> Takes the composer's attached media, which the page owns alongside the text. </summary>
+        /// <param name="attachments"> The media currently attached. </param>
+        void HandleComposerAttachmentsChanged(IReadOnlyList<MediaAttachment> attachments) => ComposerAttachments = attachments;
+
         /// <summary>
         /// Switches tabs. The old feed's posts are dropped first so the throbber — not the previous tab's list —
         /// is what the reader sees while the new one is read.
@@ -345,8 +352,11 @@ namespace ChaySocial.MainProject.UI.Pages
             IsPublishing = true;
             try
             {
-                PostData? published = await WallService.PublishAsync(Account, ComposerText);
-                if (published is not null) ComposerText = string.Empty;
+                PostData? published = await WallService.PublishAsync(Account, ComposerText, ComposerAttachments);
+                if (published is null) return;
+
+                ComposerText = string.Empty;
+                ComposerAttachments = [];
             }
             finally
             {
