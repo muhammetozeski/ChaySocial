@@ -21,6 +21,10 @@
            @oninput="HandleInputAsync"
            @onkeydown="HandleKeyDownAsync" />
 
+    <MediaPicker Attachments="@Attachments"
+                 AttachmentsChanged="@AttachmentsChanged"
+                 IsDisabled="@IsBusy" />
+
     <CoreButton Gradient="@SendGradient"
                 TextColor="@AppColors.TextOnFilledSurface"
                 BorderRadius="@(AppMeasures.Radius.Circular + "%")"
@@ -98,8 +102,14 @@
     /// <summary> Strength of the halo under the send button, so it lifts off the frosted pill. </summary>
     const float SendGlowOpacity = 0.4f;
 
-    /// <summary> True when there is something to send and the caller is not already sending. </summary>
-    bool CanSubmit => !IsBusy && !string.IsNullOrWhiteSpace(Text);
+    /// <summary> Media already attached to the message being written. </summary>
+    [Parameter] public IReadOnlyList<MediaAttachment> Attachments { get; set; } = [];
+
+    /// <summary> Raised whenever the attached set changes, so the caller owns it alongside the text. </summary>
+    [Parameter] public EventCallback<IReadOnlyList<MediaAttachment>> AttachmentsChanged { get; set; }
+
+    /// <summary> True when there is something to send — words or media — and the caller is not already sending. </summary>
+    bool CanSubmit => !IsBusy && (!string.IsNullOrWhiteSpace(Text) || Attachments.Count > 0);
 
     /// <summary> The pill's frosted glass fill. </summary>
     string SurfaceStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle);

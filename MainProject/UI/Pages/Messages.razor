@@ -89,7 +89,9 @@
                                            IsVanishing="@letter.Envelope.IsVanishing"
                                            IsVanishingOpened="@IsOpened(letter)"
                                            IsOpening="@(openingMessageId == letter.Envelope.MessageId)"
-                                           OnOpenVanishing="() => OpenVanishingAsync(letter)" />
+                                           OnOpenVanishing="() => OpenVanishingAsync(letter)"
+                                           RevealedMedia="@Current(letter).RevealedMedia"
+                                           StoredAttachments="@StoredAttachmentsFor(letter)" />
                         }
                     </div>
                 }
@@ -104,6 +106,8 @@
                                          TextChanged="HandleDraftChanged"
                                          IsVanishing="@isDraftVanishing"
                                          IsVanishingChanged="HandleDraftVanishingChanged"
+                                         Attachments="@draftAttachments"
+                                         AttachmentsChanged="HandleDraftAttachmentsChanged"
                                          OnSubmit="SendLetterAsync"
                                          IsBusy="@isSending" />
                     }

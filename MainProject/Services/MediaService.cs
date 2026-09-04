@@ -73,8 +73,15 @@ namespace ChaySocial.MainProject.Services
             if (AppServices.Blobs is null) return null;
 
             byte[]? ciphertext = await AppServices.Blobs.DownloadAsync(attachment.BlobId, cancellationToken);
-            if (ciphertext is null) return null;
+            return ciphertext is null ? null : Decrypt(attachment, ciphertext);
+        }
 
+        /// <summary> Turns an attachment's fetched ciphertext back into the file it was made from. </summary>
+        /// <param name="attachment"> The attachment carrying the key and nonce. </param>
+        /// <param name="ciphertext"> Bytes fetched from the blob store. </param>
+        /// <returns> The original bytes, or null when the attachment's keys were malformed or the tag failed. </returns>
+        static byte[]? Decrypt(MediaAttachment attachment, byte[] ciphertext)
+        {
             try
             {
                 return AppCryptography.Cipher.TryDecrypt(
@@ -91,6 +98,22 @@ namespace ChaySocial.MainProject.Services
                 Log($"Attachment '{attachment.BlobId}' carries malformed base64.\n{error}", LogLevel.Warning);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Opens an attachment and destroys it in the same step, the way a vanishing message's body is opened. The
+        /// server hands the bytes over and deletes them together, so a picture sent to be seen once cannot be
+        /// fetched again — not by the recipient, and not by anyone who later reads the message document.
+        /// </summary>
+        /// <param name="attachment"> The attachment to open and destroy. </param>
+        /// <param name="cancellationToken"> Cancels the fetch. </param>
+        /// <returns> The original bytes, or null when they were already taken or could not be opened. </returns>
+        public static async Task<byte[]?> ConsumeAsync(MediaAttachment attachment, CancellationToken cancellationToken = default)
+        {
+            if (AppServices.Blobs is null) return null;
+
+            byte[]? ciphertext = await AppServices.Blobs.ConsumeAsync(attachment.BlobId, cancellationToken);
+            return ciphertext is null ? null : Decrypt(attachment, ciphertext);
         }
 
         /// <summary> Removes the stored bytes an attachment points at, for when its post is deleted. </summary>

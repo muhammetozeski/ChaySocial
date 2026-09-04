@@ -2,6 +2,10 @@
     Styling for MessageBubble. MessageBubble renders this component itself, so a message always arrives with
     its own CSS attached.
 *@
+@{
+    const int BubbleMediaMaximumHeightPx = 320;
+}
+
 <style>
     /* Full-width row that decides which side the bubble hugs; the bubble itself never sets its own alignment. */
     .message-bubble-line {
@@ -70,6 +74,17 @@
     .message-bubble-vanishing-emoji {
         font-size: @(AppMeasures.Font.Normal)px;
         animation: message-bubble-vanishing-blink @(AppMeasures.Duration.VerySlow)s ease-in-out infinite;
+    }
+
+    /* A vanishing letter's picture, drawn straight from the bytes the reader was handed. It exists nowhere else,
+       so it is deliberately capped rather than allowed to push the whole conversation out of view. */
+    .message-bubble-media {
+        display: block;
+        width: @(AppMeasures.Percent.Full)%;
+        max-height: @(BubbleMediaMaximumHeightPx)px;
+        margin-top: @(AppMeasures.Space.Small)px;
+        object-fit: cover;
+        border-radius: @(AppMeasures.Radius.Medium)px;
     }
 
     .message-bubble-vanishing-note {

@@ -75,12 +75,16 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="CouldDecrypt"> True when the ciphertext opened on this device. </param>
         /// <param name="IsSenderVerified"> True when the signature checked out against the sender's published key. </param>
         /// <param name="IsMine"> True when the signed-in account sent it, which puts the bubble on the right. </param>
+        /// <param name="RevealedMedia"> Media recovered from a vanishing letter this reader opened; empty for every other letter. </param>
         sealed record OpenedMessage(
             MessageData Envelope,
             string Text,
             bool CouldDecrypt,
             bool IsSenderVerified,
-            bool IsMine);
+            bool IsMine)
+        {
+            public IReadOnlyList<RevealedMedia> RevealedMedia { get; init; } = [];
+        }
 
         /// <summary> Text on the browser tab while the postbox is showing. </summary>
         const string PageTitleText = "Messages";
@@ -203,6 +207,9 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> True while the next letter should be sent to be read exactly once. </summary>
         bool isDraftVanishing;
+
+        /// <summary> Media already uploaded for the letter being written but not sent yet. </summary>
+        IReadOnlyList<MediaAttachment> draftAttachments = [];
 
         /// <summary>
         /// Vanishing letters this reader has opened, kept only for as long as the page is on screen. The server no
@@ -394,6 +401,10 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="isVanishing"> True when the next letter should be readable exactly once. </param>
         void HandleDraftVanishingChanged(bool isVanishing) => isDraftVanishing = isVanishing;
 
+        /// <summary> Keeps the composer's attached media on the page alongside its text. </summary>
+        /// <param name="attachments"> The media currently attached. </param>
+        void HandleDraftAttachmentsChanged(IReadOnlyList<MediaAttachment> attachments) => draftAttachments = attachments;
+
         /// <summary>
         /// Opens a vanishing letter, which destroys it on the server as it is read. The body is kept only on this
         /// page, in memory: there is nowhere left to fetch it from, so leaving the conversation loses it — which
@@ -408,14 +419,15 @@ namespace ChaySocial.MainProject.UI.Pages
 
             try
             {
-                string? body = await MessageService.ConsumeVanishingAsync(Account, letter.Envelope);
+                RevealedMessage? revealed = await MessageService.ConsumeVanishingAsync(Account, letter.Envelope);
 
                 // The load marked this letter unreadable because its body was not in the document. Now that the
                 // body is in hand, the bubble has to be told it may draw text instead of the padlocked line.
                 openedVanishing[letter.Envelope.MessageId] = letter with
                 {
-                    Text = body ?? VanishingAlreadyGoneText,
-                    CouldDecrypt = true
+                    Text = revealed?.Text ?? VanishingAlreadyGoneText,
+                    CouldDecrypt = true,
+                    RevealedMedia = revealed?.Media ?? []
                 };
             }
             catch (Exception error)
@@ -454,6 +466,15 @@ namespace ChaySocial.MainProject.UI.Pages
             => openedVanishing.TryGetValue(letter.Envelope.MessageId, out OpenedMessage opened) ? opened : letter;
 
         /// <summary>
+        /// Attachments a bubble should fetch for itself. A vanishing letter's media is never fetched — it was
+        /// handed over once and destroyed — so only an ordinary letter's attachments are listed here.
+        /// </summary>
+        /// <param name="letter"> The letter being drawn. </param>
+        /// <returns> Attachments still sitting in the blob store, or nothing for a vanishing letter. </returns>
+        static IReadOnlyList<MediaAttachment> StoredAttachmentsFor(OpenedMessage letter)
+            => letter.Envelope.IsVanishing ? [] : letter.Envelope.Attachments;
+
+        /// <summary>
         /// Seals what the reader wrote to the other account and stores it. The conversation is not re-read here:
         /// sending raises the messages event this page already reloads on, so the new letter arrives the same way one
         /// sent from another device would. The draft is only cleared once a letter was actually stored, so text the
@@ -462,13 +483,14 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <returns> A task that completes once the letter has been stored and the composer has been unlocked. </returns>
         async Task SendLetterAsync()
         {
-            if (otherProfile is null || isSending || string.IsNullOrWhiteSpace(draftText)) return;
+            if (otherProfile is null || isSending) return;
+            if (string.IsNullOrWhiteSpace(draftText) && draftAttachments.Count == 0) return;
 
             isSending = true;
 
             try
             {
-                MessageData? sent = await MessageService.SendAsync(Account, otherProfile, draftText, isDraftVanishing);
+                MessageData? sent = await MessageService.SendAsync(Account, otherProfile, draftText, isDraftVanishing, draftAttachments);
 
                 if (sent is null)
                 {
@@ -478,6 +500,7 @@ namespace ChaySocial.MainProject.UI.Pages
 
                 draftText = string.Empty;
                 isDraftVanishing = false;
+                draftAttachments = [];
             }
             catch (Exception error)
             {

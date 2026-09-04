@@ -29,7 +29,24 @@
         }
         else if (CouldDecrypt)
         {
-            <p class="message-bubble-text">@Text</p>
+            @if (Text.Length > 0)
+            {
+                <p class="message-bubble-text">@Text</p>
+            }
+
+            @* A vanishing letter's media is already in hand and exists nowhere else, so it is drawn from the bytes
+               the reader was handed rather than fetched again — there is nothing left to fetch. *@
+            @foreach (RevealedMedia revealed in RevealedMedia)
+            {
+                <img class="message-bubble-media"
+                     src="@MediaService.BuildDataUri(revealed.Content, revealed.Attachment.ContentType)"
+                     alt="@revealed.Attachment.Description" />
+            }
+
+            @foreach (MediaAttachment attachment in StoredAttachments)
+            {
+                <MediaView Attachment="@attachment" @key="attachment.BlobId" />
+            }
 
             @if (IsVanishing)
             {
@@ -88,6 +105,12 @@
 
     /// <summary> Raised when the reader taps a vanishing message, which is what destroys it on the server. </summary>
     [Parameter] public EventCallback OnOpenVanishing { get; set; }
+
+    /// <summary> Media recovered from a vanishing message, already decrypted and held only in memory. </summary>
+    [Parameter] public IReadOnlyList<RevealedMedia> RevealedMedia { get; set; } = [];
+
+    /// <summary> Media still sitting in the blob store, which an ordinary message's bubble fetches when it draws. </summary>
+    [Parameter] public IReadOnlyList<MediaAttachment> StoredAttachments { get; set; } = [];
 
     /// <summary> Mark on the invitation to open a vanishing message. </summary>
     const string VanishingEmoji = "👁️";

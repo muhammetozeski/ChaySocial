@@ -9,6 +9,19 @@ using ChaySocial.MainProject.Text;
 
 namespace ChaySocial.MainProject.Services
 {
+    /// <summary> A piece of media recovered from a vanishing message, together with the attachment describing it. </summary>
+    /// <param name="Attachment"> The attachment, carrying the media type the bytes should be drawn as. </param>
+    /// <param name="Content"> The decrypted bytes, which exist nowhere else once this is handed over. </param>
+    public readonly record struct RevealedMedia(MediaAttachment Attachment, byte[] Content);
+
+    /// <summary>
+    /// Everything a vanishing message held, handed over once. Both the words and the media come back together
+    /// because both are destroyed together — there is no second chance to fetch either.
+    /// </summary>
+    /// <param name="Text"> The message body. </param>
+    /// <param name="Media"> The media that came with it, already decrypted. </param>
+    public readonly record struct RevealedMessage(string Text, IReadOnlyList<RevealedMedia> Media);
+
     /// <summary>
     /// One row of the inbox: the newest message of a conversation, and who that conversation is with. What it carries
     /// is the envelope, not the words — the body is still ciphertext and only turns back into text on the recipient's
@@ -68,10 +81,20 @@ namespace ChaySocial.MainProject.Services
         /// than inside the document, because a blob read can destroy the bytes in the same step — so once it has
         /// been opened the server has nothing left to serve, to anyone.
         /// </param>
-        public static async Task<MessageData?> SendAsync(PrivateIdentity sender, ProfileData recipientProfile, string text, bool isVanishing = false)
+        /// <param name="attachments"> Media already uploaded for this message, or null for a message that is only text. </param>
+        public static async Task<MessageData?> SendAsync(
+            PrivateIdentity sender,
+            ProfileData recipientProfile,
+            string text,
+            bool isVanishing = false,
+            IReadOnlyList<MediaAttachment>? attachments = null)
         {
             string trimmed = text.Trim();
-            if (trimmed.Length == 0 || trimmed.Length > MessageData.MaximumTextLength) return null;
+            IReadOnlyList<MediaAttachment> media = attachments ?? [];
+
+            // A message has to carry something: words or media.
+            if (trimmed.Length > MessageData.MaximumTextLength) return null;
+            if (trimmed.Length == 0 && media.Count == 0) return null;
             if (isVanishing && AppServices.Blobs is null) return null;
 
             if (!TryReadPublishedKeys(recipientProfile, out PublicIdentity? recipient)) return null;
@@ -108,7 +131,8 @@ namespace ChaySocial.MainProject.Services
                 secret.Encapsulation,
                 nonce,
                 ciphertextDigest,
-                createdAt);
+                createdAt,
+                media);
 
             // A vanishing body goes to the blob store and leaves the document empty; an ordinary one rides inside
             // the document as usual. Either way the signature above already covers the same ciphertext.
@@ -132,6 +156,7 @@ namespace ChaySocial.MainProject.Services
                 Ciphertext = isVanishing ? string.Empty : Convert.ToBase64String(ciphertext),
                 VanishingBlobId = vanishingBlobId,
                 CiphertextDigest = ciphertextDigest,
+                Attachments = media,
                 CreatedAtUnixMs = createdAt,
                 Signature = Convert.ToBase64String(sender.Sign(transcript))
             };
@@ -201,13 +226,22 @@ namespace ChaySocial.MainProject.Services
         /// <param name="message"> The vanishing envelope to open. </param>
         /// <param name="cancellationToken"> Cancels the fetch. </param>
         /// <returns> The message body, or null when it was already opened, addressed elsewhere, or could not be decrypted. </returns>
-        public static async Task<string?> ConsumeVanishingAsync(PrivateIdentity reader, MessageData message, CancellationToken cancellationToken = default)
+        public static async Task<RevealedMessage?> ConsumeVanishingAsync(PrivateIdentity reader, MessageData message, CancellationToken cancellationToken = default)
         {
             if (!message.IsVanishing || AppServices.Blobs is null) return null;
             if (message.RecipientAddress != reader.Public.Address) return null;
 
             byte[]? ciphertext = await AppServices.Blobs.ConsumeAsync(message.VanishingBlobId, cancellationToken);
             if (ciphertext is null) return null;
+
+            // The media goes the same way as the body: fetched and destroyed together, so a picture sent to be
+            // seen once cannot be fetched again by anybody who later gets hold of the message document.
+            List<RevealedMedia> revealedMedia = [];
+            foreach (MediaAttachment attachment in message.Attachments)
+            {
+                byte[]? content = await MediaService.ConsumeAsync(attachment, cancellationToken);
+                if (content is not null) revealedMedia.Add(new RevealedMedia(attachment, content));
+            }
 
             // The body arrived separately from the document that vouches for it, so it is checked against the
             // digest the sender signed before any of it is trusted.
@@ -236,7 +270,7 @@ namespace ChaySocial.MainProject.Services
                 message.CreatedAtUnixMs);
 
             return AppCryptography.Cipher.TryDecrypt(ciphertext, reader.Decapsulate(encapsulation), nonce, associatedData, out byte[] plaintext)
-                ? Encoding.UTF8.GetString(plaintext)
+                ? new RevealedMessage(Encoding.UTF8.GetString(plaintext), revealedMedia)
                 : null;
         }
 
@@ -276,7 +310,8 @@ namespace ChaySocial.MainProject.Services
                 encapsulation,
                 nonce,
                 message.CiphertextDigest,
-                message.CreatedAtUnixMs);
+                message.CreatedAtUnixMs,
+                message.Attachments);
 
             return AppCryptography.Identities.Verify(transcript, signature, sender);
         }
@@ -395,6 +430,7 @@ namespace ChaySocial.MainProject.Services
         /// <param name="nonce"> Nonce this one message was encrypted under. </param>
         /// <param name="ciphertextDigest"> Base64 SHA-256 of the encrypted body. </param>
         /// <param name="createdAtUnixMs"> When the message was sent. </param>
+        /// <param name="attachments"> Media sent with the message, covered by the signature so nobody can swap a picture under it. </param>
         /// <returns> The transcript to sign. </returns>
         static byte[] BuildTranscript(
             string messageId,
@@ -404,7 +440,8 @@ namespace ChaySocial.MainProject.Services
             byte[] encapsulation,
             byte[] nonce,
             string ciphertextDigest,
-            long createdAtUnixMs)
+            long createdAtUnixMs,
+            IReadOnlyList<MediaAttachment> attachments)
         {
             TranscriptWriter transcript = new();
             transcript.WriteBytes(MessageSignatureDomain);
@@ -416,6 +453,17 @@ namespace ChaySocial.MainProject.Services
             transcript.WriteBytes(nonce);
             transcript.WriteText(ciphertextDigest);
             transcript.WriteInt64(createdAtUnixMs);
+
+            transcript.WriteInt64(attachments.Count);
+            foreach (MediaAttachment attachment in attachments)
+            {
+                transcript.WriteText(attachment.BlobId);
+                transcript.WriteText(attachment.ContentType);
+                transcript.WriteText(attachment.Key);
+                transcript.WriteText(attachment.Nonce);
+                transcript.WriteInt64(attachment.ByteCount);
+            }
+
             return transcript.ToArray();
         }
 

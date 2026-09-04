@@ -52,6 +52,13 @@ namespace ChaySocial.MainProject.DataModels
         /// </summary>
         public required string CiphertextDigest { get; init; }
 
+        /// <summary>
+        /// Pictures, recordings and video sent with this message. Each carries the key its bytes were encrypted
+        /// with, so only the recipient can open them. On a vanishing message these are destroyed alongside the
+        /// body the moment it is read.
+        /// </summary>
+        public IReadOnlyList<MediaAttachment> Attachments { get; init; } = [];
+
         /// <summary> True when this message is meant to be readable exactly once. </summary>
         public bool IsVanishing => VanishingBlobId.Length > 0;
 
