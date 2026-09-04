@@ -510,8 +510,10 @@ namespace ChaySocial.MainProject.Services
                 transcript.WriteInt64(attachment.ByteCount);
             }
 
-            transcript.WriteText(quotedMessageId);
-            transcript.WriteText(senderCiphertextDigest);
+            // Named rather than positional, so the next field a message grows leaves every signature written before
+            // it untouched. See TranscriptWriter.WriteNamedText.
+            transcript.WriteNamedText(nameof(MessageData.QuotedMessageId), quotedMessageId);
+            transcript.WriteNamedText(nameof(MessageData.SenderCiphertext), senderCiphertextDigest);
             return transcript.ToArray();
         }
 

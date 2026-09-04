@@ -267,7 +267,10 @@ namespace ChaySocial.MainProject.Services
             transcript.WriteText(authorAddress);
             transcript.WriteText(text);
             transcript.WriteInt64(createdAtUnixMs);
-            transcript.WriteText(parentCommentId);
+
+            // Named rather than positional, so the next field a comment grows leaves every signature written before
+            // it untouched. See TranscriptWriter.WriteNamedText.
+            transcript.WriteNamedText(nameof(CommentData.ParentCommentId), parentCommentId);
             return transcript.ToArray();
         }
 

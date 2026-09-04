@@ -413,7 +413,9 @@ namespace ChaySocial.MainProject.Services
                 transcript.WriteInt64(attachment.ByteCount);
             }
 
-            transcript.WriteText(quotedPostId);
+            // Named rather than positional, so the next field a post grows leaves every signature written before it
+            // untouched. See TranscriptWriter.WriteNamedText.
+            transcript.WriteNamedText(nameof(PostData.QuotedPostId), quotedPostId);
             return transcript.ToArray();
         }
     }
