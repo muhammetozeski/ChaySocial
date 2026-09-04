@@ -61,7 +61,11 @@
         }
     }
 
+    /* border-box, so the room reserved for the floating navigation is taken out of the viewport height rather than
+       added to it. Without it every screen in the app stands exactly one navigation bar taller than the window and
+       scrolls that far into empty space. */
     .app-page {
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
         min-height: @(AppMeasures.Viewport.Full)vh;
