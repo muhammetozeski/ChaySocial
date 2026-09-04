@@ -7,6 +7,7 @@ namespace ChaySocial.MainProject.Constants
             public const string DatabaseKey = "yyyy-MM-dd";
             public const string UiBanner = "dd MMMM yyyy";
             public const string UiDetailed = "MMMM d, yyyy";
+            public const string UiExact = "MMMM d, yyyy 'at' HH:mm";
         }
     }
 }

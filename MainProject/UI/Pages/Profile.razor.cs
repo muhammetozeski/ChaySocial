@@ -395,7 +395,7 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> When this account first published a profile, or a stand-in line when it never did. </summary>
         string JoinedLabel => ShownProfile is null
             ? UnknownJoinLabel
-            : $"{JoinedLabelPrefix} {DateTimeOffset.FromUnixTimeMilliseconds(ShownProfile.CreatedAtUnixMs).ToLocalTime().ToString(ContentConstants.DateFormats.UiDetailed)}";
+            : $"{JoinedLabelPrefix} {RelativeTimeFormatter.FormatDate(ShownProfile.CreatedAtUnixMs)}";
 
         /// <summary> Heading over the post list, phrased for whoever is reading it. </summary>
         string PostsSectionTitle => IsOwnProfile ? OwnPostsSectionTitle : OtherPostsSectionTitle;

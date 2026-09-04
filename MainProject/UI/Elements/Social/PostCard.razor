@@ -288,7 +288,7 @@
     string RelativeTime => RelativeTimeFormatter.Format(Post.CreatedAtUnixMs);
 
     /// <summary> Full publication time, shown when the reader hovers the short relative label. </summary>
-    string PublishedAtHint => DateTimeOffset.FromUnixTimeMilliseconds(Post.CreatedAtUnixMs).ToLocalTime().ToString();
+    string PublishedAtHint => RelativeTimeFormatter.FormatExact(Post.CreatedAtUnixMs);
 
     /// <summary> Hairline that outlines the unverified-signature badge in the warning colour. </summary>
     string UnverifiedChipBorder => $"{AppMeasures.Border.Thin}px solid {AppColors.Warning.ToRgbaHex(true)}";
