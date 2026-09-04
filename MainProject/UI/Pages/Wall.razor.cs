@@ -157,6 +157,15 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Media already uploaded for the post being written but not published yet. </summary>
         IReadOnlyList<MediaAttachment> ComposerAttachments = [];
 
+        /// <summary> Post the composer is quoting, or null while a plain post is being written. </summary>
+        PostData? ComposerQuotedPost;
+
+        /// <summary> Profile of the composer's quoted author, or null when it could not be read. </summary>
+        ProfileData? ComposerQuotedAuthorProfile;
+
+        /// <summary> Originals of the quotes on screen, keyed by the quoted post's id; a missing entry means it was deleted. </summary>
+        Dictionary<string, PostData> QuotedPosts = [];
+
         /// <summary> True while a post is being signed and stored, which locks the composer. </summary>
         bool IsPublishing;
 
@@ -188,12 +197,40 @@ namespace ChaySocial.MainProject.UI.Pages
                 ? await FeedService.ReadFollowingFeedAsync(viewerAddress)
                 : await FeedService.ReadDiscoverFeedAsync(viewerAddress);
 
-            Dictionary<string, ProfileData?> authorProfiles = await ReadAuthorProfilesAsync(posts);
+            Dictionary<string, PostData> quoted = await ReadQuotedPostsAsync(posts);
+
+            // Quoted authors are looked up alongside the feed's own, so a quote of somebody nobody in the feed
+            // follows still draws with their name rather than their address.
+            Dictionary<string, ProfileData?> authorProfiles = await ReadAuthorProfilesAsync([.. posts, .. quoted.Values]);
             Dictionary<string, PostEngagement> engagements = await ReadEngagementsAsync(posts, viewerAddress);
 
             Posts = posts;
+            QuotedPosts = quoted;
             AuthorProfiles = authorProfiles;
             Engagements = engagements;
+        }
+
+        /// <summary>
+        /// Reads the originals behind the quotes in a feed. A quoted post that no longer exists simply does not
+        /// come back, and the card draws the "taken down" line instead — which is the truth, and better than
+        /// showing a copy of something its author removed.
+        /// </summary>
+        /// <param name="posts"> The posts about to be drawn. </param>
+        /// <returns> The quoted originals keyed by their own id. </returns>
+        static async Task<Dictionary<string, PostData>> ReadQuotedPostsAsync(IReadOnlyList<PostData> posts)
+        {
+            string[] quotedIds = [.. posts.Where(post => post.IsQuoting).Select(post => post.QuotedPostId).Distinct()];
+            if (quotedIds.Length == 0) return [];
+
+            PostData?[] originals = await Task.WhenAll(quotedIds.Select(WallService.ReadAsync));
+
+            Dictionary<string, PostData> byPostId = new(quotedIds.Length);
+            foreach (PostData? original in originals)
+            {
+                if (original is not null) byPostId[original.PostId] = original;
+            }
+
+            return byPostId;
         }
 
         /// <summary>
@@ -318,6 +355,33 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="attachments"> The media currently attached. </param>
         void HandleComposerAttachmentsChanged(IReadOnlyList<MediaAttachment> attachments) => ComposerAttachments = attachments;
 
+        /// <summary> Points the composer at a post to speak about, and scrolls nothing: the composer is already at the top. </summary>
+        /// <param name="post"> Post being quoted. </param>
+        void StartQuoting(PostData post)
+        {
+            ComposerQuotedPost = post;
+            ComposerQuotedAuthorProfile = AuthorProfileFor(post);
+        }
+
+        /// <summary> Drops the quote so the composer writes a plain post again. </summary>
+        void StopQuoting()
+        {
+            ComposerQuotedPost = null;
+            ComposerQuotedAuthorProfile = null;
+        }
+
+        /// <summary> The original a post quotes, or null when it quotes nothing or the original is gone. </summary>
+        /// <param name="post"> Post being drawn. </param>
+        /// <returns> The quoted post, or null. </returns>
+        PostData? QuotedPostFor(PostData post)
+            => post.IsQuoting && QuotedPosts.TryGetValue(post.QuotedPostId, out PostData? quoted) ? quoted : null;
+
+        /// <summary> Profile of the author of the post a post quotes. </summary>
+        /// <param name="post"> Post being drawn. </param>
+        /// <returns> The quoted author's profile, or null when it could not be read. </returns>
+        ProfileData? QuotedAuthorProfileFor(PostData post)
+            => QuotedPostFor(post) is PostData quoted ? AuthorProfileFor(quoted) : null;
+
         /// <summary>
         /// Switches tabs. The old feed's posts are dropped first so the throbber — not the previous tab's list —
         /// is what the reader sees while the new one is read.
@@ -352,11 +416,14 @@ namespace ChaySocial.MainProject.UI.Pages
             IsPublishing = true;
             try
             {
-                PostData? published = await WallService.PublishAsync(Account, ComposerText, ComposerAttachments);
+                PostData? published = await WallService.PublishAsync(
+                    Account, ComposerText, ComposerAttachments, ComposerQuotedPost?.PostId ?? string.Empty);
+
                 if (published is null) return;
 
                 ComposerText = string.Empty;
                 ComposerAttachments = [];
+                StopQuoting();
             }
             finally
             {

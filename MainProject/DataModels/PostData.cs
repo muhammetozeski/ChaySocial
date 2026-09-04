@@ -37,6 +37,16 @@ namespace ChaySocial.MainProject.DataModels
         /// </summary>
         public IReadOnlyList<MediaAttachment> Attachments { get; init; } = [];
 
+        /// <summary>
+        /// Post this one quotes, or empty when it quotes nothing. Only the id is stored: the quoted post is read
+        /// fresh when this one is drawn, so a quote follows its original — including when the original is deleted,
+        /// which a reader should see rather than have hidden from them by a stale copy.
+        /// </summary>
+        public string QuotedPostId { get; init; } = string.Empty;
+
+        /// <summary> True when this post carries somebody else's post inside it. </summary>
+        public bool IsQuoting => QuotedPostId.Length > 0;
+
         /// <summary> Longest post accepted. </summary>
         public const int MaximumTextLength = 500;
 

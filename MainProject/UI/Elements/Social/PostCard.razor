@@ -46,6 +46,11 @@
             <MediaView Attachment="@attachment" @key="attachment.BlobId" />
         }
 
+        @if (Post.IsQuoting)
+        {
+            <QuotedPost Post="@QuotedPost" AuthorProfile="@QuotedAuthorProfile" OnOpen="OnOpenQuoted" />
+        }
+
         <div class="post-card-actions">
             <button type="button"
                     class="post-card-action post-card-action--like @(IsLiked ? LikedModifierClass : string.Empty)"
@@ -59,6 +64,13 @@
                 <span class="post-card-action-icon">@CommentEmoji</span>
                 <span class="post-card-action-count">@CommentCount</span>
             </button>
+
+            @if (OnQuote.HasDelegate)
+            {
+                <button type="button" class="post-card-action" title="@QuoteHint" @onclick="HandleQuote">
+                    <span class="post-card-action-icon">@QuoteEmoji</span>
+                </button>
+            }
 
             @if (ShowDeleteAction)
             {
@@ -94,6 +106,12 @@
 
     /// <summary> Marks the comment count. </summary>
     const string CommentEmoji = "💬";
+
+    /// <summary> Marks the action that quotes this post into a new one. </summary>
+    const string QuoteEmoji = "❝";
+
+    /// <summary> Hover text on that action. </summary>
+    const string QuoteHint = "Say something about this post";
 
     /// <summary> Marks the button that removes one of the reader's own posts. </summary>
     const string DeleteEmoji = "🗑️";
@@ -166,6 +184,22 @@
 
     /// <summary> Raised when the reader taps the comment count to open the post's comments. </summary>
     [Parameter] public EventCallback OnOpenComments { get; set; }
+
+    /// <summary> Raised when the reader wants to quote this post. The action only appears when a caller wires this up. </summary>
+    [Parameter] public EventCallback OnQuote { get; set; }
+
+    /// <summary> The post this one quotes, already read by the page; null when it was deleted or this post quotes nothing. </summary>
+    [Parameter] public PostData? QuotedPost { get; set; }
+
+    /// <summary> Profile of the quoted post's author, or null when it could not be read. </summary>
+    [Parameter] public ProfileData? QuotedAuthorProfile { get; set; }
+
+    /// <summary> Raised when the reader taps the quoted post, to open the original. </summary>
+    [Parameter] public EventCallback OnOpenQuoted { get; set; }
+
+    /// <summary> Hands the quote request to the page, which owns the composer it lands in. </summary>
+    /// <returns> A task that completes once the page has handled it. </returns>
+    Task HandleQuote() => OnQuote.InvokeAsync();
 
     /// <summary> Result of the last signature check, kept between renders so verifying does not run on every repaint. </summary>
     bool IsSignatureTrusted;

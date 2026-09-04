@@ -1,0 +1,66 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+
+@{
+    const int QuotePaddingYPx = 10;
+    const int QuotePaddingXPx = 12;
+    const int QuoteHeadGapPx = 8;
+}
+
+<style>
+    .quoted-post {
+        margin-top: @(AppMeasures.Space.Px10)px;
+        padding: @(QuotePaddingYPx)px @(QuotePaddingXPx)px;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        cursor: pointer;
+        transition: border-color @(AppMeasures.Duration.Fast)s ease, transform @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .quoted-post:hover {
+            border-color: @(AppColors.BorderStrong.ToRgbaHex(true));
+            transform: translateY(-1px);
+        }
+
+    .quoted-post-head {
+        display: flex;
+        align-items: center;
+        gap: @(QuoteHeadGapPx)px;
+        min-width: 0;
+    }
+
+    .quoted-post-name {
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .quoted-post-time {
+        margin-left: auto;
+        flex: none;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .quoted-post-text {
+        margin: @(AppMeasures.Space.Px6)px 0 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .quoted-post-media,
+    .quoted-post-missing {
+        display: block;
+        margin: @(AppMeasures.Space.Px6)px 0 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .quoted-post-missing-emoji {
+        margin-right: @(AppMeasures.Space.Px4)px;
+    }
+</style>

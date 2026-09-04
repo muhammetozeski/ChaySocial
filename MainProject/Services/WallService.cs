@@ -32,6 +32,12 @@ namespace ChaySocial.MainProject.Services
             return (await AppServices.Documents.QueryAsync(query)).Documents;
         }
 
+        /// <summary> Reads one post by id, for drawing the original inside a quote. </summary>
+        /// <param name="postId"> Id of the post to read. </param>
+        /// <returns> The post, or null when it no longer exists. </returns>
+        public static Task<PostData?> ReadAsync(string postId)
+            => postId.Length == 0 ? Task.FromResult<PostData?>(null) : AppServices.Documents.ReadAsync(new DocumentId<PostData>(postId));
+
         /// <summary> Reads the newest posts written by one account. </summary>
         /// <param name="authorAddress"> Address of the author. </param>
         /// <param name="limit"> Largest number of posts to return. </param>
@@ -50,22 +56,27 @@ namespace ChaySocial.MainProject.Services
         /// <param name="author"> The unlocked account writing the post. </param>
         /// <param name="text"> What to publish; trimmed, and refused when empty or over <see cref="PostData.MaximumTextLength"/>. </param>
         /// <param name="attachments"> Media already uploaded for this post, or null for a post that is only text. </param>
+        /// <param name="quotedPostId"> Post this one quotes, or empty when it quotes nothing. </param>
         /// <returns> The stored post, or null when the post was not publishable. </returns>
-        public static async Task<PostData?> PublishAsync(PrivateIdentity author, string text, IReadOnlyList<MediaAttachment>? attachments = null)
+        public static async Task<PostData?> PublishAsync(
+            PrivateIdentity author,
+            string text,
+            IReadOnlyList<MediaAttachment>? attachments = null,
+            string quotedPostId = "")
         {
             string trimmed = text.Trim();
 
-            // A post has to say something: either words or media. Text alone is capped; media alone is fine.
+            // A post has to carry something: words, media, or somebody else's post it is speaking about.
             bool hasMedia = attachments is { Count: > 0 };
             if (trimmed.Length > PostData.MaximumTextLength) return null;
-            if (trimmed.Length == 0 && !hasMedia) return null;
+            if (trimmed.Length == 0 && !hasMedia && quotedPostId.Length == 0) return null;
             if (attachments is { Count: > MediaAttachment.MaximumPerPost }) return null;
 
             string postId = Base32.Encode(RandomSource.Next(PostIdBytes));
             long createdAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             IReadOnlyList<MediaAttachment> media = attachments ?? [];
 
-            byte[] transcript = BuildTranscript(postId, author.Public.Address, trimmed, createdAt, string.Empty, media);
+            byte[] transcript = BuildTranscript(postId, author.Public.Address, trimmed, createdAt, string.Empty, media, quotedPostId);
 
             PostData post = new()
             {
@@ -74,6 +85,7 @@ namespace ChaySocial.MainProject.Services
                 Text = trimmed,
                 CreatedAtUnixMs = createdAt,
                 Attachments = media,
+                QuotedPostId = quotedPostId,
                 Signature = Convert.ToBase64String(author.Sign(transcript))
             };
 
@@ -119,7 +131,7 @@ namespace ChaySocial.MainProject.Services
                     Convert.FromBase64String(authorProfile.EncryptionPublicKey));
 
                 byte[] transcript = BuildTranscript(
-                    post.PostId, post.AuthorAddress, post.Text, post.CreatedAtUnixMs, post.Topic, post.Attachments);
+                    post.PostId, post.AuthorAddress, post.Text, post.CreatedAtUnixMs, post.Topic, post.Attachments, post.QuotedPostId);
 
                 return AppCryptography.Identities.Verify(transcript, Convert.FromBase64String(post.Signature), author);
             }
@@ -181,6 +193,7 @@ namespace ChaySocial.MainProject.Services
         /// <param name="createdAtUnixMs"> Publication time. </param>
         /// <param name="topic"> The post's topic, empty while there are no categories. </param>
         /// <param name="attachments"> Media hanging off the post; covered by the signature so nobody can swap a picture under it. </param>
+        /// <param name="quotedPostId"> Post this one quotes; covered too, so nobody can point a quote at something else. </param>
         /// <returns> The transcript to sign. </returns>
         static byte[] BuildTranscript(
             string postId,
@@ -188,7 +201,8 @@ namespace ChaySocial.MainProject.Services
             string text,
             long createdAtUnixMs,
             string topic,
-            IReadOnlyList<MediaAttachment> attachments)
+            IReadOnlyList<MediaAttachment> attachments,
+            string quotedPostId)
         {
             TranscriptWriter transcript = new();
             transcript.WriteBytes(PostSignatureDomain);
@@ -208,6 +222,7 @@ namespace ChaySocial.MainProject.Services
                 transcript.WriteInt64(attachment.ByteCount);
             }
 
+            transcript.WriteText(quotedPostId);
             return transcript.ToArray();
         }
     }

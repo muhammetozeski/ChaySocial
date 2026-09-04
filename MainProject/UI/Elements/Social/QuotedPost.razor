@@ -1,0 +1,91 @@
+@using ChaySocial.MainProject.Services
+
+@*
+    The original shown inside a post that quotes it. Deliberately smaller and quieter than a real post card and
+    without any actions of its own: it is something being spoken about, not something to act on. A quote is
+    never nested — a quoted post's own quote is not drawn — so a chain cannot fill the screen.
+*@
+
+<div class="quoted-post" style="@SurfaceStyle" @onclick="HandleOpen" @onclick:stopPropagation>
+    @if (Post is null)
+    {
+        <p class="quoted-post-missing">
+            <span class="quoted-post-missing-emoji">@MissingEmoji</span>
+            @MissingLabel
+        </p>
+    }
+    else
+    {
+        <div class="quoted-post-head">
+            <AvatarBubble Emoji="@AuthorAvatar" DiameterPx="AuthorAvatarDiameterPx" />
+            <span class="quoted-post-name">@AuthorName</span>
+            <span class="quoted-post-time">@PostedAgo</span>
+        </div>
+
+        @if (Post.Text.Length > 0)
+        {
+            <p class="quoted-post-text">@Post.Text</p>
+        }
+
+        @if (Post.Attachments.Count > 0)
+        {
+            <span class="quoted-post-media">@MediaEmoji @MediaCountLabel</span>
+        }
+    }
+</div>
+
+<QuotedPostCss />
+
+@code {
+    /// <summary> Diameter of the small avatar inside a quote. </summary>
+    const int AuthorAvatarDiameterPx = 22;
+
+    /// <summary> Mark shown when the quoted post no longer exists. </summary>
+    const string MissingEmoji = "🍃";
+
+    /// <summary> Wording shown when the quoted post no longer exists. </summary>
+    const string MissingLabel = "This post was taken down.";
+
+    /// <summary> Mark standing in for a quoted post's media, which is named rather than drawn. </summary>
+    const string MediaEmoji = "🖼️";
+
+    /// <summary> Wording after that mark when the quoted post carries exactly one piece of media. </summary>
+    const string SingleMediaLabel = "1 attachment";
+
+    /// <summary> Wording after that mark when it carries several; the placeholder takes the count. </summary>
+    const string ManyMediaFormat = "{0} attachments";
+
+    /// <summary> The post being quoted, or null when it has been deleted since. </summary>
+    [Parameter] public PostData? Post { get; set; }
+
+    /// <summary> Profile of the quoted post's author, or null when it could not be read. </summary>
+    [Parameter] public ProfileData? AuthorProfile { get; set; }
+
+    /// <summary> Raised when the quote is tapped, to open the original. </summary>
+    [Parameter] public EventCallback OnOpen { get; set; }
+
+    /// <summary> Name drawn on the quote, falling back to the readable part of the address. </summary>
+    string AuthorName => AuthorProfile?.DisplayName
+        ?? (Post is null ? string.Empty : ProfileService.FallbackDisplayName(Post.AuthorAddress));
+
+    /// <summary> Avatar drawn on the quote, falling back to the one the address itself picks. </summary>
+    string AuthorAvatar => AuthorProfile?.Avatar
+        ?? (Post is null ? ProfileData.DefaultAvatar : ProfileService.PickAvatar(Post.AuthorAddress));
+
+    /// <summary> How long ago the quoted post was written. </summary>
+    string PostedAgo => Post is null ? string.Empty : RelativeTimeFormatter.Format(Post.CreatedAtUnixMs);
+
+    /// <summary> How the quoted post's media is named, since it is not drawn inside a quote. </summary>
+    string MediaCountLabel => Post is { Attachments.Count: 1 }
+        ? SingleMediaLabel
+        : string.Format(ManyMediaFormat, Post?.Attachments.Count ?? 0);
+
+    /// <summary> The quote's own frame: a quieter surface than the card it sits in, so the two do not compete. </summary>
+    string SurfaceStyle =>
+        $"background:{AppColors.SurfaceSubtle.ToRgbaHex(true)};" +
+        $"border:{AppStyles.BorderStrokeSoft};";
+
+    /// <summary> Opens the original, unless the caller wired nothing up or the post is gone. </summary>
+    /// <returns> A task that completes once the caller has handled the tap. </returns>
+    Task HandleOpen() => Post is null || !OnOpen.HasDelegate ? Task.CompletedTask : OnOpen.InvokeAsync();
+}

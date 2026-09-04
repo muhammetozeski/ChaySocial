@@ -1,5 +1,10 @@
 @* Styles for PostComposer. Every selector is namespaced "post-composer-*" because *Css.razor styles are
    global (this project uses no CSS isolation), so bare names would leak into every other component. *@
+@{
+    const int QuoteDropDiameterPx = 20;
+    const int QuoteDropOffsetPx = 6;
+}
+
 <style>
     .post-composer {
         gap: @(AppMeasures.Space.Px12)px;
@@ -57,6 +62,34 @@
         opacity: @(AppMeasures.Opacity.Dim);
         cursor: not-allowed;
     }
+
+    /* Holds the quoted post and the control that drops it. Positioned so the drop control sits on the quote's
+       corner rather than taking a row of its own. */
+    .post-composer-quote {
+        position: relative;
+    }
+
+    .post-composer-quote-drop {
+        position: absolute;
+        top: @(QuoteDropOffsetPx)px;
+        right: @(QuoteDropOffsetPx)px;
+        width: @(QuoteDropDiameterPx)px;
+        height: @(QuoteDropDiameterPx)px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: none;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        background: @(AppColors.SurfaceStrong.ToRgbaHex(true));
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+        cursor: pointer;
+        transition: color @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .post-composer-quote-drop:hover {
+            color: @(AppColors.TextDanger.ToRgbaHex(true));
+        }
 
     .post-composer-footer {
         display: flex;

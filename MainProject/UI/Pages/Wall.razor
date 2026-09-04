@@ -25,6 +25,9 @@
                       TextChanged="HandleComposerTextChanged"
                       Attachments="@ComposerAttachments"
                       AttachmentsChanged="HandleComposerAttachmentsChanged"
+                      QuotedPost="@ComposerQuotedPost"
+                      QuotedAuthorProfile="@ComposerQuotedAuthorProfile"
+                      OnCancelQuote="StopQuoting"
                       OnSubmit="PublishAsync"
                       IsBusy="@IsPublishing"
                       Avatar="@ComposerAvatar" />
@@ -110,7 +113,11 @@
                               OnDelete="() => DeletePostAsync(post)"
                               OnReport="() => OpenReport(post)"
                               OnOpenAuthor="() => OpenAuthor(post.AuthorAddress)"
-                              OnOpenComments="() => OpenComments(post.PostId)" />
+                              OnOpenComments="() => OpenComments(post.PostId)"
+                              OnQuote="() => StartQuoting(post)"
+                              QuotedPost="@QuotedPostFor(post)"
+                              QuotedAuthorProfile="@QuotedAuthorProfileFor(post)"
+                              OnOpenQuoted="() => OpenComments(post.QuotedPostId)" />
                 }
             </div>
         }
