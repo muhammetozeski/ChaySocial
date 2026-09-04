@@ -10,6 +10,16 @@
               Padding="@(AppMeasures.Space.Px20 + "px")"
               CustomClass="post-card">
 
+        @if (RepostedByName is not null)
+        {
+            @* Says whose wall carried this post here before the post itself, the way a forwarded letter keeps the
+               hand that passed it on visible above the original. *@
+            <button type="button" class="post-card-carried" title="@OpenReposterHint" @onclick="HandleOpenReposter">
+                <span class="post-card-carried-icon">@RepostEmoji</span>
+                <span class="post-card-carried-text">@RepostedByName @CarriedLabel</span>
+            </button>
+        }
+
         <div class="post-card-header">
             <button type="button" class="post-card-identity" title="@OpenAuthorHint" @onclick="HandleOpenAuthor">
                 <span class="post-card-avatar">@AvatarEmoji</span>
@@ -65,6 +75,17 @@
                 <span class="post-card-action-count">@CommentCount</span>
             </button>
 
+            @if (OnRepost.HasDelegate)
+            {
+                <button type="button"
+                        class="post-card-action post-card-action--repost @(IsReposted ? RepostedModifierClass : string.Empty)"
+                        title="@(IsReposted ? UndoRepostHint : RepostHint)"
+                        @onclick="HandleRepost">
+                    <span class="post-card-action-icon">@RepostEmoji</span>
+                    <span class="post-card-action-count">@RepostCount</span>
+                </button>
+            }
+
             @if (OnQuote.HasDelegate)
             {
                 <button type="button" class="post-card-action" title="@QuoteHint" @onclick="HandleQuote">
@@ -106,6 +127,24 @@
 
     /// <summary> Marks the comment count. </summary>
     const string CommentEmoji = "💬";
+
+    /// <summary> Marks both the action that carries this post onto the reader's own wall and the line saying who already did. </summary>
+    const string RepostEmoji = "🔁";
+
+    /// <summary> Follows the reposter's name on the line above a carried post. </summary>
+    const string CarriedLabel = "passed this on";
+
+    /// <summary> Tooltip on that line. </summary>
+    const string OpenReposterHint = "Open the profile that passed this on";
+
+    /// <summary> Tooltip on the repost action while the reader has not carried this post. </summary>
+    const string RepostHint = "Pass this on to your own wall";
+
+    /// <summary> Tooltip on it once they have. </summary>
+    const string UndoRepostHint = "Take this back off your wall";
+
+    /// <summary> Class appended to the repost action while the reader has carried this post; it carries the lit colours. </summary>
+    const string RepostedModifierClass = "is-reposted";
 
     /// <summary> Marks the action that quotes this post into a new one. </summary>
     const string QuoteEmoji = "❝";
@@ -187,6 +226,21 @@
 
     /// <summary> Raised when the reader wants to quote this post. The action only appears when a caller wires this up. </summary>
     [Parameter] public EventCallback OnQuote { get; set; }
+
+    /// <summary> True when the signed-in account has already carried this post onto its own wall. </summary>
+    [Parameter] public bool IsReposted { get; set; }
+
+    /// <summary> How many accounts carried this post onto their own wall. </summary>
+    [Parameter] public int RepostCount { get; set; }
+
+    /// <summary> Raised when the reader taps the repost action. The action only appears when a caller wires this up. </summary>
+    [Parameter] public EventCallback OnRepost { get; set; }
+
+    /// <summary> Name of the account whose wall carried this post into the feed, or null when it arrived on its own. </summary>
+    [Parameter] public string? RepostedByName { get; set; }
+
+    /// <summary> Raised when the reader taps that name, to open the wall it came through. </summary>
+    [Parameter] public EventCallback OnOpenReposter { get; set; }
 
     /// <summary> The post this one quotes, already read by the page; null when it was deleted or this post quotes nothing. </summary>
     [Parameter] public PostData? QuotedPost { get; set; }
@@ -278,4 +332,12 @@
     /// <summary> Passes the comment tap to the page, doing nothing when the page wired no handler. </summary>
     /// <returns> A task that completes once the page has handled the tap. </returns>
     Task HandleOpenComments() => OnOpenComments.HasDelegate ? OnOpenComments.InvokeAsync() : Task.CompletedTask;
+
+    /// <summary> Passes the repost tap to the page, which decides whether that adds or removes the repost. </summary>
+    /// <returns> A task that completes once the page has handled the tap. </returns>
+    Task HandleRepost() => OnRepost.HasDelegate ? OnRepost.InvokeAsync() : Task.CompletedTask;
+
+    /// <summary> Passes a tap on the reposter's name to the page, doing nothing when the page wired no handler. </summary>
+    /// <returns> A task that completes once the page has handled the tap. </returns>
+    Task HandleOpenReposter() => OnOpenReposter.HasDelegate ? OnOpenReposter.InvokeAsync() : Task.CompletedTask;
 }

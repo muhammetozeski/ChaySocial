@@ -157,6 +157,51 @@
         margin-left: auto;
     }
 
+    .post-card-action--repost.is-reposted {
+        background: @(AppColors.SurfaceTintAccent.ToRgbaHex(true));
+        border-color: @(AppColors.Primary.ToRgbaHex(true));
+        color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+    }
+
+    /* The arrows turn once, on the render where the post lands on the reader's wall. */
+    .post-card-action--repost.is-reposted .post-card-action-icon {
+        animation: post-card-repost-turn @(AppMeasures.Duration.Medium)s @PlayfulOvershootEasing;
+    }
+
+    /* A quiet line above the post, stripped back from a button to plain text: it names the wall this post came
+       through without competing with the author underneath it. */
+    .post-card-carried {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px6)px;
+        align-self: flex-start;
+        max-width: @(AppMeasures.Percent.Full)%;
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .post-card-carried:hover {
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .post-card-carried-icon {
+        flex: none;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .post-card-carried-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     @@keyframes post-card-rise {
         from {
             opacity: 0;
@@ -180,6 +225,16 @@
 
         @(AppMeasures.Percent.Full)% {
             transform: scale(1);
+        }
+    }
+
+    @@keyframes post-card-repost-turn {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(@(RepostTurnDegrees)deg);
         }
     }
 
@@ -212,6 +267,9 @@
 
     /// <summary> How far the heart swells at the top of its pop before settling back. </summary>
     const string HeartPopPeakScale = "1.3";
+
+    /// <summary> How far the repost arrows turn as the post lands on the reader's wall — one full revolution. </summary>
+    const int RepostTurnDegrees = 360;
 
     /// <summary> Easing that starts fast and settles softly, used for entrances and presses. </summary>
     const string SoftLandingEasing = "cubic-bezier(0.16, 1, 0.3, 1)";
