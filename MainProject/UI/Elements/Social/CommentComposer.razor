@@ -5,6 +5,19 @@
     button by design — the return key sends, and the disc at the end of the pill lights up in primary the
     moment the text is long enough to be worth sending, so the reply stays a one-keystroke gesture.
 *@
+@if (AnsweringName is not null)
+{
+    <div class="comment-composer-answering" style="@SurfaceStyle">
+        <span class="comment-composer-answering-mark">@AnsweringMark</span>
+        <span class="comment-composer-answering-text">@AnsweringLabel @AnsweringName</span>
+        <button type="button"
+                class="comment-composer-answering-drop"
+                title="@DropAnswerHint"
+                disabled="@IsBusy"
+                @onclick="OnCancelAnswer">@DropAnswerMark</button>
+    </div>
+}
+
 <div class="comment-composer" style="@SurfaceStyle">
     <span class="comment-composer-badge">@ComposerEmoji</span>
 
@@ -45,8 +58,26 @@
     /// <summary> Grey prompt shown in the empty field. </summary>
     [Parameter] public string Placeholder { get; set; } = DefaultPlaceholder;
 
+    /// <summary> Name of the account being answered, or null while the reply speaks to the post itself. </summary>
+    [Parameter] public string? AnsweringName { get; set; }
+
+    /// <summary> Raised when the author drops the answer and goes back to replying to the post. </summary>
+    [Parameter] public EventCallback OnCancelAnswer { get; set; }
+
     /// <summary> Prompt used when the caller does not supply one. </summary>
     const string DefaultPlaceholder = "Say something kind…";
+
+    /// <summary> Mark before the name of whoever is being answered. </summary>
+    const string AnsweringMark = "↩";
+
+    /// <summary> Leads that name. </summary>
+    const string AnsweringLabel = "Answering";
+
+    /// <summary> Mark on the control that drops the answer. </summary>
+    const string DropAnswerMark = "✕";
+
+    /// <summary> Tooltip on that control. </summary>
+    const string DropAnswerHint = "Reply to the post instead";
 
     /// <summary> Emoji marking the pill as a place to write a reply. </summary>
     const string ComposerEmoji = "💬";

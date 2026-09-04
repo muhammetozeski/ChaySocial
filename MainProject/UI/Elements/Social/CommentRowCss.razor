@@ -17,6 +17,42 @@
         animation: comment-row-arrive @(AppMeasures.Duration.Medium)s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
+    /* An answer steps in from the remark it hangs under and grows a line down its left edge, so the shape of the
+       exchange is readable without reading a word of it. */
+    .comment-row--answer {
+        margin-left: @(AnswerIndentPx)px;
+        border-left: @(AnswerSpineWidthPx)px solid @(AppColors.Primary.ToRgbaHex(true));
+        border-top-left-radius: @(AppMeasures.Radius.Small)px;
+        border-bottom-left-radius: @(AppMeasures.Radius.Small)px;
+    }
+
+    /* Names who was being answered, above the words themselves. */
+    .comment-row-answering {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+    /* A word, not a button: answering is offered without competing with what the person actually wrote. */
+    .comment-row-reply {
+        align-self: flex-start;
+        margin-top: @(AppMeasures.Space.Px4)px;
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        cursor: pointer;
+        transition: color @(AppMeasures.Duration.Fast)s;
+    }
+
+        .comment-row-reply:hover {
+            color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
     /* Round emoji chip standing in for the author's picture. */
     .comment-row-avatar {
         flex-shrink: 0;
@@ -111,4 +147,10 @@
 
     /// <summary> How far the reply slides up as it fades in. </summary>
     const int ArrivalRisePx = AppMeasures.Space.Px8;
+
+    /// <summary> How far an answer steps in from the remark it hangs under: enough to read as nested, not enough to run out of width on a phone. </summary>
+    const int AnswerIndentPx = AppMeasures.Space.Px24;
+
+    /// <summary> Thickness of the line down an answer's left edge. </summary>
+    const int AnswerSpineWidthPx = AppMeasures.Border.Thick;
 }

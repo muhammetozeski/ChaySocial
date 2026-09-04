@@ -97,6 +97,12 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> The post's replies, oldest first, the way a conversation is read. </summary>
         IReadOnlyList<CommentData> replies = [];
 
+        /// <summary> The same replies in reading order: each remark, then the answers written to it. </summary>
+        IReadOnlyList<ThreadedComment> thread = [];
+
+        /// <summary> Reply the composer is answering, or null while the draft speaks to the post itself. </summary>
+        CommentData? answeringReply;
+
         /// <summary>
         /// Profiles of everyone the thread names, keyed by address. An address is read once and then answered from
         /// here, so an account that replied five times costs one fetch and a reload only asks for faces it has not
@@ -176,6 +182,7 @@ namespace ChaySocial.MainProject.UI.Pages
             if (post is null)
             {
                 replies = [];
+                thread = [];
                 likeCount = 0;
                 isLikedByViewer = false;
                 hasLoadedOnce = true;
@@ -183,6 +190,13 @@ namespace ChaySocial.MainProject.UI.Pages
             }
 
             replies = await CommentService.ReadForPostAsync(post.PostId);
+            thread = CommentService.ArrangeThread(replies);
+
+            // A reply that was deleted while the reader was writing an answer to it has nothing left to answer.
+            if (answeringReply is not null && replies.All(reply => reply.CommentId != answeringReply.CommentId))
+            {
+                answeringReply = null;
+            }
 
             IReadOnlyList<string> likerAddresses = await WallService.ReadLikersAsync(post.PostId);
             likeCount = likerAddresses.Count;
@@ -226,6 +240,33 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="text"> The field's new contents. </param>
         void HandleDraftChanged(string text) => draftText = text;
 
+        /// <summary> Points the composer at a reply to answer. </summary>
+        /// <param name="reply"> Reply being answered. </param>
+        void StartAnswering(CommentData reply) => answeringReply = reply;
+
+        /// <summary> Drops the answer so the composer speaks to the post again. </summary>
+        void StopAnswering() => answeringReply = null;
+
+        /// <summary> Name shown in the composer's answer bar, or null while the draft speaks to the post. </summary>
+        string? AnsweringName => answeringReply is null ? null : NameFor(answeringReply.AuthorAddress);
+
+        /// <summary> Name shown above an answer, naming who it was written to; null for a remark on the post itself. </summary>
+        /// <param name="entry"> The thread line being drawn. </param>
+        /// <returns> The answered account's name, or null. </returns>
+        string? RepliedToNameFor(ThreadedComment entry)
+            => entry.RepliedTo is null ? null : NameFor(entry.RepliedTo.AuthorAddress);
+
+        /// <summary> The readable name behind an address: what that account chose, or the head of the address itself. </summary>
+        /// <param name="address"> Address to name. </param>
+        /// <returns> A name fit to show. </returns>
+        string NameFor(string address)
+        {
+            ProfileData? profile = ProfileFor(address);
+            return string.IsNullOrWhiteSpace(profile?.DisplayName)
+                ? ProfileService.FallbackDisplayName(address)
+                : profile.DisplayName;
+        }
+
         /// <summary>
         /// Signs the draft as the reader and stores it. The thread is not re-read here: publishing raises the
         /// comments event this page already reloads on, so the new reply arrives the same way one written elsewhere
@@ -240,7 +281,7 @@ namespace ChaySocial.MainProject.UI.Pages
 
             try
             {
-                CommentData? published = await CommentService.PublishAsync(Account, post, draftText);
+                CommentData? published = await CommentService.PublishAsync(Account, post, draftText, answeringReply);
 
                 if (published is null)
                 {
@@ -249,6 +290,7 @@ namespace ChaySocial.MainProject.UI.Pages
                 }
 
                 draftText = string.Empty;
+                StopAnswering();
             }
             finally
             {

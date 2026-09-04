@@ -8,7 +8,7 @@
 *@
 @if (Comment is not null)
 {
-    <div class="comment-row">
+    <div class="comment-row @(IsAnswer ? AnswerModifierClass : string.Empty)">
         <span class="comment-row-avatar">@AuthorAvatar</span>
 
         <div class="comment-row-body">
@@ -18,7 +18,17 @@
                 <span class="comment-row-time">@WrittenAgo</span>
             </div>
 
+            @if (RepliedToName is not null)
+            {
+                <span class="comment-row-answering">@AnsweringLabel @RepliedToName</span>
+            }
+
             <p class="comment-row-text">@Comment.Text</p>
+
+            @if (OnReply.HasDelegate)
+            {
+                <button type="button" class="comment-row-reply" title="@ReplyHint" @onclick="HandleReply">@ReplyLabel</button>
+            }
         </div>
 
         @if (CanDelete)
@@ -51,8 +61,33 @@
     /// <summary> Raised when the author asks for this reply to be removed. The actual deletion belongs to the caller. </summary>
     [Parameter] public EventCallback OnDelete { get; set; }
 
+    /// <summary> True when this reply sits under another one, which indents it and draws its connecting line. </summary>
+    [Parameter] public bool IsAnswer { get; set; }
+
+    /// <summary> Name of the account this reply was written to, or null when it speaks to the post itself. </summary>
+    [Parameter] public string? RepliedToName { get; set; }
+
+    /// <summary> Raised when the reader wants to answer this reply. The control only appears when a caller wires this up. </summary>
+    [Parameter] public EventCallback OnReply { get; set; }
+
     /// <summary> Emoji on the delete button. </summary>
     const string DeleteEmoji = "🗑️";
+
+    /// <summary> Class appended to a reply that answers another one; it carries the indent and the connecting line. </summary>
+    const string AnswerModifierClass = "comment-row--answer";
+
+    /// <summary> Leads the name of whoever a reply was written to. </summary>
+    const string AnsweringLabel = "↩ to";
+
+    /// <summary> Text on the control that starts an answer to this reply. </summary>
+    const string ReplyLabel = "Reply";
+
+    /// <summary> Tooltip on that control. </summary>
+    const string ReplyHint = "Answer this comment";
+
+    /// <summary> Hands the reply request to the page, which owns the composer it lands in. </summary>
+    /// <returns> A task that completes once the page has handled it. </returns>
+    Task HandleReply() => OnReply.InvokeAsync();
 
     /// <summary> Drawn between the author's name and the timestamp. </summary>
     const string HeadingSeparator = "·";

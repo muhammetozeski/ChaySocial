@@ -13,6 +13,48 @@
         box-sizing: border-box;
     }
 
+    /* Sits above the pill and names who is being answered, so the writer can see it without looking away from
+       where they are typing. */
+    .comment-composer-answering {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px8)px;
+        width: @(AppMeasures.Percent.Full)%;
+        margin-bottom: @(AppMeasures.Space.Px6)px;
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px14)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        box-sizing: border-box;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .comment-composer-answering-mark {
+        flex: none;
+        color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+    }
+
+    .comment-composer-answering-text {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .comment-composer-answering-drop {
+        flex: none;
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        cursor: pointer;
+    }
+
+        .comment-composer-answering-drop:hover:not(:disabled) {
+            color: @(AppColors.TextDanger.ToRgbaHex(true));
+        }
+
     .comment-composer-badge {
         flex-shrink: 0;
         font-size: @(AppMeasures.Font.Medium)px;

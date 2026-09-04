@@ -91,12 +91,19 @@
             }
             else
             {
-                @foreach (CommentData reply in replies)
+                @foreach (ThreadedComment entry in thread)
                 {
+                    @* Declared inside the loop body, so each row's handlers capture their own reply rather than
+                       the last one in the thread. *@
+                    CommentData reply = entry.Comment;
+
                     <CommentRow @key="reply.CommentId"
                                 Comment="@reply"
                                 AuthorProfile="@ProfileFor(reply.AuthorAddress)"
                                 CanDelete="@IsOwnReply(reply)"
+                                IsAnswer="@entry.IsAnswer"
+                                RepliedToName="@RepliedToNameFor(entry)"
+                                OnReply="@(() => StartAnswering(reply))"
                                 OnDelete="@(() => DeleteReplyAsync(reply))" />
                 }
             }
@@ -105,6 +112,8 @@
         <div class="post-thread-composer">
             <CommentComposer Text="@draftText"
                              TextChanged="HandleDraftChanged"
+                             AnsweringName="@AnsweringName"
+                             OnCancelAnswer="StopAnswering"
                              OnSubmit="PublishReplyAsync"
                              IsBusy="@isPublishing" />
         </div>
