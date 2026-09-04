@@ -27,6 +27,19 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> Base64 key encapsulation the recipient feeds back into their own key to recover the shared secret. </summary>
         public required string Encapsulation { get; init; }
 
+        /// <summary>
+        /// The same message body's key, encapsulated a second time to the sender's own account. Without this a
+        /// sender cannot read back what they wrote — the first encapsulation only opens with the recipient's seed
+        /// — and their own side of the conversation would be a column of locked bubbles.
+        /// </summary>
+        public string SenderEncapsulation { get; init; } = string.Empty;
+
+        /// <summary> Base64 nonce the sender's own copy was encrypted under. </summary>
+        public string SenderNonce { get; init; } = string.Empty;
+
+        /// <summary> Base64 ciphertext of the sender's own copy; empty on a vanishing message, which the sender cannot reopen either. </summary>
+        public string SenderCiphertext { get; init; } = string.Empty;
+
         /// <summary> Base64 nonce used for this one message. </summary>
         public required string Nonce { get; init; }
 

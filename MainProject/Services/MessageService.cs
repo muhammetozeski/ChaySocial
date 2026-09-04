@@ -125,6 +125,27 @@ namespace ChaySocial.MainProject.Services
 
             string ciphertextDigest = DigestOf(ciphertext);
 
+            // The same words, sealed a second time to the sender's own account, so their side of the conversation
+            // is readable to them. A vanishing message gets no such copy: it is meant to survive exactly one
+            // reading, and a copy the sender could reopen would make that untrue.
+            string senderEncapsulation = string.Empty;
+            string senderNonce = string.Empty;
+            string senderCiphertext = string.Empty;
+
+            if (!isVanishing)
+            {
+                EncapsulationResult ownSecret = AppCryptography.Identities.EncapsulateTo(sender.Public);
+                byte[] ownNonce = RandomSource.Next(AppCryptography.Cipher.NonceSize);
+
+                senderEncapsulation = Convert.ToBase64String(ownSecret.Encapsulation);
+                senderNonce = Convert.ToBase64String(ownNonce);
+                senderCiphertext = Convert.ToBase64String(AppCryptography.Cipher.Encrypt(
+                    Encoding.UTF8.GetBytes(trimmed),
+                    ownSecret.SharedSecret,
+                    ownNonce,
+                    associatedData));
+            }
+
             byte[] transcript = BuildTranscript(
                 messageId,
                 conversationId,
@@ -135,7 +156,8 @@ namespace ChaySocial.MainProject.Services
                 ciphertextDigest,
                 createdAt,
                 media,
-                quotedMessageId);
+                quotedMessageId,
+                DigestOfStored(senderCiphertext));
 
             // A vanishing body goes to the blob store and leaves the document empty; an ordinary one rides inside
             // the document as usual. Either way the signature above already covers the same ciphertext.
@@ -156,6 +178,9 @@ namespace ChaySocial.MainProject.Services
                 RecipientAddress = recipientAddress,
                 Encapsulation = Convert.ToBase64String(secret.Encapsulation),
                 Nonce = Convert.ToBase64String(nonce),
+                SenderEncapsulation = senderEncapsulation,
+                SenderNonce = senderNonce,
+                SenderCiphertext = senderCiphertext,
                 Ciphertext = isVanishing ? string.Empty : Convert.ToBase64String(ciphertext),
                 VanishingBlobId = vanishingBlobId,
                 CiphertextDigest = ciphertextDigest,
@@ -193,11 +218,22 @@ namespace ChaySocial.MainProject.Services
         {
             text = string.Empty;
 
-            if (message.RecipientAddress != reader.Public.Address) return false;
+            // Two copies of the same words are stored: one sealed to the recipient, one to the sender. Which one
+            // this reader can open depends on which side of the envelope they are.
+            bool isRecipient = message.RecipientAddress == reader.Public.Address;
+            bool isSender = message.SenderAddress == reader.Public.Address;
+            if (!isRecipient && !isSender) return false;
 
-            if (!TryDecodeBase64(message.Encapsulation, nameof(message.Encapsulation), message.MessageId, out byte[] encapsulation)
-                || !TryDecodeBase64(message.Nonce, nameof(message.Nonce), message.MessageId, out byte[] nonce)
-                || !TryDecodeBase64(message.Ciphertext, nameof(message.Ciphertext), message.MessageId, out byte[] ciphertext))
+            (string encapsulationText, string nonceText, string ciphertextText) = isRecipient
+                ? (message.Encapsulation, message.Nonce, message.Ciphertext)
+                : (message.SenderEncapsulation, message.SenderNonce, message.SenderCiphertext);
+
+            // A vanishing message keeps no sender copy at all, which is what makes "read once" mean once.
+            if (ciphertextText.Length == 0) return false;
+
+            if (!TryDecodeBase64(encapsulationText, nameof(message.Encapsulation), message.MessageId, out byte[] encapsulation)
+                || !TryDecodeBase64(nonceText, nameof(message.Nonce), message.MessageId, out byte[] nonce)
+                || !TryDecodeBase64(ciphertextText, nameof(message.Ciphertext), message.MessageId, out byte[] ciphertext))
             {
                 return false;
             }
@@ -316,7 +352,8 @@ namespace ChaySocial.MainProject.Services
                 message.CiphertextDigest,
                 message.CreatedAtUnixMs,
                 message.Attachments,
-                message.QuotedMessageId);
+                message.QuotedMessageId,
+                DigestOfStored(message.SenderCiphertext));
 
             return AppCryptography.Identities.Verify(transcript, signature, sender);
         }
@@ -437,6 +474,7 @@ namespace ChaySocial.MainProject.Services
         /// <param name="createdAtUnixMs"> When the message was sent. </param>
         /// <param name="attachments"> Media sent with the message, covered by the signature so nobody can swap a picture under it. </param>
         /// <param name="quotedMessageId"> Message this one replies to; covered too, so a reply cannot be re-pointed. </param>
+        /// <param name="senderCiphertextDigest"> Digest of the sender's own copy, empty when there is none, so that copy cannot be altered either. </param>
         /// <returns> The transcript to sign. </returns>
         static byte[] BuildTranscript(
             string messageId,
@@ -448,7 +486,8 @@ namespace ChaySocial.MainProject.Services
             string ciphertextDigest,
             long createdAtUnixMs,
             IReadOnlyList<MediaAttachment> attachments,
-            string quotedMessageId)
+            string quotedMessageId,
+            string senderCiphertextDigest)
         {
             TranscriptWriter transcript = new();
             transcript.WriteBytes(MessageSignatureDomain);
@@ -472,7 +511,26 @@ namespace ChaySocial.MainProject.Services
             }
 
             transcript.WriteText(quotedMessageId);
+            transcript.WriteText(senderCiphertextDigest);
             return transcript.ToArray();
+        }
+
+        /// <summary> Digest of a base64 ciphertext, or empty when there is none — the shape the transcript expects. </summary>
+        /// <param name="base64Ciphertext"> The stored copy, possibly empty. </param>
+        /// <returns> Base64 SHA-256 of those bytes, or an empty string. </returns>
+        static string DigestOfStored(string base64Ciphertext)
+        {
+            if (base64Ciphertext.Length == 0) return string.Empty;
+
+            try
+            {
+                return DigestOf(Convert.FromBase64String(base64Ciphertext));
+            }
+            catch (FormatException)
+            {
+                // Malformed base64 cannot match any digest the sender produced, so a value that never verifies is right.
+                return "malformed";
+            }
         }
 
         /// <summary>
