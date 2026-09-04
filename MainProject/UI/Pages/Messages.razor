@@ -78,7 +78,7 @@
                 else
                 {
                     <div class="messages-thread">
-                        @foreach (OpenedMessage letter in conversation)
+                        @foreach (OpenedMessage letter in NewestFirst)
                         {
                             <MessageBubble @key="letter.Envelope.MessageId"
                                            Text="@TextFor(letter)"

@@ -196,6 +196,13 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> The open conversation's letters, oldest first, each already decrypted and checked. </summary>
         IReadOnlyList<OpenedMessage> conversation = [];
 
+        /// <summary>
+        /// The same letters newest first. The thread is laid out bottom-upwards, which is what opens a long
+        /// conversation on its newest letter rather than its oldest without asking the browser to scroll anywhere,
+        /// and that layout reads its children in this order.
+        /// </summary>
+        IEnumerable<OpenedMessage> NewestFirst => conversation.Reverse();
+
         /// <summary> Profile of the account the open conversation is with, or null when it could not be read. </summary>
         ProfileData? otherProfile;
 

@@ -142,15 +142,14 @@
 
     /* ---------------------------------------------------------- one open conversation */
 
-    /* A column tall enough to fill the screen, so a two-letter conversation still keeps its composer at the foot
-       rather than leaving it stranded under the last bubble. */
-    /* The shell already reserves room for the floating navigation, so asking for a full viewport on top of that
-       makes the page taller than the screen and leaves dead space under the conversation. */
+    /* Exactly one screen tall, never more: the header stays at the top, the composer at the foot, and only the
+       letters between them move. The shell already reserves room for the floating navigation, so that much is
+       taken off the viewport here. */
     .messages-conversation {
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
-        min-height: calc(@(AppMeasures.Viewport.Full)vh - @(ShellBottomInsetPx)px);
+        height: calc(@(AppMeasures.Viewport.Full)vh - @(ShellBottomInsetPx)px);
         padding-bottom: @(ComposerRestingGapPx)px;
         animation: messages-arrive @(AppMeasures.Duration.Slow)s @SoftLandingEasing both;
     }
@@ -202,11 +201,14 @@
         color: @(AppColors.TextPrimary.ToRgbaHex(true));
     }
 
-    /* Grows to take whatever height is left, which is what pushes the composer to the foot of a short conversation.
-       Centring is what a lone placeholder — the throbber, a failed load, an empty conversation — settles into. */
+    /* Takes whatever height is left between the header and the composer. min-height:0 is what lets it actually
+       shrink to that — a flex item refuses to go below its content otherwise, and the thread inside would push
+       the composer off the screen instead of scrolling. Centring is what a lone placeholder — the throbber, a
+       failed load, an empty conversation — settles into. */
     .messages-conversation-body {
         box-sizing: border-box;
         flex: 1 1 auto;
+        min-height: 0;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -216,25 +218,26 @@
         padding: @(AppMeasures.Space.Px20)px @(AppMeasures.Space.Px20)px 0;
     }
 
-    /* The automatic top margin eats the spare height before centring gets a say, so a two-letter conversation sits
-       down on the composer the way a long one does instead of floating in the middle of the screen. */
-    /* The composer is sticky and rides above where it sits in the flow, so the thread has to hold that much room
-       under its last bubble. Without it the newest message ends up behind the composer, and tapping it — which a
-       vanishing message needs — hits the composer instead. */
+    /* The only part of the screen that scrolls, and it is laid out bottom-upwards: a reversed column starts at
+       its own beginning, which here is the foot, so a long conversation opens on its newest letter and a short
+       one still sits down on the composer. The page hands it its letters newest first to match. */
+    /* The scrollbar is thinned and tinted to the theme, and the letters keep a lane clear of it, so the bar reads
+       as part of the glass rather than a system control dropped on top of the newest bubble. */
     .messages-thread {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
         display: flex;
-        flex-direction: column;
+        flex-direction: column-reverse;
+        justify-content: flex-start;
         gap: @(AppMeasures.Space.Px10)px;
-        margin-top: auto;
-        padding-bottom: @(ComposerLiftAboveNavigationPx)px;
+        padding-right: @(ScrollbarLanePx)px;
+        scrollbar-width: thin;
+        scrollbar-color: @(AppColors.BorderStrong.ToRgbaHex(true)) transparent;
     }
 
-    /* Rides at the foot of the viewport, lifted clear of the floating bottom navigation. Its z-index sits under the
-       navigation's own, so the bar always stays on top of it. */
+    /* Sits at the foot of the column, under the letters that scroll past above it. */
     .messages-composer {
-        position: sticky;
-        bottom: @(ComposerLiftAboveNavigationPx)px;
-        z-index: @(AppMeasures.ZLayer.Sticky);
         box-sizing: border-box;
         width: @(AppMeasures.Percent.Full)%;
         max-width: @(ReadingColumnMaximumWidthPx)px;
@@ -358,14 +361,11 @@
     /// </summary>
     const int ListBottomInsetPx = AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px40;
 
-    /// <summary>
-    /// Where the composer parks while a long conversation scrolls under it: clear of the floating bottom navigation,
-    /// plus a gap so the two surfaces never touch.
-    /// </summary>
-    const int ComposerLiftAboveNavigationPx = AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px16;
-
-    /// <summary> Gap left under the composer once a conversation is scrolled all the way down and it stops sticking. </summary>
+    /// <summary> Gap left between the composer and the floating navigation below it, so the two surfaces never touch. </summary>
     const int ComposerRestingGapPx = AppMeasures.Space.Px16;
+
+    /// <summary> Lane kept clear down the right of the thread, so a bubble never sits under the scrollbar. </summary>
+    const int ScrollbarLanePx = AppMeasures.Space.Px10;
 
     /// <summary>
     /// Height the page shell already reserves under every screen for the floating bottom navigation. A screen that
