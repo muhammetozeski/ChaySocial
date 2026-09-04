@@ -140,12 +140,28 @@
     .post-card-action--like.is-liked {
         background: @(AppColors.SurfaceTintAccent.ToRgbaHex(true));
         border-color: @(AppColors.Secondary.ToRgbaHex(true));
-        color: @(AppColors.TextDanger.ToRgbaHex(true));
+        color: @(AppColors.TextWarning.ToRgbaHex(true));
     }
 
-    /* The heart only pops on the render where it becomes filled, which is exactly when this class appears. */
+    /* The glass is only poured on the render where this class appears, which is the moment the chay is given.
+       position:relative is what the steam above it is positioned against. */
     .post-card-action--like.is-liked .post-card-action-icon {
-        animation: post-card-heart-pop @(AppMeasures.Duration.Medium)s @PlayfulOvershootEasing;
+        position: relative;
+        animation: post-card-chay-pour @(AppMeasures.Duration.Medium)s @PlayfulOvershootEasing;
+    }
+
+    /* A curl of steam that rises off the glass once and fades. It is drawn by the icon itself rather than by an
+       element of its own, so nothing is added to the card for a moment of animation. */
+    .post-card-action--like.is-liked .post-card-action-icon::after {
+        content: "@SteamGlyph";
+        position: absolute;
+        left: @(AppMeasures.Percent.Half)%;
+        bottom: @(AppMeasures.Percent.Full)%;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        pointer-events: none;
+        opacity: 0;
+        animation: post-card-chay-steam @(AppMeasures.Duration.Slow)s ease-out;
     }
 
     .post-card-action--danger {
@@ -214,17 +230,33 @@
         }
     }
 
-    @@keyframes post-card-heart-pop {
+    @@keyframes post-card-chay-pour {
         0% {
-            transform: scale(1);
+            transform: scale(1) rotate(0deg);
         }
 
-        @(AppMeasures.Percent.Half)% {
-            transform: scale(@HeartPopPeakScale);
+        @(PourTiltStopPercent)% {
+            transform: scale(@PourPeakScale) rotate(-@(PourTiltDegrees)deg);
         }
 
         @(AppMeasures.Percent.Full)% {
-            transform: scale(1);
+            transform: scale(1) rotate(0deg);
+        }
+    }
+
+    @@keyframes post-card-chay-steam {
+        0% {
+            opacity: 0;
+            transform: translate(-@(AppMeasures.Percent.Half)%, 0) scale(@SteamStartScale);
+        }
+
+        @(SteamPeakPercent)% {
+            opacity: 1;
+        }
+
+        @(AppMeasures.Percent.Full)% {
+            opacity: 0;
+            transform: translate(-@(AppMeasures.Percent.Half)%, -@(SteamRisePx)px) scale(1);
         }
     }
 
@@ -265,8 +297,26 @@
     /// <summary> How far an action pill shrinks while it is held down. </summary>
     const string ActionPressedScale = "0.94";
 
-    /// <summary> How far the heart swells at the top of its pop before settling back. </summary>
-    const string HeartPopPeakScale = "1.3";
+    /// <summary> How far the glass swells as the chay is poured, before settling back. </summary>
+    const string PourPeakScale = "1.3";
+
+    /// <summary> How far the glass tips as it is poured. </summary>
+    const int PourTiltDegrees = 12;
+
+    /// <summary> Where in the pour the tilt reaches its furthest, as a percentage of the animation. </summary>
+    const int PourTiltStopPercent = 50;
+
+    /// <summary> The curl of steam that rises off a poured glass. </summary>
+    const string SteamGlyph = "♨";
+
+    /// <summary> How far the steam rises before it is gone. </summary>
+    const int SteamRisePx = AppMeasures.Space.Px12;
+
+    /// <summary> How small the steam starts before it grows on its way up. A string so the decimal survives any OS culture. </summary>
+    const string SteamStartScale = "0.6";
+
+    /// <summary> Where in its rise the steam is at full strength, as a percentage of the animation. </summary>
+    const int SteamPeakPercent = 30;
 
     /// <summary> How far the repost arrows turn as the post lands on the reader's wall — one full revolution. </summary>
     const int RepostTurnDegrees = 360;

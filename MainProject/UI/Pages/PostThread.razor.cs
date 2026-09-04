@@ -304,8 +304,8 @@ namespace ChaySocial.MainProject.UI.Pages
         Task DeleteReplyAsync(CommentData reply) => CommentService.DeleteAsync(reply, Account.Public);
 
         /// <summary>
-        /// Turns the reader's like on the post on or off. The count is moved here as well as re-read by the reload
-        /// the service triggers, so the heart answers the tap immediately instead of after a round trip.
+        /// Pours the reader's chay onto the post, or takes it back. The count is moved here as well as re-read by
+        /// the reload the service triggers, so the glass answers the tap immediately instead of after a round trip.
         /// </summary>
         /// <returns> A task that completes once the like has been stored or removed. </returns>
         async Task ToggleLikeAsync()

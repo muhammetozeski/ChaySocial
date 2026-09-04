@@ -52,7 +52,7 @@ namespace ChaySocial.MainProject.UI.Pages
         const string EmptyStateHeadline = "Nothing new yet";
 
         /// <summary> Supporting line on that placeholder, saying what fills the list. </summary>
-        const string EmptyStateDescription = "Likes, comments, new followers and messages all land right here.";
+        const string EmptyStateDescription = "Chays, comments, new followers and messages all land right here.";
 
         /// <summary> Diameter of the actor's avatar in a row: large enough to carry the emoji beside two lines of text. </summary>
         const int RowAvatarDiameterPx = AppMeasures.Size.Px48;
@@ -66,8 +66,8 @@ namespace ChaySocial.MainProject.UI.Pages
         /// </summary>
         const int LastStaggeredRowIndex = 8;
 
-        /// <summary> Emoji on the badge of a like alert. </summary>
-        const string LikeKindEmoji = "❤️";
+        /// <summary> Emoji on the badge of a chay alert. </summary>
+        const string LikeKindEmoji = "🍵";
 
         /// <summary> Emoji on the badge of a comment alert. </summary>
         const string CommentKindEmoji = "💬";
@@ -84,8 +84,8 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Emoji used for a kind this screen was written before, so an unknown alert still draws a badge. </summary>
         const string UnknownKindEmoji = "🔔";
 
-        /// <summary> Sentence completing "<c>&lt;name&gt; …</c>" for a like alert. </summary>
-        const string LikeSentence = "liked your post";
+        /// <summary> Sentence completing "<c>&lt;name&gt; …</c>" for a chay alert. </summary>
+        const string LikeSentence = "poured you a chay";
 
         /// <summary> Sentence completing "<c>&lt;name&gt; …</c>" for a comment alert. </summary>
         const string CommentSentence = "commented on your post";

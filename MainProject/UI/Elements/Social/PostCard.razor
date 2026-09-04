@@ -62,12 +62,13 @@
         }
 
         <div class="post-card-actions">
+            @* The app's own gesture rather than a heart: a glass of tea, poured when it is given. *@
             <button type="button"
                     class="post-card-action post-card-action--like @(IsLiked ? LikedModifierClass : string.Empty)"
                     title="@(IsLiked ? UnlikeHint : LikeHint)"
                     @onclick="HandleLike">
-                <span class="post-card-action-icon">@(IsLiked ? LikedHeartEmoji : UnlikedHeartEmoji)</span>
-                <span class="post-card-action-count">@LikeCount</span>
+                <span class="post-card-action-icon">@(IsLiked ? PouredGlassEmoji : EmptyGlassEmoji)</span>
+                <span class="post-card-action-count">@ChayCountLabel</span>
             </button>
 
             <button type="button" class="post-card-action" title="@CommentsHint" @onclick="HandleOpenComments">
@@ -119,11 +120,17 @@
 <PostCardCss />
 
 @code {
-    /// <summary> Heart drawn once the signed-in account has liked this post. </summary>
-    const string LikedHeartEmoji = "❤️";
+    /// <summary> Glass drawn once the reader has given this post a chay. </summary>
+    const string PouredGlassEmoji = "🍵";
 
-    /// <summary> Hollow heart drawn while this post is not liked. </summary>
-    const string UnlikedHeartEmoji = "🤍";
+    /// <summary> Glass drawn while they have not. </summary>
+    const string EmptyGlassEmoji = "🫗";
+
+    /// <summary> Word after a count of one. </summary>
+    const string SingleChayWord = "chay";
+
+    /// <summary> Word after any other count. </summary>
+    const string ManyChaysWord = "chays";
 
     /// <summary> Marks the comment count. </summary>
     const string CommentEmoji = "💬";
@@ -170,11 +177,11 @@
     /// <summary> Tooltip on the author button. </summary>
     const string OpenAuthorHint = "Open this profile";
 
-    /// <summary> Tooltip on the like button while the post is not liked. </summary>
-    const string LikeHint = "Like this post";
+    /// <summary> Tooltip on the chay button before one has been given. </summary>
+    const string LikeHint = "Chay it!";
 
-    /// <summary> Tooltip on the like button while the post is liked. </summary>
-    const string UnlikeHint = "Remove your like";
+    /// <summary> Tooltip on it afterwards. </summary>
+    const string UnlikeHint = "Take your chay back";
 
     /// <summary> Tooltip on the comment button. </summary>
     const string CommentsHint = "Read and write comments";
@@ -283,6 +290,17 @@
     string DisplayName => string.IsNullOrWhiteSpace(AuthorProfile?.DisplayName)
         ? ProfileService.FallbackDisplayName(Post.AuthorAddress)
         : AuthorProfile.DisplayName;
+
+    /// <summary>
+    /// The chay count as it is read: a bare zero would put "0 chays" under every new post, which reads as a
+    /// verdict rather than a count, so nothing is said until somebody has poured one.
+    /// </summary>
+    string ChayCountLabel => LikeCount switch
+    {
+        0 => string.Empty,
+        1 => $"{LikeCount} {SingleChayWord}",
+        _ => $"{LikeCount} {ManyChaysWord}"
+    };
 
     /// <summary> How long ago the post was published, in the short form the whole app uses. </summary>
     string RelativeTime => RelativeTimeFormatter.Format(Post.CreatedAtUnixMs);
