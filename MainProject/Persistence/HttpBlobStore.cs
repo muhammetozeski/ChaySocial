@@ -30,10 +30,17 @@ namespace ChaySocial.MainProject.Persistence
 
                 HttpRequestMessage request = new(HttpMethod.Post, BlobRoutes.Base) { Content = body };
 
-                string? answer = proofOfWork is null ? null : await proofOfWork.TakeWriteAnswerAsync(cancellationToken);
-                if (answer is not null) request.Headers.Add(ProofRoutes.SolutionHeader, answer);
+                // Media travels with an account's words, so it names the account the same way a document write
+                // does. Nothing is solved here: the permit was earned once, long before this upload.
+                if (proofOfWork is { HasWritingPermit: true } permitted)
+                {
+                    request.Headers.Add(ProofRoutes.AccountHeader, permitted.PermittedAddress);
+                }
 
                 HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+
+                if (response.StatusCode == HttpStatusCode.PaymentRequired) throw new WritingNotPermittedException();
+
                 response.EnsureSuccessStatusCode();
 
                 return await response.Content.ReadAsStringAsync(cancellationToken);

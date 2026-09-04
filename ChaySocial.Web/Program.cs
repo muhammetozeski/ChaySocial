@@ -15,6 +15,9 @@ namespace ChaySocial
         /// <summary> Folder under the app's content root where uploaded media lives. </summary>
         const string StoredMediaFolderName = "StoredMedia";
 
+        /// <summary> File under the app's content root listing the accounts that have paid for a writing permit. </summary>
+        const string WritingPermitFileName = "WritingPermits.txt";
+
         /// <summary> Path prefix every API route sits under, used to keep page-oriented middleware away from them. </summary>
         const string ApiPathPrefix = "/api";
 
@@ -35,9 +38,12 @@ namespace ChaySocial
             string documentDirectory = Path.Combine(builder.Environment.ContentRootPath, StoredDataFolderName);
             builder.Services.AddSingleton(new JsonDocumentStore(new DocumentFileStorage(documentDirectory)));
 
-            // Writing costs computer time instead of an identity: one registry hands out the challenges and
-            // redeems the answers, so a bot farm pays for every account and every post it creates.
+            // The one cost this app charges is the permit to write, and it is charged in computer time rather than
+            // in an identity. One registry hands out the challenges; another remembers who has paid, so a farm
+            // wanting a thousand posting accounts pays a thousand times over while a person pays once.
             builder.Services.AddSingleton<ProofChallengeRegistry>();
+            builder.Services.AddSingleton(new WritingPermitRegistry(
+                Path.Combine(builder.Environment.ContentRootPath, WritingPermitFileName)));
 
             // Media is stored beside the documents, as opaque encrypted files: the server holds the bytes and
             // cannot tell a picture from a recording, because it never receives either in the clear.
@@ -48,6 +54,9 @@ namespace ChaySocial
 
             int restoredDocuments = app.Services.GetRequiredService<JsonDocumentStore>().RestoreFromDisk();
             app.Logger.LogInformation("Restored {DocumentCount} documents from {Directory}.", restoredDocuments, documentDirectory);
+
+            int restoredPermits = app.Services.GetRequiredService<WritingPermitRegistry>().RestoreFromDisk();
+            app.Logger.LogInformation("Restored {PermitCount} writing permits.", restoredPermits);
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
@@ -73,6 +82,7 @@ namespace ChaySocial
 
             app.MapStaticAssets();
             app.MapProofApi();
+            app.MapWritingPermitApi();
             app.MapBlobApi();
             app.MapDocumentApi();
             app.MapRazorComponents<App>()

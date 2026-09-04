@@ -119,12 +119,13 @@ namespace ChaySocial.Web.Api
         public static void MapBlobApi(this WebApplication app)
         {
             BlobFileStorage storage = app.Services.GetRequiredService<BlobFileStorage>();
-            ProofChallengeRegistry proofRegistry = app.Services.GetRequiredService<ProofChallengeRegistry>();
+            WritingPermitRegistry permits = app.Services.GetRequiredService<WritingPermitRegistry>();
 
             app.MapPost(BlobRoutes.Base, async (HttpRequest request, CancellationToken cancellationToken) =>
             {
-                if (!ProofRoutes.TryParseSolution(request.Headers[ProofRoutes.SolutionHeader], out ProofSolution solution)
-                    || !proofRegistry.Redeem(solution, ProofDifficulty.Write, DateTimeOffset.UtcNow))
+                // Media is something an account puts in front of other people, so it sits behind the same permit
+                // the words it travels with do.
+                if (!permits.IsGranted(request.Headers[ProofRoutes.AccountHeader].ToString()))
                 {
                     return Results.StatusCode(StatusCodes.Status402PaymentRequired);
                 }

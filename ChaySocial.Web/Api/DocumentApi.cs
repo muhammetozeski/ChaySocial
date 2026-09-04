@@ -202,24 +202,24 @@ namespace ChaySocial.Web.Api
     public static class DocumentApi
     {
         /// <summary>
-        /// Collections whose writes cost proof-of-work. Reading is always free, and the bookkeeping collections
-        /// (likes, follows, blocks, notifications) are left free too, so the cost lands on producing content
-        /// rather than on every tap. A repost costs: it puts a post in front of a fresh audience, which is
-        /// exactly what a spammer would automate. The subject index does not: it is written alongside a post that
-        /// has already paid, one entry per subject named, and an invented entry shows nothing because a reader
-        /// checks each post's own words before drawing it under a subject.
+        /// Collections that put an account's words in front of other people, and therefore need that account to
+        /// hold a writing permit. Everything else — opening an account, following, blocking, pouring somebody a
+        /// chay, being notified — is free and instant, because none of it is a place to put spam.
         /// </summary>
-        static readonly string[] ProtectedCollections = ["posts", "comments", "messages", "profiles", "reposts"];
-
-        /// <summary> Collection whose first write is an account being created, and therefore costs the heavier proof. </summary>
-        const string ProfileCollection = "profiles";
+        /// <remarks>
+        /// The cost sits at one door and is paid once. Charging every write instead made the app punish the people
+        /// using it: a second and a half of somebody's phone burnt per message, paid by everyone, to inconvenience
+        /// a farm that is happy to spend it. One slow permit per account is what makes a thousand posting accounts
+        /// expensive, which is the thing worth making expensive.
+        /// </remarks>
+        static readonly string[] PermittedWritingCollections = ["posts", "comments", "messages", "reposts", "groups", "subjects"];
 
         /// <summary> Registers every document route on the application. </summary>
         /// <param name="app"> Application to register on. </param>
         public static void MapDocumentApi(this WebApplication app)
         {
             JsonDocumentStore store = app.Services.GetRequiredService<JsonDocumentStore>();
-            ProofChallengeRegistry proofRegistry = app.Services.GetRequiredService<ProofChallengeRegistry>();
+            WritingPermitRegistry permits = app.Services.GetRequiredService<WritingPermitRegistry>();
 
             app.MapGet($"{DocumentRoutes.Base}/{{collection}}/{{documentId}}", (string collection, string documentId) =>
             {
@@ -229,7 +229,7 @@ namespace ChaySocial.Web.Api
 
             app.MapPut($"{DocumentRoutes.Base}/{{collection}}/{{documentId}}", async (string collection, string documentId, HttpRequest request) =>
             {
-                if (!IsWriteAllowed(store, proofRegistry, collection, documentId, request)) return Results.StatusCode(StatusCodes.Status402PaymentRequired);
+                if (!IsWriteAllowed(permits, collection, request)) return Results.StatusCode(StatusCodes.Status402PaymentRequired);
 
                 JsonNode? document = await JsonNode.ParseAsync(request.Body);
                 if (document is null) return Results.BadRequest();
@@ -259,30 +259,25 @@ namespace ChaySocial.Web.Api
         }
 
         /// <summary>
-        /// Decides whether a write may proceed. Free collections always may; a protected one needs a valid,
-        /// unexpired, unused proof, and creating a profile that does not exist yet needs the heavier one because
-        /// that write is what brings an account into being.
+        /// Decides whether a write may proceed. Everything may, except writing into a collection that carries an
+        /// account's words: that needs the account named in the request to hold a writing permit.
         /// </summary>
-        /// <param name="store"> Store consulted to see whether the document already exists. </param>
-        /// <param name="proofRegistry"> Registry that redeems the answer. </param>
+        /// <param name="permits"> Registry of accounts that have paid for a permit. </param>
         /// <param name="collection"> Collection being written to. </param>
-        /// <param name="documentId"> Id being written. </param>
-        /// <param name="request"> Request carrying the answer in its header. </param>
-        /// <returns> True when the write is paid for. </returns>
-        static bool IsWriteAllowed(
-            JsonDocumentStore store,
-            ProofChallengeRegistry proofRegistry,
-            string collection,
-            string documentId,
-            HttpRequest request)
+        /// <param name="request"> Request naming the writing account in its header. </param>
+        /// <returns> True when the write may proceed. </returns>
+        /// <remarks>
+        /// The header names the account rather than proving it, which is enough for what this gate is for. Somebody
+        /// could borrow a permitted address to get past it, but every reader checks a post's signature against the
+        /// address it claims, so what they smuggle through is drawn as unverified and convinces nobody. Making that
+        /// airtight would mean the server verifying every signature it stores, which is exactly the work this app
+        /// keeps off the server.
+        /// </remarks>
+        static bool IsWriteAllowed(WritingPermitRegistry permits, string collection, HttpRequest request)
         {
-            if (!ProtectedCollections.Contains(collection)) return true;
+            if (!PermittedWritingCollections.Contains(collection)) return true;
 
-            bool isNewAccount = collection == ProfileCollection && store.Read(collection, documentId) is null;
-            int requiredDifficulty = isNewAccount ? ProofDifficulty.Account : ProofDifficulty.Write;
-
-            return ProofRoutes.TryParseSolution(request.Headers[ProofRoutes.SolutionHeader], out ProofSolution solution)
-                && proofRegistry.Redeem(solution, requiredDifficulty, DateTimeOffset.UtcNow);
+            return permits.IsGranted(request.Headers[ProofRoutes.AccountHeader].ToString());
         }
     }
 }

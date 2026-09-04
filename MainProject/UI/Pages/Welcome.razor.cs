@@ -181,8 +181,7 @@ namespace ChaySocial.MainProject.UI.Pages
 
             try
             {
-                _proofAttempts = 0;
-                _secretText = await SessionService.CreateAccountAsync(ReportProofProgress);
+                _secretText = await SessionService.CreateAccountAsync();
                 _stage = WelcomeStage.KeepSecret;
             }
             catch (Exception error)
@@ -211,7 +210,7 @@ namespace ChaySocial.MainProject.UI.Pages
 
             try
             {
-                if (await SessionService.SignInAsync(_recalledSecret, ReportProofProgress))
+                if (await SessionService.SignInAsync(_recalledSecret))
                 {
                     NavManager.NavigateTo(WallRoute);
                     return;

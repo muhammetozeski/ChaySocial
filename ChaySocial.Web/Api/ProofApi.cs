@@ -14,8 +14,12 @@ namespace ChaySocial.Web.Api
         readonly Dictionary<string, ProofChallenge> _open = [];
         readonly Lock _gate = new();
 
-        /// <summary> How long a challenge stays answerable. </summary>
-        static readonly TimeSpan ChallengeLifetime = TimeSpan.FromMinutes(5);
+        /// <summary>
+        /// How long a challenge stays answerable. Comfortably longer than the work itself takes, because the work
+        /// takes minutes and a slow phone takes several of them: a window that expires mid-search would throw away
+        /// exactly the effort it was meant to charge for.
+        /// </summary>
+        static readonly TimeSpan ChallengeLifetime = TimeSpan.FromMinutes(60);
 
         /// <summary> Random bytes behind a challenge id. </summary>
         const int ChallengeIdBytes = 12;
@@ -27,7 +31,7 @@ namespace ChaySocial.Web.Api
         const int SweepThreshold = 500;
 
         /// <summary> Difficulties a client may ask for, so nobody can request a trivial one. </summary>
-        static readonly int[] AllowedDifficulties = [ProofDifficulty.Write, ProofDifficulty.Account];
+        static readonly int[] AllowedDifficulties = [ProofDifficulty.WritingPermit];
 
         /// <summary> Creates a challenge at one of the allowed difficulties. </summary>
         /// <param name="difficultyBits"> Difficulty the client asked for. </param>

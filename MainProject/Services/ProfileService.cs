@@ -41,20 +41,11 @@ namespace ChaySocial.MainProject.Services
         /// therefore finds the existing profile instead of overwriting it.
         /// </summary>
         /// <param name="identity"> The account whose profile is needed. </param>
-        /// <param name="onProofAttempt"> Reports proof-of-work attempts while an account is being brought into being, for a progress display. </param>
         /// <returns> The stored profile, or the freshly created one. </returns>
-        public static async Task<ProfileData> EnsureExistsAsync(PublicIdentity identity, Action<long>? onProofAttempt = null)
+        public static async Task<ProfileData> EnsureExistsAsync(PublicIdentity identity)
         {
             ProfileData? existing = await ReadAsync(identity.Address);
             if (existing is not null) return existing;
-
-            // Publishing a profile for an address the server has never seen is what creates an account, and the
-            // server charges the heavier proof for it. This runs here rather than at the call site so every path
-            // that brings an account into being pays — signing in on a second device as much as creating one.
-            if (AppServices.ProofOfWork is not null)
-            {
-                await AppServices.ProofOfWork.ReserveAccountAnswerAsync(onProofAttempt);
-            }
 
             ProfileData created = new()
             {

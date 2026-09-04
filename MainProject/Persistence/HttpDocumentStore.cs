@@ -44,10 +44,19 @@ namespace ChaySocial.MainProject.Persistence
                 Content = JsonContent.Create(document, options: SerializerOptions)
             };
 
-            string? answer = proofOfWork is null ? null : await proofOfWork.TakeWriteAnswerAsync(cancellationToken);
-            if (answer is not null) request.Headers.Add(ProofRoutes.SolutionHeader, answer);
+            // Writes that carry an account's words name that account, so the server can see it holds a permit.
+            // Nothing is solved here: the permit was earned once, long before this write.
+            if (proofOfWork is { HasWritingPermit: true } permitted)
+            {
+                request.Headers.Add(ProofRoutes.AccountHeader, permitted.PermittedAddress);
+            }
 
             HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+
+            // The server refuses writes from an account with no writing permit. Named as its own failure rather
+            // than left as a generic one, because it is the only refusal a person can actually do something about.
+            if (response.StatusCode == HttpStatusCode.PaymentRequired) throw new WritingNotPermittedException();
+
             response.EnsureSuccessStatusCode();
         }
 

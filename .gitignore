@@ -367,3 +367,4 @@ Board/replies.json
 # Server-side stored documents
 ChaySocial.Web/StoredDocuments/
 ChaySocial.Web/StoredMedia/
+ChaySocial.Web/WritingPermits.txt
