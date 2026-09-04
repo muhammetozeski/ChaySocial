@@ -29,6 +29,22 @@ namespace ChaySocial.MainProject.Services
     }
 
     /// <summary>
+    /// The numbers a post card draws under a post. Read once per post while a page loads, so a repaint never goes
+    /// back to the store for a count it already has.
+    /// </summary>
+    /// <param name="LikeCount"> How many accounts liked the post. </param>
+    /// <param name="IsLikedByViewer"> True when the reader is one of those likers, which fills the heart. </param>
+    /// <param name="CommentCount"> How many comments the post carries. </param>
+    /// <param name="RepostCount"> How many accounts carried the post onto their own wall. </param>
+    /// <param name="IsRepostedByViewer"> True when the reader is one of those, which lights the arrows. </param>
+    public readonly record struct PostEngagement(
+        int LikeCount,
+        bool IsLikedByViewer,
+        int CommentCount,
+        int RepostCount,
+        bool IsRepostedByViewer);
+
+    /// <summary>
     /// Builds the two lists of posts a reader is shown: the following feed, made only of the accounts they chose to
     /// follow, and the discover feed, which is the wall everybody shares. Both are assembled on the reader's own
     /// device — the store is asked for ordinary pages of posts and this class decides which of them survive — so an
@@ -117,6 +133,47 @@ namespace ChaySocial.MainProject.Services
                 (await repostsRead).Where(repost => !hidden.Contains(repost.ReposterAddress)), hidden);
 
             return NewestFirst([.. written, .. passedOn], limit);
+        }
+
+        /// <summary> Reads the counts every post in a list needs, all posts at once. </summary>
+        /// <param name="posts"> The posts about to be drawn. </param>
+        /// <param name="viewerAddress"> Address of the reader, so their own like and repost light up. </param>
+        /// <returns> The counts keyed by post id. </returns>
+        public static async Task<Dictionary<string, PostEngagement>> ReadEngagementsAsync(
+            IReadOnlyList<PostData> posts,
+            string viewerAddress)
+        {
+            PostEngagement[] measured = await Task.WhenAll(posts.Select(post => ReadEngagementAsync(post, viewerAddress)));
+
+            Dictionary<string, PostEngagement> byPostId = new(posts.Count);
+            for (int index = 0; index < posts.Count; index++)
+            {
+                byPostId[posts[index].PostId] = measured[index];
+            }
+
+            return byPostId;
+        }
+
+        /// <summary> Reads one post's likers, reposters and comment count, all at once because none needs the others. </summary>
+        /// <param name="post"> The post to measure. </param>
+        /// <param name="viewerAddress"> Address of the reader, looked for among the likers and the reposters. </param>
+        /// <returns> The numbers that post's card draws. </returns>
+        public static async Task<PostEngagement> ReadEngagementAsync(PostData post, string viewerAddress)
+        {
+            Task<IReadOnlyList<string>> likersRead = WallService.ReadLikersAsync(post.PostId);
+            Task<IReadOnlyList<string>> repostersRead = WallService.ReadRepostersAsync(post.PostId);
+            Task<int> commentCountRead = CommentService.CountForPostAsync(post.PostId);
+            await Task.WhenAll(likersRead, repostersRead, commentCountRead);
+
+            IReadOnlyList<string> likers = await likersRead;
+            IReadOnlyList<string> reposters = await repostersRead;
+
+            return new PostEngagement(
+                likers.Count,
+                likers.Contains(viewerAddress),
+                await commentCountRead,
+                reposters.Count,
+                reposters.Contains(viewerAddress));
         }
 
         /// <summary>

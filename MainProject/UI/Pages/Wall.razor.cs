@@ -16,22 +16,6 @@ namespace ChaySocial.MainProject.UI.Pages
     }
 
     /// <summary>
-    /// The three numbers a post card draws under a post. Read once per post while the wall loads, so a repaint
-    /// never goes back to the store for a count it already has.
-    /// </summary>
-    /// <param name="LikeCount"> How many accounts liked the post. </param>
-    /// <param name="IsLikedByViewer"> True when the signed-in account is one of those likers, which fills the heart. </param>
-    /// <param name="CommentCount"> How many comments the post carries. </param>
-    /// <param name="RepostCount"> How many accounts carried the post onto their own wall. </param>
-    /// <param name="IsRepostedByViewer"> True when the signed-in account is one of those, which lights the arrows. </param>
-    public readonly record struct PostEngagement(
-        int LikeCount,
-        bool IsLikedByViewer,
-        int CommentCount,
-        int RepostCount,
-        bool IsRepostedByViewer);
-
-    /// <summary>
     /// The wall: what the reader writes, the two feeds they can read, and every post card in whichever feed is
     /// selected. The page owns all the reads and all the writes — the cards below it only draw what they are
     /// handed and report which button was pressed.
@@ -217,7 +201,7 @@ namespace ChaySocial.MainProject.UI.Pages
             ];
 
             Dictionary<string, ProfileData?> authorProfiles = await ReadProfilesAsync(addresses);
-            Dictionary<string, PostEngagement> engagements = await ReadEngagementsAsync(posts, viewerAddress);
+            Dictionary<string, PostEngagement> engagements = await FeedService.ReadEngagementsAsync(posts, viewerAddress);
 
             Entries = entries;
             QuotedPosts = quoted;
@@ -266,45 +250,6 @@ namespace ChaySocial.MainProject.UI.Pages
             }
 
             return byAddress;
-        }
-
-        /// <summary> Reads the like and comment counts of every post in the feed. </summary>
-        /// <param name="posts"> The posts about to be drawn. </param>
-        /// <param name="viewerAddress"> Address of the reader, so their own like fills the heart. </param>
-        /// <returns> The counts keyed by post id. </returns>
-        static async Task<Dictionary<string, PostEngagement>> ReadEngagementsAsync(IReadOnlyList<PostData> posts, string viewerAddress)
-        {
-            PostEngagement[] measured = await Task.WhenAll(posts.Select(post => MeasureEngagementAsync(post, viewerAddress)));
-
-            Dictionary<string, PostEngagement> byPostId = new(posts.Count);
-            for (int index = 0; index < posts.Count; index++)
-            {
-                byPostId[posts[index].PostId] = measured[index];
-            }
-
-            return byPostId;
-        }
-
-        /// <summary> Reads one post's likers, reposters and comment count, all at once because none needs the others. </summary>
-        /// <param name="post"> The post to measure. </param>
-        /// <param name="viewerAddress"> Address of the reader, looked for among the likers and the reposters. </param>
-        /// <returns> The numbers that post's card draws. </returns>
-        static async Task<PostEngagement> MeasureEngagementAsync(PostData post, string viewerAddress)
-        {
-            Task<IReadOnlyList<string>> likersRead = WallService.ReadLikersAsync(post.PostId);
-            Task<IReadOnlyList<string>> repostersRead = WallService.ReadRepostersAsync(post.PostId);
-            Task<int> commentCountRead = CommentService.CountForPostAsync(post.PostId);
-            await Task.WhenAll(likersRead, repostersRead, commentCountRead);
-
-            IReadOnlyList<string> likers = await likersRead;
-            IReadOnlyList<string> reposters = await repostersRead;
-
-            return new PostEngagement(
-                likers.Count,
-                likers.Contains(viewerAddress),
-                await commentCountRead,
-                reposters.Count,
-                reposters.Contains(viewerAddress));
         }
 
         /// <summary> The profile of a post's author, or null while it has not been read or was never published. </summary>
