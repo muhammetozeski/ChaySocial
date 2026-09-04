@@ -5,7 +5,69 @@
 @{
     const int VanishSwitchDiameterPx = 34;
     const float VanishSwitchGlowOpacity = 0.3f;
+    const int ReplyBarPaddingYPx = 8;
+    const int ReplyBarPaddingXPx = 14;
+    const int ReplyBarGapPx = 8;
+    const int ReplyDropDiameterPx = 20;
 }
+
+<style>
+    /* Sits directly above the composer and shares its rounded top, so the two read as one control: what is being
+       replied to, and the box the reply is written in. */
+    .message-composer-reply {
+        display: flex;
+        align-items: center;
+        gap: @(ReplyBarGapPx)px;
+        width: @(AppMeasures.Percent.Full)%;
+        box-sizing: border-box;
+        padding: @(ReplyBarPaddingYPx)px @(ReplyBarPaddingXPx)px;
+        margin-bottom: @(AppMeasures.Space.Px6)px;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        animation: message-composer-reply-arrive @(AppMeasures.Duration.Fast)s ease both;
+    }
+
+    .message-composer-reply-mark {
+        flex: none;
+        color: @(AppColors.Primary.ToRgbaHex(true));
+    }
+
+    .message-composer-reply-text {
+        flex: 1;
+        min-width: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .message-composer-reply-drop {
+        flex: none;
+        width: @(ReplyDropDiameterPx)px;
+        height: @(ReplyDropDiameterPx)px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: none;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        background: transparent;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+        cursor: pointer;
+        transition: color @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .message-composer-reply-drop:hover {
+            color: @(AppColors.TextDanger.ToRgbaHex(true));
+        }
+
+    @@keyframes message-composer-reply-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(AppMeasures.Space.Px6)px);
+        }
+    }
+</style>
 
 <style>
     .message-composer {

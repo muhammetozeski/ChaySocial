@@ -4,6 +4,9 @@
 *@
 @{
     const int BubbleMediaMaximumHeightPx = 320;
+    const int QuotePaddingYPx = 5;
+    const int QuotePaddingXPx = 8;
+    const int QuoteGapPx = 6;
 }
 
 <style>
@@ -78,6 +81,57 @@
 
     /* A vanishing letter's picture, drawn straight from the bytes the reader was handed. It exists nowhere else,
        so it is deliberately capped rather than allowed to push the whole conversation out of view. */
+    /* The quoted line: a tap target, so it is a button, but styled as a quiet inset rather than a control. */
+    .message-bubble-quote {
+        display: flex;
+        align-items: flex-start;
+        gap: @(QuoteGapPx)px;
+        width: @(AppMeasures.Percent.Full)%;
+        margin-bottom: @(AppMeasures.Space.Px6)px;
+        padding: @(QuotePaddingYPx)px @(QuotePaddingXPx)px;
+        border-radius: @(AppMeasures.Radius.Small)px;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        opacity: @(AppMeasures.Opacity.Soft);
+        transition: opacity @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .message-bubble-quote:hover {
+            opacity: 1;
+        }
+
+    .message-bubble-quote-mark {
+        flex: none;
+        font-size: @(AppMeasures.Font.Small)px;
+    }
+
+    /* One line only: a reply points at what it answers, it does not reprint it. */
+    .message-bubble-quote-text {
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .message-bubble-reply {
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        cursor: pointer;
+        opacity: @(AppMeasures.Opacity.Dim);
+        transition: opacity @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .message-bubble-reply:hover {
+            opacity: 1;
+        }
+
     .message-bubble-media {
         display: block;
         width: @(AppMeasures.Percent.Full)%;

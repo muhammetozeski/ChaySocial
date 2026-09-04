@@ -211,6 +211,15 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Media already uploaded for the letter being written but not sent yet. </summary>
         IReadOnlyList<MediaAttachment> draftAttachments = [];
 
+        /// <summary> Id of the letter being replied to, or empty while a plain letter is being written. </summary>
+        string replyingToMessageId = string.Empty;
+
+        /// <summary> Longest quoted line drawn on a bubble or in the composer; past this the line is cut and ellipsised. </summary>
+        const int QuotedSummaryLength = 90;
+
+        /// <summary> Stands in for a quoted letter whose words this device cannot show — a vanishing one, or one meant for somebody else. </summary>
+        const string UnreadableQuoteSummary = "a message that cannot be shown";
+
         /// <summary>
         /// Vanishing letters this reader has opened, kept only for as long as the page is on screen. The server no
         /// longer holds them, so leaving the conversation is what finally loses them.
@@ -405,6 +414,41 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="attachments"> The media currently attached. </param>
         void HandleDraftAttachmentsChanged(IReadOnlyList<MediaAttachment> attachments) => draftAttachments = attachments;
 
+        /// <summary> Points the composer at a letter to answer. </summary>
+        /// <param name="letter"> Letter being replied to. </param>
+        void StartReplying(OpenedMessage letter) => replyingToMessageId = letter.Envelope.MessageId;
+
+        /// <summary> Drops the reply so the composer writes a plain letter again. </summary>
+        void StopReplying() => replyingToMessageId = string.Empty;
+
+        /// <summary> The line shown in the composer for the letter being answered, or null when none is. </summary>
+        string? ReplyingToSummary => replyingToMessageId.Length == 0 ? null : SummaryOf(replyingToMessageId);
+
+        /// <summary> The line a bubble shows for the letter it answers, or null when it answers nothing. </summary>
+        /// <param name="letter"> The letter being drawn. </param>
+        /// <returns> The quoted line, or null. </returns>
+        string? QuotedSummaryFor(OpenedMessage letter)
+            => letter.Envelope.IsQuoting ? SummaryOf(letter.Envelope.QuotedMessageId) : null;
+
+        /// <summary>
+        /// Shortens one letter of this conversation into the single line a quote shows. The words come from the
+        /// already-decrypted conversation rather than from the server, so quoting costs no second fetch and puts
+        /// no second copy of the text anywhere.
+        /// </summary>
+        /// <param name="messageId"> Letter to summarise. </param>
+        /// <returns> The line to draw. </returns>
+        string SummaryOf(string messageId)
+        {
+            OpenedMessage? quoted = conversation.FirstOrDefault(letter => letter.Envelope.MessageId == messageId);
+
+            if (quoted is null) return UnreadableQuoteSummary;
+
+            string text = Current(quoted).Text;
+            if (text.Length == 0) return UnreadableQuoteSummary;
+
+            return text.Length <= QuotedSummaryLength ? text : text[..QuotedSummaryLength] + "…";
+        }
+
         /// <summary>
         /// Opens a vanishing letter, which destroys it on the server as it is read. The body is kept only on this
         /// page, in memory: there is nowhere left to fetch it from, so leaving the conversation loses it — which
@@ -490,7 +534,8 @@ namespace ChaySocial.MainProject.UI.Pages
 
             try
             {
-                MessageData? sent = await MessageService.SendAsync(Account, otherProfile, draftText, isDraftVanishing, draftAttachments);
+                MessageData? sent = await MessageService.SendAsync(
+                    Account, otherProfile, draftText, isDraftVanishing, draftAttachments, replyingToMessageId);
 
                 if (sent is null)
                 {
@@ -501,6 +546,7 @@ namespace ChaySocial.MainProject.UI.Pages
                 draftText = string.Empty;
                 isDraftVanishing = false;
                 draftAttachments = [];
+                StopReplying();
             }
             catch (Exception error)
             {

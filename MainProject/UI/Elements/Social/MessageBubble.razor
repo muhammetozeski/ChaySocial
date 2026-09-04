@@ -8,6 +8,16 @@
 *@
 <div class="message-bubble-line @LineSideClass">
     <div class="message-bubble @BubbleSideClass" style="@BubbleStyle">
+        @if (QuotedSummary is not null)
+        {
+            @* The quoted line sits inside the bubble and above its words, so a reply reads as an answer to
+               something rather than as a message that happens to mention it. *@
+            <button type="button" class="message-bubble-quote" style="@QuoteStyle" @onclick="OnOpenQuoted">
+                <span class="message-bubble-quote-mark">@QuoteMark</span>
+                <span class="message-bubble-quote-text">@QuotedSummary</span>
+            </button>
+        }
+
         @if (IsVanishing && !IsVanishingOpened)
         {
             @* A vanishing message stays behind a deliberate tap: opening it destroys it on the server, so it
@@ -62,6 +72,11 @@
         }
 
         <div class="message-bubble-footer">
+            @if (OnReply.HasDelegate && CouldDecrypt)
+            {
+                <button type="button" class="message-bubble-reply" title="@ReplyHint" @onclick="OnReply">@ReplyEmoji</button>
+            }
+
             <span class="message-bubble-time">@SentAgo</span>
 
             @if (IsSenderVerified)
@@ -111,6 +126,35 @@
 
     /// <summary> Media still sitting in the blob store, which an ordinary message's bubble fetches when it draws. </summary>
     [Parameter] public IReadOnlyList<MediaAttachment> StoredAttachments { get; set; } = [];
+
+    /// <summary> One line of the message this one replies to, already shortened by the page; null when it replies to nothing. </summary>
+    [Parameter] public string? QuotedSummary { get; set; }
+
+    /// <summary> Raised when the quoted line is tapped, to jump to the message it stands for. </summary>
+    [Parameter] public EventCallback OnOpenQuoted { get; set; }
+
+    /// <summary> Raised when the reader wants to reply to this message. The action only appears when a caller wires this up. </summary>
+    [Parameter] public EventCallback OnReply { get; set; }
+
+    /// <summary> Mark drawn before a quoted line. </summary>
+    const string QuoteMark = "❝";
+
+    /// <summary> Mark on the action that replies to a message. </summary>
+    const string ReplyEmoji = "↩";
+
+    /// <summary> Hover text on that action. </summary>
+    const string ReplyHint = "Reply to this message";
+
+    /// <summary> Opacity of the quoted line's own ground inside a filled bubble. </summary>
+    const float QuoteGroundOpacity = 0.18f;
+
+    /// <summary>
+    /// The quoted line's ground. Inside the account's own filled bubble a translucent black film reads correctly
+    /// against the gradient; on a glass bubble the palette's subtle surface does.
+    /// </summary>
+    string QuoteStyle => IsMine
+        ? $"background:{Colors.Black.WithAlpha(QuoteGroundOpacity).ToRgbaHex(true)};border:{AppStyles.BorderStrokeSoft};"
+        : $"background:{AppColors.SurfaceSubtle.ToRgbaHex(true)};border:{AppStyles.BorderStrokeSoft};";
 
     /// <summary> Mark on the invitation to open a vanishing message. </summary>
     const string VanishingEmoji = "👁️";

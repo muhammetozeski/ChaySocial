@@ -82,12 +82,14 @@ namespace ChaySocial.MainProject.Services
         /// been opened the server has nothing left to serve, to anyone.
         /// </param>
         /// <param name="attachments"> Media already uploaded for this message, or null for a message that is only text. </param>
+        /// <param name="quotedMessageId"> Message this one replies to, or empty when it replies to nothing. </param>
         public static async Task<MessageData?> SendAsync(
             PrivateIdentity sender,
             ProfileData recipientProfile,
             string text,
             bool isVanishing = false,
-            IReadOnlyList<MediaAttachment>? attachments = null)
+            IReadOnlyList<MediaAttachment>? attachments = null,
+            string quotedMessageId = "")
         {
             string trimmed = text.Trim();
             IReadOnlyList<MediaAttachment> media = attachments ?? [];
@@ -132,7 +134,8 @@ namespace ChaySocial.MainProject.Services
                 nonce,
                 ciphertextDigest,
                 createdAt,
-                media);
+                media,
+                quotedMessageId);
 
             // A vanishing body goes to the blob store and leaves the document empty; an ordinary one rides inside
             // the document as usual. Either way the signature above already covers the same ciphertext.
@@ -157,6 +160,7 @@ namespace ChaySocial.MainProject.Services
                 VanishingBlobId = vanishingBlobId,
                 CiphertextDigest = ciphertextDigest,
                 Attachments = media,
+                QuotedMessageId = quotedMessageId,
                 CreatedAtUnixMs = createdAt,
                 Signature = Convert.ToBase64String(sender.Sign(transcript))
             };
@@ -311,7 +315,8 @@ namespace ChaySocial.MainProject.Services
                 nonce,
                 message.CiphertextDigest,
                 message.CreatedAtUnixMs,
-                message.Attachments);
+                message.Attachments,
+                message.QuotedMessageId);
 
             return AppCryptography.Identities.Verify(transcript, signature, sender);
         }
@@ -431,6 +436,7 @@ namespace ChaySocial.MainProject.Services
         /// <param name="ciphertextDigest"> Base64 SHA-256 of the encrypted body. </param>
         /// <param name="createdAtUnixMs"> When the message was sent. </param>
         /// <param name="attachments"> Media sent with the message, covered by the signature so nobody can swap a picture under it. </param>
+        /// <param name="quotedMessageId"> Message this one replies to; covered too, so a reply cannot be re-pointed. </param>
         /// <returns> The transcript to sign. </returns>
         static byte[] BuildTranscript(
             string messageId,
@@ -441,7 +447,8 @@ namespace ChaySocial.MainProject.Services
             byte[] nonce,
             string ciphertextDigest,
             long createdAtUnixMs,
-            IReadOnlyList<MediaAttachment> attachments)
+            IReadOnlyList<MediaAttachment> attachments,
+            string quotedMessageId)
         {
             TranscriptWriter transcript = new();
             transcript.WriteBytes(MessageSignatureDomain);
@@ -464,6 +471,7 @@ namespace ChaySocial.MainProject.Services
                 transcript.WriteInt64(attachment.ByteCount);
             }
 
+            transcript.WriteText(quotedMessageId);
             return transcript.ToArray();
         }
 

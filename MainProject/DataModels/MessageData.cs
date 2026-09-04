@@ -59,6 +59,16 @@ namespace ChaySocial.MainProject.DataModels
         /// </summary>
         public IReadOnlyList<MediaAttachment> Attachments { get; init; } = [];
 
+        /// <summary>
+        /// Message this one replies to, or empty when it replies to nothing. Only the id travels: the quoted
+        /// message's words are already in the reader's hands — the whole conversation is decrypted when it is
+        /// drawn — so repeating them here would put a second copy of the same secret on the server.
+        /// </summary>
+        public string QuotedMessageId { get; init; } = string.Empty;
+
+        /// <summary> True when this message replies to another one in the same conversation. </summary>
+        public bool IsQuoting => QuotedMessageId.Length > 0;
+
         /// <summary> True when this message is meant to be readable exactly once. </summary>
         public bool IsVanishing => VanishingBlobId.Length > 0;
 

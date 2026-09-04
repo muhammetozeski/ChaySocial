@@ -91,7 +91,9 @@
                                            IsOpening="@(openingMessageId == letter.Envelope.MessageId)"
                                            OnOpenVanishing="() => OpenVanishingAsync(letter)"
                                            RevealedMedia="@Current(letter).RevealedMedia"
-                                           StoredAttachments="@StoredAttachmentsFor(letter)" />
+                                           StoredAttachments="@StoredAttachmentsFor(letter)"
+                                           QuotedSummary="@QuotedSummaryFor(letter)"
+                                           OnReply="() => StartReplying(letter)" />
                         }
                     </div>
                 }
@@ -108,6 +110,8 @@
                                          IsVanishingChanged="HandleDraftVanishingChanged"
                                          Attachments="@draftAttachments"
                                          AttachmentsChanged="HandleDraftAttachmentsChanged"
+                                         ReplyingToSummary="@ReplyingToSummary"
+                                         OnCancelReply="StopReplying"
                                          OnSubmit="SendLetterAsync"
                                          IsBusy="@isSending" />
                     }

@@ -5,6 +5,19 @@
     that runs indigo into coral. The return key sends too, so the button is the visible affordance rather
     than the only way through.
 *@
+@if (ReplyingToSummary is not null)
+{
+    <div class="message-composer-reply" style="@ReplyBarStyle">
+        <span class="message-composer-reply-mark">@ReplyMark</span>
+        <span class="message-composer-reply-text">@ReplyingToSummary</span>
+        <button type="button"
+                class="message-composer-reply-drop"
+                title="@DropReplyHint"
+                disabled="@IsBusy"
+                @onclick="OnCancelReply">@DropReplyMark</button>
+    </div>
+}
+
 <div class="message-composer" style="@SurfaceStyle">
     <button type="button"
             class="message-composer-vanish @(IsVanishing ? VanishOnClass : string.Empty)"
@@ -107,6 +120,24 @@
 
     /// <summary> Raised whenever the attached set changes, so the caller owns it alongside the text. </summary>
     [Parameter] public EventCallback<IReadOnlyList<MediaAttachment>> AttachmentsChanged { get; set; }
+
+    /// <summary> One line of the message being replied to, already shortened by the caller; null when writing a plain message. </summary>
+    [Parameter] public string? ReplyingToSummary { get; set; }
+
+    /// <summary> Raised when the sender drops the reply and goes back to a plain message. </summary>
+    [Parameter] public EventCallback OnCancelReply { get; set; }
+
+    /// <summary> Mark before the line being replied to. </summary>
+    const string ReplyMark = "↩";
+
+    /// <summary> Mark on the control that drops the reply. </summary>
+    const string DropReplyMark = "✕";
+
+    /// <summary> Hover text on that control. </summary>
+    const string DropReplyHint = "Write without replying";
+
+    /// <summary> The reply bar's own frosted ground, so it reads as attached to the composer below it. </summary>
+    string ReplyBarStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle);
 
     /// <summary> True when there is something to send — words or media — and the caller is not already sending. </summary>
     bool CanSubmit => !IsBusy && (!string.IsNullOrWhiteSpace(Text) || Attachments.Count > 0);
