@@ -15,7 +15,10 @@ namespace ChaySocial.MainProject.DataModels
         Follow,
 
         /// <summary> Someone sent the recipient a direct message. </summary>
-        Message
+        Message,
+
+        /// <summary> Someone named the recipient in something they wrote. </summary>
+        Mention
     }
 
     /// <summary>

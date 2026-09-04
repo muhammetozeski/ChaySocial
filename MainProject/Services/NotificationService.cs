@@ -55,6 +55,39 @@ namespace ChaySocial.MainProject.Services
             return notification;
         }
 
+        /// <summary>
+        /// Tells everyone a line names that they were named. It is deliberately quiet about failure: being named is
+        /// worth an alert, but never worth losing the post or comment that did the naming, so a write that fails is
+        /// logged and the rest still go out.
+        /// </summary>
+        /// <param name="text"> The line as it was written; the addresses in it are what decide who hears. </param>
+        /// <param name="actorAddress"> Account that wrote it. </param>
+        /// <param name="targetId"> Post the alert should open. </param>
+        /// <param name="preview"> Excerpt to show beside the alert. </param>
+        /// <param name="alreadyTold"> Accounts that have already been alerted about this same line, so nobody is told twice. </param>
+        /// <returns> A task that completes once everyone named has been told. </returns>
+        public static async Task NotifyMentionedAsync(
+            string text,
+            string actorAddress,
+            string targetId,
+            string preview,
+            IReadOnlySet<string>? alreadyTold = null)
+        {
+            foreach (string address in WrittenText.AccountsIn(text))
+            {
+                if (alreadyTold is not null && alreadyTold.Contains(address)) continue;
+
+                try
+                {
+                    await NotifyAsync(address, actorAddress, NotificationKind.Mention, targetId, preview);
+                }
+                catch (Exception error)
+                {
+                    Log($"'{address}' could not be told they were named.\n{error}", LogLevel.Warning);
+                }
+            }
+        }
+
         /// <summary> Reads one account's alerts, newest first. </summary>
         /// <param name="recipientAddress"> Account whose alerts to read. </param>
         /// <param name="limit"> Largest number of alerts to return. </param>

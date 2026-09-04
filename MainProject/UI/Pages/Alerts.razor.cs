@@ -78,6 +78,9 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Emoji on the badge of a message alert. </summary>
         const string MessageKindEmoji = "💌";
 
+        /// <summary> Emoji on the badge of an alert about being named. </summary>
+        const string MentionKindEmoji = "📣";
+
         /// <summary> Emoji used for a kind this screen was written before, so an unknown alert still draws a badge. </summary>
         const string UnknownKindEmoji = "🔔";
 
@@ -92,6 +95,9 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> Sentence completing "<c>&lt;name&gt; …</c>" for a message alert. </summary>
         const string MessageSentence = "sent you a message";
+
+        /// <summary> Sentence completing "<c>&lt;name&gt; …</c>" for an alert about being named. </summary>
+        const string MentionSentence = "mentioned you";
 
         /// <summary> Sentence used for a kind this screen was written before — true of any alert, whatever it turns out to be. </summary>
         const string UnknownSentence = "interacted with you";
@@ -221,7 +227,7 @@ namespace ChaySocial.MainProject.UI.Pages
 
             return alert.Kind switch
             {
-                NotificationKind.Like or NotificationKind.Comment =>
+                NotificationKind.Like or NotificationKind.Comment or NotificationKind.Mention =>
                     alert.TargetId.Length == 0 ? actorRoute : PostRoutePrefix + alert.TargetId,
                 NotificationKind.Message => MessagesRoutePrefix + alert.ActorAddress,
                 _ => actorRoute
@@ -237,6 +243,7 @@ namespace ChaySocial.MainProject.UI.Pages
             NotificationKind.Comment => CommentSentence,
             NotificationKind.Follow => FollowSentence,
             NotificationKind.Message => MessageSentence,
+            NotificationKind.Mention => MentionSentence,
             _ => UnknownSentence
         };
 
@@ -249,6 +256,7 @@ namespace ChaySocial.MainProject.UI.Pages
             NotificationKind.Comment => CommentKindEmoji,
             NotificationKind.Follow => FollowKindEmoji,
             NotificationKind.Message => MessageKindEmoji,
+            NotificationKind.Mention => MentionKindEmoji,
             _ => UnknownKindEmoji
         };
 

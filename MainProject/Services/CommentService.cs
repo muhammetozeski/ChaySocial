@@ -175,8 +175,12 @@ namespace ChaySocial.MainProject.Services
                     author.Public.Address,
                     NotificationKind.Comment,
                     post.PostId,
-                    BuildPreview(trimmed));
+                    trimmed);
             }
+
+            // Anyone named in the comment hears about it too, unless they were already told about the comment
+            // itself — being both the post's author and named in the reply is one event, not two.
+            await NotificationService.NotifyMentionedAsync(trimmed, author.Public.Address, post.PostId, trimmed, toTell);
 
             MainEvents.Trigger(MainEvents.Names.CommentsChanged, post.PostId);
             return comment;
@@ -267,20 +271,5 @@ namespace ChaySocial.MainProject.Services
             return transcript.ToArray();
         }
 
-        /// <summary>
-        /// Shortens a comment down to what an alerts line shows. The cut is pulled back off a lone high surrogate, so
-        /// an emoji sitting on the boundary is dropped whole instead of leaving half a character behind.
-        /// </summary>
-        /// <param name="text"> The comment's trimmed text. </param>
-        /// <returns> At most <see cref="NotificationData.MaximumPreviewLength"/> characters of it. </returns>
-        static string BuildPreview(string text)
-        {
-            if (text.Length <= NotificationData.MaximumPreviewLength) return text;
-
-            int cut = NotificationData.MaximumPreviewLength;
-            if (char.IsHighSurrogate(text[cut - 1])) cut--;
-
-            return text[..cut];
-        }
     }
 }
