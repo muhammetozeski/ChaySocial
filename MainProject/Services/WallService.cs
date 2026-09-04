@@ -90,8 +90,72 @@ namespace ChaySocial.MainProject.Services
             };
 
             await AppServices.Documents.WriteAsync(post.Id, post);
+            await IndexSubjectsAsync(post);
+
+            await NotificationService.NotifyMentionedAsync(trimmed, author.Public.Address, postId, trimmed);
+
             MainEvents.Trigger(MainEvents.Names.WallChanged);
             return post;
+        }
+
+        /// <summary>
+        /// Notes which subjects a post named, so a subject's page can be read without searching every post's text.
+        /// A failure here loses a post from one listing, never the post itself, which is why it is logged rather
+        /// than thrown: the words are already stored and safe.
+        /// </summary>
+        /// <param name="post"> The post that was just published. </param>
+        /// <returns> A task that completes once every subject it names has been noted. </returns>
+        static async Task IndexSubjectsAsync(PostData post)
+        {
+            foreach (string subject in WrittenText.SubjectsIn(post.Text))
+            {
+                try
+                {
+                    await AppServices.Documents.WriteAsync(
+                        SubjectMentionData.IdFor(subject, post.PostId),
+                        new SubjectMentionData
+                        {
+                            Subject = subject,
+                            PostId = post.PostId,
+                            CreatedAtUnixMs = post.CreatedAtUnixMs
+                        });
+                }
+                catch (Exception error)
+                {
+                    Log($"Post '{post.PostId}' could not be listed under '{subject}'.\n{error}", LogLevel.Warning);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reads the posts written under one subject. Every post is checked against its own text before it is
+        /// returned, so an index entry nobody wrote cannot put a post in front of a subject it never named.
+        /// </summary>
+        /// <param name="subject"> Subject to read, in any casing. </param>
+        /// <param name="limit"> Largest number of posts to return. </param>
+        /// <returns> Posts naming that subject, newest first. </returns>
+        public static async Task<IReadOnlyList<PostData>> ReadSubjectAsync(string subject, int limit = WallPageSize)
+        {
+            string wanted = WrittenText.NormaliseSubject(subject.Trim());
+            if (wanted.Length == 0 || limit <= 0) return [];
+
+            DocumentQuery<SubjectMentionData> query = new DocumentQuery<SubjectMentionData>()
+                .WithMatch(SubjectMentionData.SubjectField, wanted)
+                .WithSort(SubjectMentionData.CreatedAtField, descending: true)
+                .WithLimit(limit);
+
+            IReadOnlyList<SubjectMentionData> mentions = (await AppServices.Documents.QueryAsync(query)).Documents;
+            if (mentions.Count == 0) return [];
+
+            PostData?[] posts = await Task.WhenAll(mentions.Select(mention => ReadAsync(mention.PostId)));
+
+            return
+            [
+                .. posts
+                    .Where(post => post is not null && WrittenText.SubjectsIn(post.Text).Contains(wanted))
+                    .Select(post => post!)
+                    .OrderByDescending(post => post.CreatedAtUnixMs)
+            ];
         }
 
         /// <summary> Removes one of the signed-in account's own posts. </summary>
@@ -107,6 +171,13 @@ namespace ChaySocial.MainProject.Services
             foreach (MediaAttachment attachment in post.Attachments)
             {
                 await MediaService.RemoveAsync(attachment);
+            }
+
+            // So do the subject listings. A reader checks a post's own text before drawing it under a subject, so a
+            // note left behind would show nothing — but it would still be a row on the disk pointing at nothing.
+            foreach (string subject in WrittenText.SubjectsIn(post.Text))
+            {
+                await AppServices.Documents.DeleteAsync(SubjectMentionData.IdFor(subject, post.PostId));
             }
 
             MainEvents.Trigger(MainEvents.Names.WallChanged);

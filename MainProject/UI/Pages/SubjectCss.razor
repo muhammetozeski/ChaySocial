@@ -1,0 +1,92 @@
+@namespace ChaySocial.MainProject.UI.Pages
+
+@*
+    Styling for Subject. Subject renders this component itself, so the page always arrives with its own CSS
+    attached. Only layout lives here: the header's glass is an inline style built by AppStyles, so the material
+    stays defined in one place.
+*@
+<style>
+    .subject-screen {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReadingColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        padding-bottom: @(ListBottomInsetPx)px;
+        box-sizing: border-box;
+    }
+
+    /* Rides along the top of the scroll so the way back is always one tap away; the status-bar inset keeps the
+       name clear of a phone's notch. */
+    .subject-header {
+        position: sticky;
+        top: 0;
+        z-index: @(AppMeasures.ZLayer.Sticky);
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px16)px @(AppMeasures.Space.Px12)px;
+        box-sizing: border-box;
+    }
+
+    /* min-width:0 lets a long subject shrink instead of pushing the refresh spinner off the bar. */
+    .subject-heading {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px2)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* The subject is the page's title, so it carries the second brand colour it is drawn in everywhere else. */
+    .subject-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: @(AppMeasures.Font.Large)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        color: @(AppColors.Secondary.ToRgbaHex(true));
+    }
+
+    .subject-count {
+        font-size: @(AppMeasures.Font.Small)px;
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .subject-first-load {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: @(AppMeasures.Viewport.Most)vh;
+    }
+
+    .subject-feed {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        padding: 0 @(AppMeasures.Space.Px16)px;
+    }
+
+    /* Phone width: the page keeps everything, it only gives back the padding it can spare. */
+    @@media (max-width: @(NarrowScreenBreakpointPx)px) {
+        .subject-header,
+        .subject-feed {
+            padding-left: @(AppMeasures.Space.Px14)px;
+            padding-right: @(AppMeasures.Space.Px14)px;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Widest the column of posts grows; past this a line gets tiring to track back to. </summary>
+    const int ReadingColumnMaximumWidthPx = 640;
+
+    /// <summary> Space kept under the last post: the floating navigation's own height plus a gap. </summary>
+    const int ListBottomInsetPx = AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px40;
+
+    /// <summary> Widest viewport still treated as a phone, below which the page tightens its spacing. </summary>
+    const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
+}

@@ -1,0 +1,93 @@
+@attribute [Route(SubjectRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    Everything written under one subject. The listing is built from an index the store can answer, but every post
+    is checked against its own text before it is drawn, so a subject page only ever shows posts that really name it.
+*@
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<div class="subject-screen">
+
+    <header class="subject-header" style="@HeaderSurfaceStyle">
+        <BackButton OnClick="GoBackToWall" />
+
+        <div class="subject-heading">
+            <span class="subject-name">@SubjectLabel</span>
+            <span class="subject-count">@CountLabel</span>
+        </div>
+
+        @if (IsRefreshing)
+        {
+            <CoreSpinner SizePx="@RefreshSpinnerDiameterPx"
+                         BorderWidthPx="@RefreshSpinnerBorderPx"
+                         Color="@AppColors.Primary" />
+        }
+    </header>
+
+    @if (IsFirstLoad)
+    {
+        <div class="subject-first-load">
+            <CoreSpinner />
+        </div>
+    }
+    else if (LoadFailureMessage is not null)
+    {
+        <EmptyState Emoji="@LoadFailedEmoji" Headline="@LoadFailedHeadline" Description="@LoadFailureMessage">
+            <Action>
+                <CoreButton Background="@AppColors.Primary"
+                            TextColor="@AppColors.TextOnFilledSurface"
+                            BorderRadius="@ActionButtonRadiusCss"
+                            Padding="@ActionButtonPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow"
+                            OnClick="ReloadAsync">
+                    @TryAgainLabel
+                </CoreButton>
+            </Action>
+        </EmptyState>
+    }
+    else if (posts.Count == 0)
+    {
+        <EmptyState Emoji="@EmptyEmoji" Headline="@EmptyHeadline" Description="@EmptyDescription">
+            <Action>
+                <CoreButton Background="@AppColors.Primary"
+                            TextColor="@AppColors.TextOnFilledSurface"
+                            BorderRadius="@ActionButtonRadiusCss"
+                            Padding="@ActionButtonPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow"
+                            OnClick="GoBackToWall">
+                    @BackToWallLabel
+                </CoreButton>
+            </Action>
+        </EmptyState>
+    }
+    else
+    {
+        <div class="subject-feed">
+            @foreach (PostData post in posts)
+            {
+                <PostCard @key="post.PostId"
+                          Post="post"
+                          AuthorProfile="@ProfileFor(post.AuthorAddress)"
+                          IsLiked="@EngagementFor(post).IsLikedByViewer"
+                          LikeCount="@EngagementFor(post).LikeCount"
+                          CommentCount="@EngagementFor(post).CommentCount"
+                          IsReposted="@EngagementFor(post).IsRepostedByViewer"
+                          RepostCount="@EngagementFor(post).RepostCount"
+                          OnLike="() => ToggleLikeAsync(post)"
+                          OnRepost="() => ToggleRepostAsync(post)"
+                          OnOpenAuthor="() => OpenAuthor(post.AuthorAddress)"
+                          OnOpenComments="() => OpenComments(post.PostId)" />
+            }
+        </div>
+    }
+
+</div>
+
+<SubjectCss />

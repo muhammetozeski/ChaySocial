@@ -205,7 +205,9 @@ namespace ChaySocial.Web.Api
         /// Collections whose writes cost proof-of-work. Reading is always free, and the bookkeeping collections
         /// (likes, follows, blocks, notifications) are left free too, so the cost lands on producing content
         /// rather than on every tap. A repost costs: it puts a post in front of a fresh audience, which is
-        /// exactly what a spammer would automate.
+        /// exactly what a spammer would automate. The subject index does not: it is written alongside a post that
+        /// has already paid, one entry per subject named, and an invented entry shows nothing because a reader
+        /// checks each post's own words before drawing it under a subject.
         /// </summary>
         static readonly string[] ProtectedCollections = ["posts", "comments", "messages", "profiles", "reposts"];
 
