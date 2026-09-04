@@ -1,0 +1,69 @@
+@*
+    Lets somebody pick the app's palette. Each choice is drawn in its own colours — the swatch is the palette
+    itself, not a label describing it — so the difference is visible before it is chosen.
+*@
+
+<div class="theme-picker">
+    @foreach (AppTheme theme in AppThemes.All)
+    {
+        <button type="button"
+                class="theme-picker-choice @(IsActive(theme) ? ActiveClass : string.Empty)"
+                style="@SwatchStyle(theme)"
+                title="@theme.Name"
+                @onclick="() => ChooseAsync(theme)">
+
+            <span class="theme-picker-dots">
+                <span class="theme-picker-dot" style="@DotStyle(theme.Primary)"></span>
+                <span class="theme-picker-dot" style="@DotStyle(theme.Secondary)"></span>
+                <span class="theme-picker-dot" style="@DotStyle(theme.Accent)"></span>
+            </span>
+
+            <span class="theme-picker-name" style="@NameStyle(theme)">@theme.Name</span>
+
+            @if (IsActive(theme))
+            {
+                <span class="theme-picker-tick" style="@NameStyle(theme)">@ActiveMark</span>
+            }
+        </button>
+    }
+</div>
+
+<ThemePickerCss />
+
+@code {
+    /// <summary> Class added to the palette currently in use. </summary>
+    const string ActiveClass = "theme-picker-choice--active";
+
+    /// <summary> Mark drawn on the palette currently in use. </summary>
+    const string ActiveMark = "✓";
+
+    /// <summary> Angle the swatch's two-colour ground runs at, matching every other gradient in the app. </summary>
+    const int SwatchAngleDegrees = 135;
+
+    /// <summary> True when this palette is the one the app is drawn in right now. </summary>
+    /// <param name="theme"> Palette being drawn. </param>
+    /// <returns> True when it is active. </returns>
+    static bool IsActive(AppTheme theme) => ThemeManager.Current.Name == theme.Name;
+
+    /// <summary> Switches the app to a palette and remembers the choice on this device. </summary>
+    /// <param name="theme"> Palette to switch to. </param>
+    /// <returns> A task that completes once the choice has been stored. </returns>
+    static Task ChooseAsync(AppTheme theme) => ThemeManager.ApplyAndRememberAsync(theme);
+
+    /// <summary> Paints a choice in its own palette's background, so the swatch shows what the app would look like. </summary>
+    /// <param name="theme"> Palette being drawn. </param>
+    /// <returns> The inline style for that choice. </returns>
+    static string SwatchStyle(AppTheme theme)
+        => $"background:linear-gradient({SwatchAngleDegrees}deg, {theme.BackgroundBase.ToRgbaHex(true)}, {theme.BackgroundDeep.ToRgbaHex(true)});"
+         + $"border-color:{(IsActive(theme) ? theme.Primary : theme.BorderStrong).ToRgbaHex(true)};";
+
+    /// <summary> Paints one of the three colour dots that stand for a palette's brand colours. </summary>
+    /// <param name="color"> Colour the dot shows. </param>
+    /// <returns> The inline style for that dot. </returns>
+    static string DotStyle(Color color) => $"background:{color.ToRgbaHex(true)};";
+
+    /// <summary> Colours a choice's label in that palette's own text colour, so it stays readable on its own ground. </summary>
+    /// <param name="theme"> Palette being drawn. </param>
+    /// <returns> The inline style for that label. </returns>
+    static string NameStyle(AppTheme theme) => $"color:{theme.TextPrimary.ToRgbaHex(true)};";
+}

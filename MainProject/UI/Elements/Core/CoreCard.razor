@@ -39,7 +39,7 @@
             string backgroundCss = Gradient.HasValue
                 ? $"linear-gradient(135deg, {Gradient.Value.Start.ToRgbaHex(true)}, {Gradient.Value.End.ToRgbaHex(true)})"
                 : Background?.ToRgbaHex(true) ?? "transparent";
-            string borderCss = Border ?? $"{AppMeasures.Border.Thin}px solid {AppColors.GlassBorderDefault.ToRgbaHex(true)}";
+            string borderCss = Border ?? AppStyles.BorderStrokeStrong;
 
             return $"background:{backgroundCss};"
                  + $"color:{TextColor?.ToRgbaHex(true) ?? "inherit"};"

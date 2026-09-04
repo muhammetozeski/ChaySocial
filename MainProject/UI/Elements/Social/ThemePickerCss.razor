@@ -1,0 +1,75 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+
+@{
+    const int ChoiceMinimumWidthPx = 128;
+    const int ChoicePaddingYPx = 14;
+    const int ChoicePaddingXPx = 14;
+    const int ColourDotDiameterPx = 12;
+    const int ColourDotOverlapPx = -4;
+    const float ActiveChoiceGlowOpacity = 0.35f;
+}
+
+<style>
+    .theme-picker {
+        display: flex;
+        flex-wrap: wrap;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    /* Each choice is painted in the palette it stands for, so the picker shows the themes rather than naming them. */
+    .theme-picker-choice {
+        flex: 1 1 @(ChoiceMinimumWidthPx)px;
+        min-width: @(ChoiceMinimumWidthPx)px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Small)px;
+        padding: @(ChoicePaddingYPx)px @(ChoicePaddingXPx)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        border-width: @(AppMeasures.Border.Medium)px;
+        border-style: solid;
+        cursor: pointer;
+        font: inherit;
+        text-align: left;
+        position: relative;
+        transition: transform @(AppMeasures.Duration.Fast)s ease, box-shadow @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .theme-picker-choice:hover {
+            transform: translateY(-2px);
+        }
+
+    .theme-picker-choice--active {
+        box-shadow: @(AppStyles.GetGlow(AppColors.Primary, ActiveChoiceGlowOpacity));
+    }
+
+    /* The dots overlap slightly so three colours read as one palette rather than three separate marks. */
+    .theme-picker-dots {
+        display: flex;
+        align-items: center;
+    }
+
+    .theme-picker-dot {
+        width: @(ColourDotDiameterPx)px;
+        height: @(ColourDotDiameterPx)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.SurfaceDarken.ToRgbaHex(true));
+    }
+
+        .theme-picker-dot + .theme-picker-dot {
+            margin-left: @(ColourDotOverlapPx)px;
+        }
+
+    .theme-picker-name {
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+    }
+
+    .theme-picker-tick {
+        position: absolute;
+        top: @(AppMeasures.Space.Small)px;
+        right: @(AppMeasures.Space.Px10)px;
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+    }
+</style>

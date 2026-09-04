@@ -10,7 +10,10 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 
-<div class="app-page @(ShowBottomNavigation ? HasBottomNavClass : string.Empty)">
+@* Keyed on the palette's name so switching themes rebuilds the whole tree. Every component writes its colours
+   into its own <style> block at render time, and those blocks only change if that component renders again — a
+   redraw of the layout alone repaints nothing below it. *@
+<div class="app-page @(ShowBottomNavigation ? HasBottomNavClass : string.Empty)" @key="ThemeManager.Current.Name">
     <main>
         <article class="content">
             @if (_isSessionReady)
@@ -31,9 +34,11 @@
     {
         <AppBottomNav />
     }
-</div>
 
-<MainLayoutCss />
+    @* Inside the keyed element on purpose: the body background and typography are written from the palette, and
+       left outside they would keep the colours of whichever theme was active when the page first loaded. *@
+    <MainLayoutCss />
+</div>
 
 @code {
     /// <summary> Class added to the page shell so its bottom padding clears the navigation bar. </summary>
@@ -51,6 +56,9 @@
     /// <summary> False until the stored session has been read back, which is what gates the routed page. </summary>
     bool _isSessionReady;
 
+    /// <summary> Palette the shell was last drawn in, so a swap made from a page below is noticed and repainted. </summary>
+    string _paintedThemeName = ThemeManager.Current.Name;
+
     protected override void OnInitialized() => MainEvents.Subscribe(HandleAppEvent);
 
     /// <summary>
@@ -61,6 +69,7 @@
     {
         try
         {
+            await ThemeManager.RestoreAsync();
             await SessionService.RestoreAsync();
         }
         catch (Exception error)
@@ -89,6 +98,15 @@
         else if (eventName != MainEvents.Names.ThemeChanged) return;
 
         InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary> Re-reads the palette after every render, so a theme swapped from a page inside the layout still repaints the shell. </summary>
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (_paintedThemeName == ThemeManager.Current.Name) return;
+
+        _paintedThemeName = ThemeManager.Current.Name;
+        StateHasChanged();
     }
 
     public void Dispose() => MainEvents.Unsubscribe(HandleAppEvent);

@@ -53,6 +53,15 @@ namespace ChaySocial.MainProject.Constants.ThemeConstants
         const float BackdropScrimOpacity = 0.4f;
 
         /// <summary>
+        /// The card edge every framed surface shares: one hairline in the palette's strong border colour. Written
+        /// here so a change to how the app frames things is a change in one place rather than in every component.
+        /// </summary>
+        public static string BorderStrokeStrong => $"{AppMeasures.Border.Thin}px solid {AppColors.BorderStrong.ToRgbaHex(true)}";
+
+        /// <summary> The quieter edge for a surface nested inside an already-framed one. </summary>
+        public static string BorderStrokeSoft => $"{AppMeasures.Border.Thin}px solid {AppColors.BorderSoft.ToRgbaHex(true)}";
+
+        /// <summary>
         /// Builds the CSS for the full-screen layer that sits BEHIND a modal card: a normal backdrop blur plus a
         /// dark scrim and boosted saturation, so the whole viewport reads as color-mixing glass (never a foggy
         /// white haze). This is the glass over the viewport, not the card's own surface. One central definition.
@@ -95,9 +104,11 @@ namespace ChaySocial.MainProject.Constants.ThemeConstants
                   $"linear-gradient({AppColors.BackgroundDeep.WithAlpha(StrongFrostDarkOpacity).ToRgbaHex(true)}, {AppColors.BackgroundDeep.WithAlpha(StrongFrostDarkOpacity).ToRgbaHex(true)})"
                 : bg.ToRgbaHex(true);
 
+            // The edge is drawn with BorderStrong rather than the hairline highlight: a surface people are meant to
+            // read as a distinct card needs an edge they can actually see, and the inset highlight alone is not one.
             return $"background:{background};" +
                    $"backdrop-filter:blur({blur}px) saturate(140%);-webkit-backdrop-filter:blur({blur}px) saturate(140%);" +
-                   $"border:1px solid {AppColors.GlassBorderDefault.ToRgbaHex(true)};" +
+                   $"border:{AppMeasures.Border.Thin}px solid {AppColors.BorderStrong.ToRgbaHex(true)};" +
                    $"box-shadow:inset 0 1px 0 {AppColors.GlassBorderTop.ToRgbaHex(true)}," +
                    $"inset 0 -1px 0 {AppColors.GlassBorderBottom.ToRgbaHex(true)},{ShadowSoft};";
         }

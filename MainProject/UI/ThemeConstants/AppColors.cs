@@ -77,6 +77,15 @@ namespace ChaySocial.MainProject.Constants.ThemeConstants
         /// <inheritdoc cref="AppTheme.GlassBorderDefault"/>
         public static Color GlassBorderDefault => ThemeManager.Current.GlassBorderDefault;
 
+        /// <inheritdoc cref="AppTheme.BorderStrong"/>
+        public static Color BorderStrong => ThemeManager.Current.BorderStrong;
+
+        /// <inheritdoc cref="AppTheme.BorderSoft"/>
+        public static Color BorderSoft => ThemeManager.Current.BorderSoft;
+
+        /// <inheritdoc cref="AppTheme.IsLight"/>
+        public static bool IsLight => ThemeManager.Current.IsLight;
+
         /// <inheritdoc cref="AppTheme.TextPrimary"/>
         public static Color TextPrimary => ThemeManager.Current.TextPrimary;
 

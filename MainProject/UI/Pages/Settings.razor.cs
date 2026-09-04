@@ -62,6 +62,16 @@ namespace ChaySocial.MainProject.UI.Pages
         const string AddressSectionDescription =
             "This is who you are here. Hand it to anybody you would like to be found by — it is public by design, and it gives away nothing about your secret.";
 
+        /// <summary> Emoji on the section that changes how the app looks. </summary>
+        const string AppearanceSectionEmoji = "🎨";
+
+        /// <summary> Heading of the section that changes how the app looks. </summary>
+        const string AppearanceSectionHeadline = "Appearance";
+
+        /// <summary> Line under that heading. </summary>
+        const string AppearanceSectionDescription =
+            "Pick the colours you would rather read in. The choice stays on this device and takes effect at once.";
+
         /// <summary> Emoji on the section holding the secret. </summary>
         const string SecretSectionEmoji = "🔐";
 

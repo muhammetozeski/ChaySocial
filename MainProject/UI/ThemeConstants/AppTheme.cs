@@ -82,6 +82,22 @@ namespace ChaySocial.MainProject.Constants.ThemeConstants
         /// <summary> Single average glass stroke — used where top/bottom asymmetry isn't worth the cost. </summary>
         public required Color GlassBorderDefault { get; init; }
 
+        /// <summary>
+        /// The stroke that actually draws a card's edge. Distinct from <see cref="GlassBorderDefault"/>, which is a
+        /// barely-there highlight: this one is meant to be seen, so a card, a list row and a composer read as
+        /// separate objects instead of shapes floating on one wash of colour.
+        /// </summary>
+        public required Color BorderStrong { get; init; }
+
+        /// <summary> A quieter edge for surfaces nested inside an already-framed one, so borders do not stack into a grid. </summary>
+        public required Color BorderSoft { get; init; }
+
+        /// <summary>
+        /// True when this palette is a light one. Effects that assume a dark backdrop — white film over glass, a
+        /// dark scrim behind a modal — invert on a light theme, and this is what tells them to.
+        /// </summary>
+        public bool IsLight { get; init; }
+
         // Opaque overlays — solid fills that fully cover what's beneath.
 
         /// <summary> Solid fill of floating tooltip bubbles — opaque enough to keep tooltip text legible over any surface beneath. </summary>
@@ -153,10 +169,11 @@ namespace ChaySocial.MainProject.Constants.ThemeConstants
         // bleed red.
 
         /// <summary>
-        /// Canonical "on filled surface" text color — solid white, legible over Primary, Secondary, Accent, Error, Success, and Warning fills.
-        /// All <c>TextOn*</c> and <c>EmojiOn*</c> aliases resolve to this; override an individual channel only if a specific filled surface needs a non-white legend (e.g. a light-amber button needing dark text).
+        /// Canonical "on filled surface" text color — legible over Primary, Secondary, Accent, Error, Success, and Warning fills.
+        /// All <c>TextOn*</c> and <c>EmojiOn*</c> aliases resolve to this; a palette whose filled surfaces are pale
+        /// sets it to a dark ink instead, which is why it is a settable value rather than a hard-coded white.
         /// </summary>
-        public Color TextOnFilledSurface => Colors.White;
+        public Color TextOnFilledSurface { get; init; } = Colors.White;
 
         /// <summary> Text painted onto Primary / Secondary / Accent gradient buttons — PrimaryButton label, "YOU" chip on Primary, active-tab label. </summary>
         public Color TextOnAccent => TextOnFilledSurface;
