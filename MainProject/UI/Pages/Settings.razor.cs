@@ -1,5 +1,7 @@
 using ChaySocial.MainProject.Constants.ThemeConstants;
+using ChaySocial.MainProject.Cryptography;
 using ChaySocial.MainProject.DataModels;
+using ChaySocial.MainProject.Identity;
 using ChaySocial.MainProject.Events;
 using ChaySocial.MainProject.Moderation;
 using ChaySocial.MainProject.Protection;
@@ -166,6 +168,133 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> What the link into the archive screen says. </summary>
         const string ArchiveSectionLinkLabel = "Open my archive";
+
+        /// <summary> Emoji on the section about being made to open this device. </summary>
+        const string DuressSectionEmoji = "🧯";
+
+        /// <summary> Heading of that section. </summary>
+        const string DuressSectionHeadline = "If you are made to open this";
+
+        /// <summary> Line under it, saying plainly what this does and what it does not. </summary>
+        const string DuressSectionDescription =
+            "Set a second secret that empties this device instead of opening it. Signed in with, it takes every " +
+            "account off this device and opens the ordinary one it belongs to, so what anybody sees is a phone set " +
+            "up yesterday. It cannot help against somebody who copied this device's storage beforehand.";
+
+        /// <summary> Text on the button that makes a decoy account. </summary>
+        const string DecoyMakeLabel = "Make me a decoy account";
+
+        /// <summary> Introduces the decoy's secret, shown once. </summary>
+        const string DecoyMadeLabel = "Here is its secret. This is the only time it is shown.";
+
+        /// <summary> Line under the decoy's secret. </summary>
+        const string DecoyWarning = "Write it down somewhere you would not mind being found, then set it below.";
+
+        /// <summary> What the empty duress field invites. </summary>
+        const string DuressFieldPlaceholder = "The secret that should empty this device";
+
+        /// <summary> Text on the button that sets the duress secret. </summary>
+        const string DuressSetButtonLabel = "Use this one";
+
+        /// <summary> Shown when a duress secret is already set. </summary>
+        const string DuressSetLabel = "A secret is set. Signing in with it will empty this device.";
+
+        /// <summary> Text on the button that forgets it. </summary>
+        const string DuressForgetLabel = "Forget that secret";
+
+        /// <summary> Shown when the typed text is not a secret this app can read. </summary>
+        const string DuressUnreadableMessage = "That is not a secret this app can read.";
+
+        /// <summary> Shown once the duress secret is set. </summary>
+        const string DuressReadyMessage = "Set. Nothing on screen will mention it again.";
+
+        /// <summary> Line above the wipe control. </summary>
+        const string WipeNote =
+            "Emptying takes every account off this device, including the ones it carries. Nothing is deleted from " +
+            "any server: an account comes back with its secret and nothing else brings it back.";
+
+        /// <summary> Text on the control that empties the device. </summary>
+        const string WipeNowLabel = "Empty this device now";
+
+        /// <summary> Heading of the confirmation. </summary>
+        const string WipeConfirmTitle = "Empty this device?";
+
+        /// <summary> Line under that heading. </summary>
+        const string WipeConfirmDescription =
+            "Every account on this device goes, and only a written-down secret brings one back. Nothing on any " +
+            "server changes.";
+
+        /// <summary> Text on the button that confirms. </summary>
+        const string WipeConfirmLabel = "Empty it";
+
+        /// <summary> Text on the button that backs out. </summary>
+        const string WipeCancelLabel = "Never mind";
+
+        /// <summary> The decoy's secret while it is on screen, shown once and never stored. </summary>
+        string? _decoySecret;
+
+        /// <summary> The duress secret the owner has typed but not set. </summary>
+        string _duressSecretTyped = string.Empty;
+
+        /// <summary> True when this device already has a duress secret. </summary>
+        bool _hasDuressMark;
+
+        /// <summary> True while the wipe confirmation is open. </summary>
+        bool _isWipeOpen;
+
+        /// <summary> What came of the last duress action, or null when none has been taken. </summary>
+        string? DuressMessage;
+
+        /// <summary> Draws a fresh account nobody has ever used, to be the one a search finds. </summary>
+        /// <returns> A task that completes once its secret is on screen. </returns>
+        Task MakeDecoyAsync()
+        {
+            _decoySecret = MasterSeedText.Format(IdentityScheme.CreateMasterSeed());
+            _duressSecretTyped = _decoySecret;
+            DuressMessage = null;
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary> Records the secret that should empty this device. </summary>
+        /// <returns> A task that completes once the mark is set or refused. </returns>
+        async Task SetDuressAsync()
+        {
+            if (await PanicService.SetDuressMarkAsync(_duressSecretTyped))
+            {
+                _hasDuressMark = true;
+                _duressSecretTyped = string.Empty;
+                _decoySecret = null;
+                DuressMessage = DuressReadyMessage;
+                return;
+            }
+
+            DuressMessage = DuressUnreadableMessage;
+        }
+
+        /// <summary> Forgets the duress secret, leaving everything else where it is. </summary>
+        /// <returns> A task that completes once the mark is gone. </returns>
+        async Task ForgetDuressAsync()
+        {
+            await PanicService.ForgetDuressMarkAsync();
+            _hasDuressMark = false;
+            DuressMessage = null;
+        }
+
+        /// <summary> Opens the confirmation for emptying the device. </summary>
+        void OpenWipeConfirmation() => _isWipeOpen = true;
+
+        /// <summary> Closes it without emptying anything. </summary>
+        void CloseWipeConfirmation() => _isWipeOpen = false;
+
+        /// <summary> Empties this device and sends whoever is left to the welcome screen. </summary>
+        /// <returns> A task that completes once nothing is left. </returns>
+        async Task WipeNowAsync()
+        {
+            _isWipeOpen = false;
+            await PanicService.WipeDeviceAsync();
+            NavManager.NavigateTo("/", forceLoad: true);
+        }
 
         /// <summary> Emoji on the section that moves this device to another server. </summary>
         const string ServerSectionEmoji = "🚚";
@@ -681,6 +810,8 @@ namespace ChaySocial.MainProject.UI.Pages
                 ForgetSecret();
                 return;
             }
+
+            _hasDuressMark = await PanicService.HasDuressMarkAsync();
 
             _blocked = await ReadBlockedAsync(SessionService.CurrentAddress);
             _reports = await ModerationService.ReadFiledByAsync(SessionService.CurrentAddress);

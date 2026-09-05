@@ -316,6 +316,65 @@
         </CoreCard>
 
         @*
+            Encryption stops a server. It does nothing for somebody holding the phone and asking for it to be
+            opened, which is a situation this application's whole premise otherwise ignores.
+        *@
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
+                <span class="settings-section-emoji">@DuressSectionEmoji</span>
+                <h2 class="settings-section-title">@DuressSectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@DuressSectionDescription</p>
+
+            @if (_decoySecret is { } decoy)
+            {
+                <p class="settings-duress-label">@DecoyMadeLabel</p>
+                <textarea class="settings-secret-box" rows="@SecretRowCount" readonly spellcheck="false">@decoy</textarea>
+                <p class="settings-duress-warning">@DecoyWarning</p>
+            }
+
+            @if (_hasDuressMark)
+            {
+                <p class="settings-duress-set">@DuressSetLabel</p>
+
+                <button type="button" class="settings-quiet-button" @onclick="ForgetDuressAsync">@DuressForgetLabel</button>
+            }
+            else
+            {
+                <button type="button" class="settings-quiet-button" @onclick="MakeDecoyAsync">@DecoyMakeLabel</button>
+
+                <input class="settings-duress-field"
+                       type="text"
+                       spellcheck="false"
+                       placeholder="@DuressFieldPlaceholder"
+                       value="@_duressSecretTyped"
+                       @oninput="@(args => _duressSecretTyped = args.Value?.ToString() ?? string.Empty)" />
+
+                <button type="button"
+                        class="settings-quiet-button"
+                        disabled="@(_duressSecretTyped.Trim().Length == 0)"
+                        @onclick="SetDuressAsync">
+                    @DuressSetButtonLabel
+                </button>
+            }
+
+            @if (DuressMessage is { } duressMessage)
+            {
+                <p class="settings-duress-message">@duressMessage</p>
+            }
+
+            <p class="settings-duress-note">@WipeNote</p>
+
+            <button type="button" class="settings-duress-wipe" @onclick="OpenWipeConfirmation">@WipeNowLabel</button>
+
+        </CoreCard>
+
+        @*
             The only moderation control in the application, and it belongs to the reader rather than to whoever runs
             the server. Nothing here is sent anywhere, nothing is deleted, and no writer is ever told that a reader
             covered them — the choice only decides what this device draws behind a curtain the reader can lift.
@@ -556,6 +615,28 @@
         </CoreCard>
 
     </div>
+
+    @* Two presses, like signing out, because this one cannot be taken back at all. *@
+    <CoreModal IsVisible="_isWipeOpen" IsAcrylic="true" OnBackdropClick="CloseWipeConfirmation">
+        <div class="settings-signout-sheet">
+            <span class="settings-signout-emoji">@DuressSectionEmoji</span>
+            <h2 class="settings-signout-title">@WipeConfirmTitle</h2>
+            <p class="settings-signout-description">@WipeConfirmDescription</p>
+
+            <CoreButton OnClick="WipeNowAsync"
+                        IsFullWidth="true"
+                        Gradient="@((AppColors.Error, AppColors.ErrorDark))"
+                        TextColor="AppColors.TextOnDanger"
+                        BorderRadius="@ButtonRadius"
+                        Padding="@ActionButtonPadding"
+                        FontSize="AppMeasures.Font.Normal"
+                        Shadow="@AppStyles.ShadowErrorGlow">
+                <span>@WipeConfirmLabel</span>
+            </CoreButton>
+
+            <button type="button" class="settings-quiet-button" @onclick="CloseWipeConfirmation">@WipeCancelLabel</button>
+        </div>
+    </CoreModal>
 
     <CoreModal IsVisible="_isSignOutOpen" IsAcrylic="true" OnBackdropClick="CloseSignOutConfirmation">
         <div class="settings-signout-sheet">
