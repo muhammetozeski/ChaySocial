@@ -1,0 +1,210 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+
+@*
+    The control that opens the board, and the panel the board sits in. It hands back attachments through the same
+    pair the file picker uses, so the composer had to learn nothing new: to a post, a drawing is an attachment.
+
+    The board opens in the composer rather than over the screen. An overlay would be the obvious choice and it does
+    not work here: the composer is a frosted card, and an ancestor carrying backdrop-filter becomes the containing
+    block for everything fixed inside it, so a full-screen backdrop opened from in here is trapped inside the card.
+    That is a real defect and it already affects the name picker beside this button; it belongs to that control's
+    own repair rather than to this one.
+*@
+
+<div class="drawing-picker @(_isOpen ? OpenClass : string.Empty)">
+
+    <button type="button"
+            class="drawing-picker-open @(_isOpen ? ChosenClass : string.Empty)"
+            title="@OpenTitle"
+            disabled="@(!CanOpen)"
+            @onclick="Toggle">@OpenEmoji</button>
+
+    @if (_isOpen)
+    {
+        <div class="drawing-picker-panel">
+
+            <DrawingPad SheetChanged="TakeSheet" IsDisabled="@_isSealing" />
+
+            <input class="drawing-picker-caption"
+                   type="text"
+                   maxlength="@MediaAttachment.MaximumDescriptionLength"
+                   placeholder="@CaptionPlaceholder"
+                   disabled="@_isSealing"
+                   value="@_caption"
+                   @oninput="HandleCaptionInput" />
+
+            @if (_message is not null)
+            {
+                <p class="drawing-picker-message">@_message</p>
+            }
+
+            <div class="drawing-picker-footer">
+                <button type="button"
+                        class="drawing-picker-quiet"
+                        disabled="@_isSealing"
+                        @onclick="Close">@CancelLabel</button>
+
+                <CoreButton OnClick="AttachAsync"
+                            Disabled="@(!CanAttach)"
+                            Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                            TextColor="@AppColors.TextOnAccent"
+                            BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                            Padding="@AttachButtonPadding"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow"
+                            CustomClass="drawing-picker-attach">
+                    @if (_isSealing)
+                    {
+                        <CoreSpinner SizePx="@SealingSpinnerSizePx"
+                                     BorderWidthPx="@SealingSpinnerBorderPx"
+                                     Color="@AppColors.TextOnAccent" />
+                    }
+                    else
+                    {
+                        <span>@AttachLabel</span>
+                    }
+                </CoreButton>
+            </div>
+
+        </div>
+    }
+
+</div>
+
+<DrawingPickerCss />
+
+@code {
+    /// <summary> Attachments chosen so far, shared with the file picker beside this one. </summary>
+    [Parameter] public IReadOnlyList<MediaAttachment> Attachments { get; set; } = [];
+
+    /// <summary> Raised whenever the chosen set changes, so the composer can keep it. </summary>
+    [Parameter] public EventCallback<IReadOnlyList<MediaAttachment>> AttachmentsChanged { get; set; }
+
+    /// <summary> True while the composer is busy publishing, which locks this control too. </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+
+    /// <summary> Mark on the control that opens the board. </summary>
+    const string OpenEmoji = "🖌️";
+
+    /// <summary> What that control says it does. </summary>
+    const string OpenTitle = "Draw something instead of attaching it";
+
+    /// <summary> Class the control carries while the board is open, so the tools row gives it a line of its own. </summary>
+    const string OpenClass = "is-open";
+
+    /// <summary> Class the button carries while the board is open, matching how the poll button marks itself. </summary>
+    const string ChosenClass = "is-chosen";
+
+    /// <summary> What the empty caption field invites. </summary>
+    const string CaptionPlaceholder = "What is it? (for anyone who cannot see it)";
+
+    /// <summary> Text on the control that closes the board and keeps nothing. </summary>
+    const string CancelLabel = "Never mind";
+
+    /// <summary> Text on the control that seals the drawing and hangs it on the post. </summary>
+    const string AttachLabel = "Attach";
+
+    /// <summary> Shown when the drawing could not be sealed or uploaded. </summary>
+    const string RefusedMessage = "That drawing could not be attached. Give it another try?";
+
+    /// <summary> Diameter of the throbber that replaces the attach label while the drawing is being sealed. </summary>
+    const int SealingSpinnerSizePx = AppMeasures.Size.Px16;
+
+    /// <summary> Ring thickness of that throbber. </summary>
+    const int SealingSpinnerBorderPx = AppMeasures.Border.Medium;
+
+    /// <summary> Inside spacing of the attach button. </summary>
+    static readonly string AttachButtonPadding = $"{AppMeasures.Space.Px10}px {AppMeasures.Space.Px20}px";
+
+    /// <summary> True while the board is open. </summary>
+    bool _isOpen;
+
+    /// <summary> True while the drawing is being sealed and uploaded. </summary>
+    bool _isSealing;
+
+    /// <summary> The drawing as it stands on the board, or null while nothing has been drawn. </summary>
+    DrawingSheet? _sheet;
+
+    /// <summary> What the drawing shows, for anyone who cannot see it. </summary>
+    string _caption = string.Empty;
+
+    /// <summary> Line under the caption after an attempt failed, or null when none has. </summary>
+    string? _message;
+
+    /// <summary> True while the board may be opened: a post carries only so many attachments. </summary>
+    bool CanOpen => !IsDisabled && (_isOpen || Attachments.Count < MediaAttachment.MaximumPerPost);
+
+    /// <summary> True once there is a stroke on the board and nothing is already being sealed. </summary>
+    bool CanAttach => !_isSealing && _sheet is { Strokes.Count: > 0 };
+
+    /// <summary> Opens the board on a clean sheet, or closes it and keeps nothing. </summary>
+    void Toggle()
+    {
+        if (!CanOpen) return;
+
+        if (_isOpen)
+        {
+            Close();
+            return;
+        }
+
+        _isOpen = true;
+        _sheet = null;
+        _caption = string.Empty;
+        _message = null;
+    }
+
+    /// <summary> Closes the board and keeps nothing. </summary>
+    void Close()
+    {
+        if (_isSealing) return;
+
+        _isOpen = false;
+        _sheet = null;
+    }
+
+    /// <summary> Takes the board's drawing as it changes, so the attach button knows whether there is anything to seal. </summary>
+    /// <param name="sheet"> The drawing as it now stands. </param>
+    void TakeSheet(DrawingSheet sheet) => _sheet = sheet;
+
+    /// <summary> Keeps the caption in step with the field on every keystroke. </summary>
+    /// <param name="args"> The input event carrying the field's new contents. </param>
+    void HandleCaptionInput(ChangeEventArgs args) => _caption = args.Value?.ToString() ?? string.Empty;
+
+    /// <summary> Seals the drawing, uploads it and hangs it on the post being written. </summary>
+    /// <returns> A task that completes once the drawing is attached or the attempt has failed. </returns>
+    async Task AttachAsync()
+    {
+        if (!CanAttach || _sheet is null) return;
+
+        _isSealing = true;
+        _message = null;
+
+        try
+        {
+            MediaAttachment? attachment = await MediaService.UploadDrawingAsync(_sheet, _caption);
+
+            if (attachment is null)
+            {
+                _message = RefusedMessage;
+                return;
+            }
+
+            await AttachmentsChanged.InvokeAsync([.. Attachments, attachment.Value]);
+
+            _isOpen = false;
+            _sheet = null;
+        }
+        catch (Exception error)
+        {
+            _message = RefusedMessage;
+            Log($"{nameof(DrawingPicker)} could not attach a drawing.\n{error}", LogLevel.Error);
+        }
+        finally
+        {
+            _isSealing = false;
+        }
+    }
+}
