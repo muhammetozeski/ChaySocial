@@ -169,8 +169,46 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> True while the report sheet should be on screen. </summary>
         bool IsReportOpen => ReportedPost is not null;
 
-        /// <summary> Emoji drawn in the composer's bubble: the reader's own avatar, or the starter one before a profile is read. </summary>
-        string ComposerAvatar => SessionService.CurrentProfile?.Avatar ?? ProfileData.DefaultAvatar;
+        /// <summary> Names the reader may publish under: themselves, and any page whose keys they hold. </summary>
+        IReadOnlyList<WritingIdentity> WritingChoices = [];
+
+        /// <summary> Address the next post will carry, which is the reader's own until they pick a page. </summary>
+        string WritingAsAddress = string.Empty;
+
+        /// <summary>
+        /// The identity that will actually sign the next post. Falls back to the reader's own account when the
+        /// chosen one is no longer among the choices — a page whose keys were taken back mid-session, say.
+        /// </summary>
+        WritingIdentity WritingAs
+        {
+            get
+            {
+                foreach (WritingIdentity choice in WritingChoices)
+                {
+                    if (choice.Address == WritingAsAddress) return choice;
+                }
+
+                return new WritingIdentity(Account.Public.Address, string.Empty, string.Empty, Account, IsPage: false);
+            }
+        }
+
+        /// <summary> Emoji drawn in the composer's bubble: whichever name the next post is going out under. </summary>
+        string ComposerAvatar
+        {
+            get
+            {
+                foreach (WritingIdentity choice in WritingChoices)
+                {
+                    if (choice.Address == WritingAsAddress) return choice.Avatar;
+                }
+
+                return SessionService.CurrentProfile?.Avatar ?? ProfileData.DefaultAvatar;
+            }
+        }
+
+        /// <summary> Takes the reader's choice of who to post as. </summary>
+        /// <param name="address"> Address they picked. </param>
+        void HandleWritingAsChanged(string address) => WritingAsAddress = address;
 
         /// <summary> The frosted surface the two tabs sit on, built from the same glass recipe every other surface uses. </summary>
         string TabStripStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle);
@@ -202,6 +240,11 @@ namespace ChaySocial.MainProject.UI.Pages
 
             Dictionary<string, ProfileData?> authorProfiles = await ReadProfilesAsync(addresses);
             Dictionary<string, PostEngagement> engagements = await FeedService.ReadEngagementsAsync(posts, viewerAddress);
+
+            // Read here rather than once at startup, so a page founded or handed over during this session appears
+            // in the picker on the next refresh instead of after a reload.
+            WritingChoices = await WritingIdentities.ReadForAsync(Account);
+            if (WritingChoices.All(choice => choice.Address != WritingAsAddress)) WritingAsAddress = viewerAddress;
 
             Entries = entries;
             QuotedPosts = quoted;
@@ -401,7 +444,7 @@ namespace ChaySocial.MainProject.UI.Pages
             try
             {
                 PostData? published = await WallService.PublishAsync(
-                    Account, ComposerText, ComposerAttachments, ComposerQuotedPost?.PostId ?? string.Empty);
+                    WritingAs.Signer, ComposerText, ComposerAttachments, ComposerQuotedPost?.PostId ?? string.Empty);
 
                 if (published is null) return;
 

@@ -1,11 +1,11 @@
 @namespace ChaySocial.MainProject.UI.Pages
 
 @*
-    Styling for Groups. Groups renders this component itself, so the page always arrives with its own CSS
-    attached. Every selector is namespaced "groups-*" because *Css.razor styles are global.
+    Styling for PageList. PageList renders this component itself, so the screen always arrives with its own CSS
+    attached. Every selector is namespaced "page-list-*" because *Css.razor styles are global.
 *@
 <style>
-    .groups-page {
+    .page-list {
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
@@ -14,10 +14,10 @@
         max-width: @(ReadingColumnMaximumWidthPx)px;
         margin: 0 auto;
         padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(ListBottomInsetPx)px;
-        animation: groups-arrive @(AppMeasures.Duration.Slow)s @SoftLandingEasing both;
+        animation: page-list-arrive @(AppMeasures.Duration.Slow)s @SoftLandingEasing both;
     }
 
-    .groups-header {
+    .page-list-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -25,15 +25,14 @@
     }
 
     /* min-width:0 lets a long heading shrink instead of pushing the emoji off the row. */
-    .groups-header-text {
+    .page-list-header-text {
         display: flex;
         flex-direction: column;
         gap: @(AppMeasures.Space.Px4)px;
         min-width: 0;
     }
 
-    /* The two brand colours run through the heading, the way every other page in the app opens. */
-    .groups-title {
+    .page-list-title {
         margin: 0;
         font-size: @(AppMeasures.Font.Hero)px;
         font-weight: @(AppMeasures.Weight.Black);
@@ -45,38 +44,35 @@
         color: transparent;
     }
 
-    .groups-subtitle {
+    .page-list-subtitle {
         margin: 0;
         font-size: @(AppMeasures.Font.Small)px;
         line-height: @(AppMeasures.LineHeight.Relaxed);
         color: @(AppColors.TextSecondary.ToRgbaHex(true));
     }
 
-    .groups-header-emoji {
+    .page-list-header-emoji {
         flex-shrink: 0;
         font-size: @(AppMeasures.Font.Headline)px;
         line-height: @(AppMeasures.LineHeight.None);
         filter: drop-shadow(@AppStyles.ShadowPrimaryGlow);
     }
 
-    /* Founding and the way to pages sit on one row; they wrap rather than shrink, so neither label is ever cut. */
-    .groups-toolbar {
-        display: flex;
-        flex-wrap: wrap;
-        gap: @(AppMeasures.Space.Px10)px;
+    .page-list-found-button {
+        align-self: flex-start;
     }
 
-    .groups-found-emoji {
+    .page-list-found-emoji {
         margin-right: @(AppMeasures.Space.Px6)px;
     }
 
-    .groups-section {
+    .page-list-section {
         display: flex;
         flex-direction: column;
         gap: @(AppMeasures.Space.Px10)px;
     }
 
-    .groups-section-title {
+    .page-list-section-title {
         margin: 0;
         font-size: @(AppMeasures.Font.Medium)px;
         font-weight: @(AppMeasures.Weight.Heavy);
@@ -84,7 +80,7 @@
         color: @(AppColors.TextPrimary.ToRgbaHex(true));
     }
 
-    .groups-list {
+    .page-list-items {
         list-style: none;
         margin: 0;
         padding: 0;
@@ -93,7 +89,73 @@
         gap: @(AppMeasures.Space.Px10)px;
     }
 
-    .groups-status {
+    .page-list-item {
+        display: block;
+    }
+
+    .page-list-row {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        transition: transform @(AppMeasures.Duration.Fast)s ease-out, box-shadow @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+    .page-list-row:hover {
+        transform: translateY(-@(HoverLiftPx)px);
+        box-shadow: @(AppStyles.ShadowMedium);
+    }
+
+    /* The row is the tap target that opens the page; the manage button sits outside it so pressing that never
+       also navigates. */
+    .page-list-open {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        flex: 1;
+        min-width: 0;
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    /* min-width:0 lets a pasted address wrap inside the row rather than widening it past the screen. */
+    .page-list-row-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px2)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .page-list-row-name {
+        min-width: 0;
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+    .page-list-row-role {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+    }
+
+    .page-list-manage {
+        flex: none;
+    }
+
+    .page-list-status {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -102,16 +164,16 @@
         text-align: center;
     }
 
-    .groups-status-text {
+    .page-list-status-text {
         margin: 0;
         font-size: @(AppMeasures.Font.Normal)px;
         line-height: @(AppMeasures.LineHeight.Relaxed);
         color: @(AppColors.TextSecondary.ToRgbaHex(true));
     }
 
-    /* ------------------------------------------------------------ the founding sheet */
+    /* --------------------------------------------------------------- the two sheets */
 
-    .groups-found-sheet {
+    .page-list-sheet {
         display: flex;
         flex-direction: column;
         align-items: stretch;
@@ -121,13 +183,13 @@
         text-align: left;
     }
 
-    .groups-found-sheet-emoji {
+    .page-list-sheet-emoji {
         align-self: center;
         font-size: @(AppMeasures.Font.Giant)px;
         line-height: @(AppMeasures.LineHeight.None);
     }
 
-    .groups-found-sheet-title {
+    .page-list-sheet-title {
         margin: 0;
         text-align: center;
         font-size: @(AppMeasures.Font.Large)px;
@@ -136,7 +198,7 @@
         color: @(AppColors.TextPrimary.ToRgbaHex(true));
     }
 
-    .groups-found-sheet-subtitle {
+    .page-list-sheet-subtitle {
         margin: 0;
         text-align: center;
         font-size: @(AppMeasures.Font.Small)px;
@@ -144,7 +206,7 @@
         color: @(AppColors.TextSecondary.ToRgbaHex(true));
     }
 
-    .groups-field {
+    .page-list-field {
         box-sizing: border-box;
         width: @(AppMeasures.Percent.Full)%;
         padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px14)px;
@@ -157,21 +219,19 @@
         outline: none;
     }
 
-        .groups-field:focus {
+        .page-list-field:focus {
             border-color: @(AppColors.Primary.ToRgbaHex(true));
         }
 
-    /* The emoji is offered rather than typed, so choosing one is a tap instead of a keyboard hunt. Laid out as a
-       fixed grid rather than a wrapping row: left to wrap, the eighth choice drops onto a line of its own and the
-       set reads as an accident instead of a set. */
-    .groups-avatar-row {
+    /* A fixed grid rather than a wrapping row, so the offered set never breaks with one choice left alone. */
+    .page-list-avatar-row {
         display: grid;
         grid-template-columns: repeat(@(AvatarChoiceColumns), 1fr);
         justify-items: center;
         gap: @(AppMeasures.Space.Px8)px;
     }
 
-    .groups-avatar {
+    .page-list-avatar {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -187,32 +247,95 @@
         transition: border-color @(AppMeasures.Duration.Fast)s, transform @(AppMeasures.Duration.Fast)s;
     }
 
-        .groups-avatar.is-chosen {
+        .page-list-avatar.is-chosen {
             border-color: @(AppColors.Primary.ToRgbaHex(true));
             background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
             transform: scale(@ChosenAvatarScale);
         }
 
-        .groups-avatar:disabled {
+        .page-list-avatar:disabled {
             opacity: @(AppMeasures.Opacity.Disabled);
             cursor: default;
         }
 
-    .groups-found-error {
+    /* The editors scroll inside the sheet rather than growing it past the screen. */
+    .page-list-editors {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+        max-height: @(EditorListMaximumHeightPx)px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: @(AppColors.BorderStrong.ToRgbaHex(true)) transparent;
+    }
+
+    .page-list-editor {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px10)px;
+        padding: @(AppMeasures.Space.Px8)px @(AppMeasures.Space.Px10)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+    }
+
+    /* min-width:0 lets a long address wrap instead of widening the sheet. */
+    .page-list-editor-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px2)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .page-list-editor-name {
+        min-width: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+    .page-list-editor-role {
+        flex: none;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .page-list-editor-remove {
+        flex: none;
+        padding: 0 @(AppMeasures.Space.Px6)px;
+        border: none;
+        background: none;
+        font: inherit;
+        font-size: @(AppMeasures.Font.Normal)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        cursor: pointer;
+    }
+
+        .page-list-editor-remove:hover:not(:disabled) {
+            color: @(AppColors.TextDanger.ToRgbaHex(true));
+        }
+
+    .page-list-error {
         margin: 0;
         font-size: @(AppMeasures.Font.Small)px;
         line-height: @(AppMeasures.LineHeight.Snug);
         color: @(AppColors.TextDanger.ToRgbaHex(true));
     }
 
-    .groups-found-actions {
+    .page-list-sheet-actions {
         display: flex;
         justify-content: center;
         flex-wrap: wrap;
         gap: @(AppMeasures.Space.Px10)px;
     }
 
-    @@keyframes groups-arrive {
+    @@keyframes page-list-arrive {
         from {
             opacity: 0;
             transform: translateY(@(PageArrivalRisePx)px);
@@ -224,53 +347,67 @@
         }
     }
 
-    /* Phone width: the page keeps everything, it only gives back the padding it can spare. */
+    /* Phone width: the screen keeps everything, it only gives back the padding it can spare. */
     @@media (max-width: @(NarrowScreenBreakpointPx)px) {
-        .groups-page {
+        .page-list {
             padding-left: @(AppMeasures.Space.Px14)px;
             padding-right: @(AppMeasures.Space.Px14)px;
         }
 
-        .groups-title {
+        .page-list-title {
             font-size: @(AppMeasures.Font.Title)px;
+        }
+
+        .page-list-row {
+            flex-wrap: wrap;
+        }
+
+        .page-list-manage {
+            width: @(AppMeasures.Percent.Full)%;
         }
     }
 
     @@media (prefers-reduced-motion: reduce) {
-        .groups-page {
+        .page-list {
             animation: none;
         }
     }
 </style>
 
 @code {
-    /// <summary> Widest the column of groups grows; past this a row gets tiring to track across. </summary>
+    /// <summary> Widest the column of pages grows. </summary>
     const int ReadingColumnMaximumWidthPx = 640;
 
     /// <summary> Space kept under the last row: the floating navigation's own height plus a gap. </summary>
     const int ListBottomInsetPx = AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px40;
 
-    /// <summary> Widest the founding sheet grows on a large screen. </summary>
+    /// <summary> Widest either sheet grows on a large screen. </summary>
     const int SheetMaximumWidthPx = 420;
 
     /// <summary> Side of one offered emoji in the founding sheet. </summary>
     const int AvatarChoiceDiameterPx = AppMeasures.Size.Px40;
 
-    /// <summary> Emoji per row in the founding sheet; the offered set is a whole number of these, so no row is left with one lonely choice on it. </summary>
+    /// <summary> Emoji per row there; the offered set is a whole number of these. </summary>
     const int AvatarChoiceColumns = 4;
 
     /// <summary> How far the chosen emoji swells. A string so the decimal survives any OS culture. </summary>
     const string ChosenAvatarScale = "1.1";
 
-    /// <summary> Angle of the two-colour sheen through the heading, matching every other gradient surface. </summary>
+    /// <summary> Tallest the editor list grows before it scrolls inside the sheet. </summary>
+    const int EditorListMaximumHeightPx = 240;
+
+    /// <summary> Angle of the two-colour sheen through the heading. </summary>
     const int BrandGradientAngleDegrees = 135;
 
-    /// <summary> How far the page slides up as it fades in. </summary>
+    /// <summary> How far the screen slides up as it fades in. </summary>
     const int PageArrivalRisePx = AppMeasures.Space.Px12;
+
+    /// <summary> How far a row lifts under the pointer. </summary>
+    const int HoverLiftPx = AppMeasures.Space.Px2;
 
     /// <summary> Easing that starts fast and settles softly. </summary>
     const string SoftLandingEasing = "cubic-bezier(0.16, 1, 0.3, 1)";
 
-    /// <summary> Widest viewport still treated as a phone, below which the page tightens its spacing. </summary>
+    /// <summary> Widest viewport still treated as a phone. </summary>
     const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
 }

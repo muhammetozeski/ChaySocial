@@ -1,0 +1,52 @@
+@using ChaySocial.MainProject.DataModels
+
+@*
+    Who a post is about to go out as: the reader themselves, or one of the pages they hold the keys to. It draws
+    nothing at all for somebody who runs no pages, so the common case stays exactly as simple as it was.
+*@
+
+@if (Choices.Count > 1)
+{
+    <div class="writing-as">
+        <span class="writing-as-label">@AsLabel</span>
+
+        <div class="writing-as-choices">
+            @foreach (WritingIdentity choice in Choices)
+            {
+                @* Declared inside the loop body, so each button carries its own identity rather than the last one. *@
+                WritingIdentity option = choice;
+
+                <button type="button"
+                        class="writing-as-choice @(option.Address == SelectedAddress ? ChosenClass : string.Empty)"
+                        title="@option.Name"
+                        disabled="@IsDisabled"
+                        @onclick="() => SelectedAddressChanged.InvokeAsync(option.Address)">
+                    <span class="writing-as-emoji">@option.Avatar</span>
+                    <span class="writing-as-name">@option.Name</span>
+                </button>
+            }
+        </div>
+    </div>
+}
+
+<WritingAsPickerCss />
+
+@code {
+    /// <summary> Everybody this account can post as: itself first, then each page it holds the keys to. </summary>
+    [Parameter] public IReadOnlyList<WritingIdentity> Choices { get; set; } = [];
+
+    /// <summary> Address currently chosen. </summary>
+    [Parameter] public string SelectedAddress { get; set; } = string.Empty;
+
+    /// <summary> Raised with the newly chosen address. </summary>
+    [Parameter] public EventCallback<string> SelectedAddressChanged { get; set; }
+
+    /// <summary> True while the composer is busy, which locks the choice for the post already going out. </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+
+    /// <summary> Leads the row of choices. </summary>
+    const string AsLabel = "Posting as";
+
+    /// <summary> Class marking the chosen identity. </summary>
+    const string ChosenClass = "is-chosen";
+}

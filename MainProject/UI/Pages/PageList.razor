@@ -1,0 +1,298 @@
+@attribute [Route(PagesRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    Pages: names several people can publish under. A page is an ordinary account with an ordinary profile, so this
+    screen only has to do the two things the rest of the app cannot — found one, and say who may speak as it.
+*@
+
+<PageTitle>@PageHeadline</PageTitle>
+
+<div class="page-list">
+
+    <header class="page-list-header">
+        <div class="page-list-header-text">
+            <h1 class="page-list-title">@PageHeadline</h1>
+            <p class="page-list-subtitle">@PageSubtitle</p>
+        </div>
+
+        <span class="page-list-header-emoji" role="img" aria-label="@PageHeadline">@PageEmoji</span>
+    </header>
+
+    @if (WritingLocked.IsLocked)
+    {
+        <WritingLocked />
+    }
+    else
+    {
+        <CoreButton OnClick="OpenFounding"
+                    Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                    TextColor="@AppColors.TextOnAccent"
+                    BorderRadius="@PillRadiusCss"
+                    Padding="@ActionPaddingCss"
+                    FontSize="@AppMeasures.Font.Normal"
+                    Shadow="@AppStyles.ShadowPrimaryGlow"
+                    CustomClass="page-list-found-button">
+            <span class="page-list-found-emoji">@FoundEmoji</span>
+            <span>@FoundLabel</span>
+        </CoreButton>
+    }
+
+    @if (LoadFailureMessage is not null)
+    {
+        <EmptyState Emoji="@LoadFailedEmoji" Headline="@LoadFailedHeadline" Description="@LoadFailureMessage">
+            <Action>
+                <CoreButton OnClick="ReloadAsync"
+                            Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                            TextColor="@AppColors.TextOnAccent"
+                            BorderRadius="@PillRadiusCss"
+                            Padding="@ActionPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow">
+                    @TryAgainLabel
+                </CoreButton>
+            </Action>
+        </EmptyState>
+    }
+    else if (IsFirstLoad)
+    {
+        <div class="page-list-status">
+            <CoreSpinner />
+            <p class="page-list-status-text">@LoadingLabel</p>
+        </div>
+    }
+    else
+    {
+        @if (mine.Count > 0)
+        {
+            <section class="page-list-section">
+                <h2 class="page-list-section-title">@MineSectionTitle</h2>
+
+                <ul class="page-list-items">
+                    @foreach (PageData page in mine)
+                    {
+                        @* Declared inside the loop body, so each row's handlers carry their own page. *@
+                        PageData owned = page;
+
+                        <li class="page-list-item" @key="owned.Address">
+                            <div class="page-list-row" style="@RowSurfaceStyle">
+                                <button type="button" class="page-list-open" title="@OpenHint" @onclick="() => OpenProfile(owned.Address)">
+                                    <AvatarBubble Emoji="@AvatarOf(owned)" DiameterPx="@RowAvatarDiameterPx" />
+
+                                    <span class="page-list-row-text">
+                                        <span class="page-list-row-name">@NameOf(owned)</span>
+                                        <AddressChip Address="@owned.Address" />
+                                        <span class="page-list-row-role">@RoleOf(owned)</span>
+                                    </span>
+                                </button>
+
+                                @if (owned.FounderAddress == SessionService.CurrentAddress)
+                                {
+                                    <CoreButton OnClick="() => OpenEditorsAsync(owned)"
+                                                Background="@AppColors.SurfaceSubtle"
+                                                TextColor="@AppColors.TextSecondary"
+                                                BorderRadius="@PillRadiusCss"
+                                                Padding="@QuietPaddingCss"
+                                                FontSize="@AppMeasures.Font.Small"
+                                                Border="@QuietButtonBorder"
+                                                CustomClass="page-list-manage">
+                                        @ManageLabel
+                                    </CoreButton>
+                                }
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+
+        <section class="page-list-section">
+            <h2 class="page-list-section-title">@OthersSectionTitle</h2>
+
+            @if (others.Count == 0)
+            {
+                <EmptyState Emoji="@EmptyEmoji" Headline="@EmptyHeadline" Description="@EmptyDescription" />
+            }
+            else
+            {
+                <ul class="page-list-items">
+                    @foreach (PageData page in others)
+                    {
+                        PageData other = page;
+
+                        <li class="page-list-item" @key="other.Address">
+                            <div class="page-list-row" style="@RowSurfaceStyle">
+                                <button type="button" class="page-list-open" title="@OpenHint" @onclick="() => OpenProfile(other.Address)">
+                                    <AvatarBubble Emoji="@AvatarOf(other)" DiameterPx="@RowAvatarDiameterPx" />
+
+                                    <span class="page-list-row-text">
+                                        <span class="page-list-row-name">@NameOf(other)</span>
+                                        <AddressChip Address="@other.Address" />
+                                    </span>
+                                </button>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    }
+
+</div>
+
+<CoreModal IsVisible="@isFoundingOpen" IsAcrylic="true" OnBackdropClick="CloseFounding">
+    <div class="page-list-sheet">
+        <span class="page-list-sheet-emoji">@FoundEmoji</span>
+        <h2 class="page-list-sheet-title">@FoundSheetTitle</h2>
+        <p class="page-list-sheet-subtitle">@FoundSheetSubtitle</p>
+
+        <input class="page-list-field"
+               type="text"
+               placeholder="@NamePlaceholder"
+               maxlength="@ProfileData.MaximumDisplayNameLength"
+               value="@draftName"
+               disabled="@isFounding"
+               @oninput="HandleNameInput" />
+
+        <input class="page-list-field"
+               type="text"
+               placeholder="@DescriptionPlaceholder"
+               maxlength="@ProfileData.MaximumBioLength"
+               value="@draftDescription"
+               disabled="@isFounding"
+               @oninput="HandleDescriptionInput" />
+
+        <div class="page-list-avatar-row">
+            @foreach (string choice in AvatarChoices)
+            {
+                string emoji = choice;
+
+                <button type="button"
+                        class="page-list-avatar @(draftAvatar == emoji ? SelectedAvatarClass : string.Empty)"
+                        disabled="@isFounding"
+                        @onclick="() => draftAvatar = emoji">@emoji</button>
+            }
+        </div>
+
+        @if (foundErrorMessage is not null)
+        {
+            <p class="page-list-error">@foundErrorMessage</p>
+        }
+
+        <div class="page-list-sheet-actions">
+            <CoreButton OnClick="CloseFounding"
+                        Disabled="@isFounding"
+                        Background="@AppColors.SurfaceSubtle"
+                        TextColor="@AppColors.TextSecondary"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Border="@QuietButtonBorder">
+                @CancelLabel
+            </CoreButton>
+
+            <CoreButton OnClick="FoundAsync"
+                        Disabled="@(!CanFound)"
+                        Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                        TextColor="@AppColors.TextOnAccent"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Shadow="@AppStyles.ShadowPrimaryGlow">
+                @if (isFounding)
+                {
+                    <CoreSpinner SizePx="@BusySpinnerDiameterPx" BorderWidthPx="@BusySpinnerBorderPx" Color="@AppColors.TextOnAccent" />
+                }
+                else
+                {
+                    <span>@FoundConfirmLabel</span>
+                }
+            </CoreButton>
+        </div>
+    </div>
+</CoreModal>
+
+<CoreModal IsVisible="@(managedPage is not null)" IsAcrylic="true" OnBackdropClick="CloseEditors">
+    <div class="page-list-sheet">
+        <span class="page-list-sheet-emoji">@ManageEmoji</span>
+        <h2 class="page-list-sheet-title">@ManageSheetTitle</h2>
+        <p class="page-list-sheet-subtitle">@ManageSheetSubtitle</p>
+
+        <ul class="page-list-editors">
+            @foreach (EditorEntry entry in editors)
+            {
+                EditorEntry listed = entry;
+
+                <li class="page-list-editor" @key="listed.Address">
+                    <AvatarBubble Emoji="@listed.Avatar" DiameterPx="@EditorAvatarDiameterPx" />
+
+                    <span class="page-list-editor-text">
+                        <span class="page-list-editor-name">@listed.Name</span>
+                        <AddressChip Address="@listed.Address" />
+                    </span>
+
+                    @if (listed.IsFounder)
+                    {
+                        <span class="page-list-editor-role">@FounderRoleLabel</span>
+                    }
+                    else
+                    {
+                        <button type="button"
+                                class="page-list-editor-remove"
+                                title="@RemoveHint"
+                                disabled="@isChangingEditors"
+                                @onclick="() => RemoveEditorAsync(listed.Address)">@RemoveMark</button>
+                    }
+                </li>
+            }
+        </ul>
+
+        <input class="page-list-field"
+               type="text"
+               placeholder="@EditorAddressPlaceholder"
+               value="@draftEditorAddress"
+               disabled="@isChangingEditors"
+               @oninput="HandleEditorAddressInput" />
+
+        @if (editorErrorMessage is not null)
+        {
+            <p class="page-list-error">@editorErrorMessage</p>
+        }
+
+        <div class="page-list-sheet-actions">
+            <CoreButton OnClick="CloseEditors"
+                        Disabled="@isChangingEditors"
+                        Background="@AppColors.SurfaceSubtle"
+                        TextColor="@AppColors.TextSecondary"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Border="@QuietButtonBorder">
+                @DoneLabel
+            </CoreButton>
+
+            <CoreButton OnClick="AddEditorAsync"
+                        Disabled="@(!CanAddEditor)"
+                        Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                        TextColor="@AppColors.TextOnAccent"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Shadow="@AppStyles.ShadowPrimaryGlow">
+                @if (isChangingEditors)
+                {
+                    <CoreSpinner SizePx="@BusySpinnerDiameterPx" BorderWidthPx="@BusySpinnerBorderPx" Color="@AppColors.TextOnAccent" />
+                }
+                else
+                {
+                    <span>@AddEditorLabel</span>
+                }
+            </CoreButton>
+        </div>
+    </div>
+</CoreModal>
+
+<PageListCss />

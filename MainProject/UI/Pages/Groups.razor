@@ -23,24 +23,38 @@
         <span class="groups-header-emoji" role="img" aria-label="@PageHeadline">@PageEmoji</span>
     </header>
 
-    @if (WritingLocked.IsLocked)
-    {
-        <WritingLocked />
-    }
-    else
-    {
-        <CoreButton OnClick="OpenFounding"
-                    Gradient="@((AppColors.Primary, AppColors.Secondary))"
-                    TextColor="@AppColors.TextOnAccent"
-                    BorderRadius="@PillRadiusCss"
-                    Padding="@ActionPaddingCss"
-                    FontSize="@AppMeasures.Font.Normal"
-                    Shadow="@AppStyles.ShadowPrimaryGlow"
-                    CustomClass="groups-found-button">
-            <span class="groups-found-emoji">@FoundEmoji</span>
-            <span>@FoundLabel</span>
-        </CoreButton>
-    }
+    @* Pages sit beside groups rather than in the bottom bar: both are places a name gathers people, and the bar
+       has no room left that would not crowd the five destinations already in it. *@
+    <div class="groups-toolbar">
+        @if (WritingLocked.IsLocked)
+        {
+            <WritingLocked />
+        }
+        else
+        {
+            <CoreButton OnClick="OpenFounding"
+                        Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                        TextColor="@AppColors.TextOnAccent"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Shadow="@AppStyles.ShadowPrimaryGlow">
+                <span class="groups-found-emoji">@FoundEmoji</span>
+                <span>@FoundLabel</span>
+            </CoreButton>
+
+            <CoreButton OnClick="OpenPages"
+                        Background="@AppColors.SurfaceSubtle"
+                        TextColor="@AppColors.TextSecondary"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Border="@QuietButtonBorder">
+                <span class="groups-found-emoji">@PagesEmoji</span>
+                <span>@PagesLabel</span>
+            </CoreButton>
+        }
+    </div>
 
     @if (LoadFailureMessage is not null)
     {

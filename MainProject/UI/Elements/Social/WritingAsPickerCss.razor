@@ -1,0 +1,76 @@
+@*
+    Styling for WritingAsPicker. WritingAsPicker renders this component itself, so the row always arrives with its
+    own CSS attached. Every selector is namespaced "writing-as-*" because *Css.razor styles are global.
+*@
+<style>
+    .writing-as {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    .writing-as-label {
+        flex: none;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    /* The choices scroll sideways rather than wrapping into a tall block: somebody with six pages should not push
+       the composer's own controls off the screen. */
+    .writing-as-choices {
+        display: flex;
+        gap: @(AppMeasures.Space.Px6)px;
+        flex: 1;
+        min-width: 0;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        scrollbar-color: @(AppColors.BorderStrong.ToRgbaHex(true)) transparent;
+    }
+
+    .writing-as-choice {
+        flex: none;
+        display: inline-flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px6)px;
+        max-width: @(ChoiceMaximumWidthPx)px;
+        padding: @(AppMeasures.Space.Px4)px @(AppMeasures.Space.Px10)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font: inherit;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        cursor: pointer;
+        transition: border-color @(AppMeasures.Duration.Fast)s, color @(AppMeasures.Duration.Fast)s, background @(AppMeasures.Duration.Fast)s;
+    }
+
+        .writing-as-choice.is-chosen {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+            font-weight: @(AppMeasures.Weight.Medium);
+        }
+
+        .writing-as-choice:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: default;
+        }
+
+    .writing-as-emoji {
+        flex: none;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    /* Clipped rather than wrapped: a chip is a label, and a long page name must not turn it into a paragraph. */
+    .writing-as-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+</style>
+
+@code {
+    /// <summary> Widest one choice grows before its name is clipped. </summary>
+    const int ChoiceMaximumWidthPx = 160;
+}

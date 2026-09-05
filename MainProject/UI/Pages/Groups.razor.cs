@@ -34,6 +34,12 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Emoji on the button and sheet that found a group. </summary>
         const string FoundEmoji = "✨";
 
+        /// <summary> Emoji on the button that leads to pages. </summary>
+        const string PagesEmoji = "📰";
+
+        /// <summary> Label on that button. </summary>
+        const string PagesLabel = "Pages";
+
         /// <summary> Label on that button. </summary>
         const string FoundLabel = "Start a group";
 
@@ -275,5 +281,8 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Opens one group's own page. </summary>
         /// <param name="address"> Address of the group to open. </param>
         void OpenGroup(string address) => NavManager.NavigateTo(Group.LinkTo(address));
+
+        /// <summary> Opens the pages screen, which sits beside this one rather than in the bottom bar. </summary>
+        void OpenPages() => NavManager.NavigateTo(PageList.PagesRoute);
     }
 }

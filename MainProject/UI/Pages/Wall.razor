@@ -27,6 +27,11 @@
         }
         else
         {
+            <WritingAsPicker Choices="@WritingChoices"
+                             SelectedAddress="@WritingAsAddress"
+                             SelectedAddressChanged="HandleWritingAsChanged"
+                             IsDisabled="@IsPublishing" />
+
             <PostComposer Text="@ComposerText"
                           TextChanged="HandleComposerTextChanged"
                           Attachments="@ComposerAttachments"
