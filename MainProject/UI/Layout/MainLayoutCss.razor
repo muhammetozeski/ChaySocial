@@ -1,6 +1,12 @@
 @namespace ChaySocial.MainProject.UI.Layout
 
 @{
+    // Widest the refusal's explanation grows before it wraps.
+    const int BlockedTextMaximumWidthPx = 420;
+
+    // Fixed-width faces for the address the app was reached on, where every character is the point.
+    const string BlockedMonospaceStack = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+
     string cssVars = AppStyles.BuildCssVariables();
     string aurora = AppStyles.BuildAuroraBackground();
     string textColor = AppColors.TextPrimary.ToRgbaHex(true);
@@ -36,6 +42,59 @@
         justify-content: center;
         gap: @(AppMeasures.Space.Medium)px;
         min-height: @(AppMeasures.Viewport.Most)vh;
+    }
+
+    /* Shown instead of the app when Tor was insisted on and this is not Tor. It fills the screen on purpose:
+       a refusal that shares the page with the thing it is refusing is not a refusal. */
+    .app-blocked {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: @(AppMeasures.Space.Medium)px;
+        min-height: @(AppMeasures.Viewport.Most)vh;
+        padding: @(AppMeasures.Space.Px24)px;
+        text-align: center;
+    }
+
+    .app-blocked-mark {
+        font-size: @(AppMeasures.Font.Giant)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .app-blocked-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Title)px;
+        font-weight: @(AppMeasures.Weight.Bold);
+        color: @textColor;
+    }
+
+    .app-blocked-text {
+        margin: 0;
+        max-width: @(BlockedTextMaximumWidthPx)px;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    /* The address it was actually reached on, so the refusal is checkable rather than merely asserted. */
+    .app-blocked-host {
+        margin: 0;
+        font-family: @BlockedMonospaceStack;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+    .app-blocked-release {
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px20)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        cursor: pointer;
     }
 
     .app-waking-mark {

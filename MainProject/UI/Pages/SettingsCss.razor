@@ -88,6 +88,182 @@
         color: @(AppColors.TextPrimary.ToRgbaHex(true));
     }
 
+    /* A whole row is the switch, so the label and its explanation are part of the tap target rather than
+       decoration beside a small control. */
+    .settings-switch {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px14)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        transition: border-color @(AppMeasures.Duration.Fast)s;
+    }
+
+        .settings-switch.is-on {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+        }
+
+        .settings-switch:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: default;
+        }
+
+    /* min-width:0 lets the hint wrap instead of pushing the track off the row. */
+    .settings-switch-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px2)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .settings-switch-label {
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .settings-switch-hint {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .settings-switch-track {
+        position: relative;
+        flex: none;
+        width: @(SwitchTrackWidthPx)px;
+        height: @(SwitchTrackHeightPx)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: @(AppColors.SurfaceStrong.ToRgbaHex(true));
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        transition: background @(AppMeasures.Duration.Fast)s, border-color @(AppMeasures.Duration.Fast)s;
+    }
+
+        .settings-switch.is-on .settings-switch-track {
+            background: @(AppColors.Primary.ToRgbaHex(true));
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+        }
+
+    .settings-switch-knob {
+        position: absolute;
+        top: @(SwitchKnobInsetPx)px;
+        left: @(SwitchKnobInsetPx)px;
+        width: @(SwitchKnobDiameterPx)px;
+        height: @(SwitchKnobDiameterPx)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        background: @(AppColors.TextOnFilledSurface.ToRgbaHex(true));
+        transition: transform @(AppMeasures.Duration.Fast)s @SwitchEasing;
+    }
+
+        .settings-switch.is-on .settings-switch-knob {
+            transform: translateX(@(SwitchKnobTravelPx)px);
+        }
+
+    .settings-reached-on {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .settings-reached-host {
+        font-family: @SettingsMonospaceStack;
+        overflow-wrap: anywhere;
+    }
+
+    .settings-accounts {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    .settings-account {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px10)px;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px12)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        border: @(AppMeasures.Border.Thin)px solid transparent;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+    }
+
+        .settings-account.is-open {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+        }
+
+    /* min-width:0 lets a long address wrap inside the row rather than widening the card. */
+    .settings-account-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px2)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .settings-account-name {
+        min-width: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+    .settings-account-open {
+        flex: none;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+    }
+
+    .settings-account-switch {
+        flex: none;
+        padding: @(AppMeasures.Space.Px4)px @(AppMeasures.Space.Px12)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: none;
+        font: inherit;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        cursor: pointer;
+    }
+
+        .settings-account-switch:hover:not(:disabled) {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+    .settings-account-drop {
+        flex: none;
+        padding: 0 @(AppMeasures.Space.Px6)px;
+        border: none;
+        background: none;
+        font: inherit;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        cursor: pointer;
+    }
+
+        .settings-account-drop:hover:not(:disabled) {
+            color: @(AppColors.TextDanger.ToRgbaHex(true));
+        }
+
+    .settings-accounts-note {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
     .settings-section-description {
         margin: 0;
         font-size: @(AppMeasures.Font.Small)px;
@@ -476,6 +652,26 @@
 </style>
 
 @code {
+    /// <summary> Width of the switch track. </summary>
+    const int SwitchTrackWidthPx = 44;
+
+    /// <summary> Height of the switch track. </summary>
+    const int SwitchTrackHeightPx = 26;
+
+    /// <summary> Gap between the knob and the track edge. </summary>
+    const int SwitchKnobInsetPx = 3;
+
+    /// <summary> Side of the knob. </summary>
+    const int SwitchKnobDiameterPx = 18;
+
+    /// <summary> How far the knob travels when the switch turns on. </summary>
+    const int SwitchKnobTravelPx = 18;
+
+    /// <summary> Easing on that travel, so the switch settles rather than snapping. </summary>
+    const string SwitchEasing = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+    /// <summary> Fixed-width faces for the address the app was reached on. </summary>
+    const string SettingsMonospaceStack = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
     /// <summary> Widest this screen's column of cards grows on a large window; past this a line of explanation gets tiring to track back to. </summary>
     const int ReadingColumnMaximumWidthPx = 640;
 

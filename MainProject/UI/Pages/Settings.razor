@@ -223,6 +223,91 @@
                   CustomClass="settings-card">
 
             <div class="settings-section-heading">
+                <span class="settings-section-emoji">@AnonymitySectionEmoji</span>
+                <h2 class="settings-section-title">@AnonymitySectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@AnonymitySectionDescription</p>
+
+            @* Refusing anything that is not Tor is judged from the address the app was served on, which is the
+               only thing a page can honestly judge it from. *@
+            <button type="button"
+                    class="settings-switch @(_isTorOnly ? SwitchOnClass : string.Empty)"
+                    disabled="@_isChangingAnonymity"
+                    @onclick="ToggleTorOnlyAsync">
+                <span class="settings-switch-text">
+                    <span class="settings-switch-label">@TorOnlyLabel</span>
+                    <span class="settings-switch-hint">@TorOnlyHint</span>
+                </span>
+                <span class="settings-switch-track"><span class="settings-switch-knob"></span></span>
+            </button>
+
+            <p class="settings-reached-on">@ReachedOnLabel <span class="settings-reached-host">@ReachedHost</span></p>
+
+        </CoreCard>
+
+        @*
+            One person is expected to hold several accounts here, so the device carries them all and switching is
+            one tap rather than pasting a secret back in.
+        *@
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
+                <span class="settings-section-emoji">@AccountsSectionEmoji</span>
+                <h2 class="settings-section-title">@AccountsSectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@AccountsSectionDescription</p>
+
+            <ul class="settings-accounts">
+                @foreach (CarriedAccount carried in _carriedAccounts)
+                {
+                    @* Declared inside the loop body, so each row's handlers carry their own account. *@
+                    CarriedAccount account = carried;
+                    bool isOpen = account.Address == SessionService.CurrentAddress;
+
+                    <li class="settings-account @(isOpen ? OpenAccountClass : string.Empty)" @key="account.Address">
+                        <AvatarBubble Emoji="@AvatarFor(account.Address)" DiameterPx="CarriedAvatarDiameterPx" />
+
+                        <span class="settings-account-text">
+                            <span class="settings-account-name">@NameFor(account.Address)</span>
+                            <AddressChip Address="@account.Address" />
+                        </span>
+
+                        @if (isOpen)
+                        {
+                            <span class="settings-account-open">@OpenAccountLabel</span>
+                        }
+                        else
+                        {
+                            <button type="button"
+                                    class="settings-account-switch"
+                                    disabled="@_isChangingAnonymity"
+                                    @onclick="() => SwitchToAsync(account)">@SwitchLabel</button>
+
+                            <button type="button"
+                                    class="settings-account-drop"
+                                    title="@DropHint"
+                                    disabled="@_isChangingAnonymity"
+                                    @onclick="() => DropCarriedAsync(account)">@DropMark</button>
+                        }
+                    </li>
+                }
+            </ul>
+
+            <p class="settings-accounts-note">@AccountsNote</p>
+
+        </CoreCard>
+
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
                 <span class="settings-section-emoji">@BlockedSectionEmoji</span>
                 <h2 class="settings-section-title">@BlockedSectionHeadline</h2>
             </div>

@@ -58,6 +58,14 @@ namespace ChaySocial.MainProject.Services
         public static async Task<bool> SignInAsync(string secretText)
             => MasterSeedText.TryParse(secretText, out byte[] masterSeed) && await AdoptAsync(masterSeed, remember: true);
 
+        /// <summary>
+        /// Switches to another account this device is already carrying. The same call as signing in, named for
+        /// what it is: nothing is proven to anybody, a different seed simply becomes the open one.
+        /// </summary>
+        /// <param name="secretText"> The carried account's secret. </param>
+        /// <returns> True once that account is the open one. </returns>
+        public static Task<bool> SwitchToAsync(string secretText) => SignInAsync(secretText);
+
         /// <summary> Forgets the account on this device. The account itself is untouched and reopens with the same seed. </summary>
         public static async Task SignOutAsync()
         {
@@ -103,7 +111,16 @@ namespace ChaySocial.MainProject.Services
 
             CurrentProfile = await ProfileService.EnsureExistsAsync(identity.Public);
 
-            if (remember) await AppServices.LocalStore.WriteAsync(SeedStorageKey, MasterSeedText.Format(masterSeed));
+            if (remember)
+            {
+                string secret = MasterSeedText.Format(masterSeed);
+
+                await AppServices.LocalStore.WriteAsync(SeedStorageKey, secret);
+
+                // One person is expected to hold several accounts here, so a device remembers every account it has
+                // been signed into rather than only the last one, and switching between them costs one tap.
+                await AnonymityService.CarryAsync(secret);
+            }
 
             MainEvents.Trigger(MainEvents.Names.SessionChanged, identity.Public);
             return true;

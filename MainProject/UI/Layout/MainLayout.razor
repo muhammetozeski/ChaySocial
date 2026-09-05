@@ -9,6 +9,7 @@
 *@
 @inherits LayoutComponentBase
 @implements IDisposable
+@inject NavigationManager NavManager
 
 @* Keyed on the palette's name so switching themes rebuilds the whole tree. Every component writes its colours
    into its own <style> block at render time, and those blocks only change if that component renders again — a
@@ -16,7 +17,22 @@
 <div class="app-page @(ShowBottomNavigation ? HasBottomNavClass : string.Empty)" @key="ThemeManager.Current.Name">
     <main>
         <article class="content">
-            @if (_isSessionReady)
+            @if (_isSessionReady && _isTorBlocked)
+            {
+                @* Drawn instead of the app, not over it: somebody who asked to be refused without Tor should not
+                   have the app quietly working behind a notice. *@
+                <div class="app-blocked">
+                    <span class="app-blocked-mark">@TorBlockedEmoji</span>
+                    <h1 class="app-blocked-title">@TorBlockedHeadline</h1>
+                    <p class="app-blocked-text">@TorBlockedDescription</p>
+                    <p class="app-blocked-host">@NavManager.BaseUri</p>
+
+                    <button type="button" class="app-blocked-release" @onclick="ReleaseTorRequirementAsync">
+                        @TorBlockedReleaseLabel
+                    </button>
+                </div>
+            }
+            else if (_isSessionReady)
             {
                 @Body
             }
@@ -30,7 +46,7 @@
         </article>
     </main>
 
-    @if (ShowBottomNavigation)
+    @if (ShowBottomNavigation && !_isTorBlocked)
     {
         <AppBottomNav />
     }
@@ -49,6 +65,23 @@
 
     /// <summary> Diameter of the throbber on the waking screen. </summary>
     const int WakingSpinnerSizePx = 28;
+
+    /// <summary> Mark on the screen shown when Tor was insisted on and this is not Tor. </summary>
+    const string TorBlockedEmoji = "🧅";
+
+    /// <summary> Heading of that screen. </summary>
+    const string TorBlockedHeadline = "Not over Tor";
+
+    /// <summary> Line under it, saying what was asked for and what happened. </summary>
+    const string TorBlockedDescription =
+        "You asked this device to refuse anything that is not Tor, and this is not a Tor address. Nothing has been "
+        + "sent. Open the app through your hidden service, or lift the requirement below.";
+
+    /// <summary> Label on the control that lifts the requirement. </summary>
+    const string TorBlockedReleaseLabel = "Lift the requirement on this device";
+
+    /// <summary> True while the app must refuse to run because it was not reached over Tor. </summary>
+    bool _isTorBlocked;
 
     /// <summary> True while the navigation bar belongs on screen, which is exactly while an account is unlocked. </summary>
     bool ShowBottomNavigation;
@@ -70,7 +103,13 @@
         try
         {
             await ThemeManager.RestoreAsync();
-            await SessionService.RestoreAsync();
+
+            // Asked before the session is opened: somebody who insists on Tor should not have their account
+            // unlocked over a connection they already refused.
+            _isTorBlocked = await AnonymityService.IsTorOnlyAsync()
+                            && !AnonymityService.IsReachedOverTor(NavManager.BaseUri);
+
+            if (!_isTorBlocked) await SessionService.RestoreAsync();
         }
         catch (Exception error)
         {
@@ -106,6 +145,20 @@
 
         _paintedThemeName = ThemeManager.Current.Name;
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Lifts the Tor requirement and lets the app open. Offered here rather than only in settings, because
+    /// settings are behind the very screen this is blocking.
+    /// </summary>
+    /// <returns> A task that completes once the app has opened. </returns>
+    async Task ReleaseTorRequirementAsync()
+    {
+        await AnonymityService.SetTorOnlyAsync(false);
+        _isTorBlocked = false;
+
+        await SessionService.RestoreAsync();
+        ShowBottomNavigation = SessionService.IsSignedIn;
     }
 
     public void Dispose() => MainEvents.Unsubscribe(HandleAppEvent);

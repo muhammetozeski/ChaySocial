@@ -128,6 +128,78 @@ namespace ChaySocial.MainProject.UI.Pages
         const int SecretRowCount = 3;
 
         /// <summary> Emoji on the section listing blocked accounts. </summary>
+        /// <summary> Emoji on the anonymity section. </summary>
+        const string AnonymitySectionEmoji = "🧅";
+
+        /// <summary> Heading of that section. </summary>
+        const string AnonymitySectionHeadline = "Anonymity";
+
+        /// <summary> Line under it. </summary>
+        const string AnonymitySectionDescription =
+            "These choices live on this device and reach no server. Nobody is told what you decide here.";
+
+        /// <summary> Label on the switch that refuses anything but Tor. </summary>
+        const string TorOnlyLabel = "Refuse anything that is not Tor";
+
+        /// <summary> Line under that label, saying plainly how it is judged. </summary>
+        const string TorOnlyHint =
+            "Judged from the address this app was served on — a hidden service answers on a .onion host. "
+            + "It bites the next time the app opens.";
+
+        /// <summary> Leads the address the app was actually reached on. </summary>
+        const string ReachedOnLabel = "Reached on";
+
+        /// <summary> Class added to a switch that is on. </summary>
+        const string SwitchOnClass = "is-on";
+
+        /// <summary> Emoji on the carried-accounts section. </summary>
+        const string AccountsSectionEmoji = "🎭";
+
+        /// <summary> Heading of that section. </summary>
+        const string AccountsSectionHeadline = "Accounts on this device";
+
+        /// <summary> Line under it. </summary>
+        const string AccountsSectionDescription =
+            "One person can keep as many accounts here as they like. Every account you sign into stays on this device "
+            + "so switching costs one tap instead of pasting a secret back in.";
+
+        /// <summary> Line under the list, on what dropping an account does and does not do. </summary>
+        const string AccountsNote =
+            "Dropping one only takes it off this device. The account itself is untouched and reopens with its secret.";
+
+        /// <summary> Shown beside the account currently open. </summary>
+        const string OpenAccountLabel = "Open";
+
+        /// <summary> Class marking that row. </summary>
+        const string OpenAccountClass = "is-open";
+
+        /// <summary> Label on the control that opens another carried account. </summary>
+        const string SwitchLabel = "Switch";
+
+        /// <summary> Mark on the control that stops carrying one. </summary>
+        const string DropMark = "✕";
+
+        /// <summary> Tooltip on that control. </summary>
+        const string DropHint = "Forget this account on this device";
+
+        /// <summary> Diameter of a carried account's avatar. </summary>
+        const int CarriedAvatarDiameterPx = AppMeasures.Size.Px36;
+
+        /// <summary> True while this device refuses anything that is not Tor. </summary>
+        bool _isTorOnly;
+
+        /// <summary> True while an anonymity choice or an account switch is being written. </summary>
+        bool _isChangingAnonymity;
+
+        /// <summary> Accounts this device is carrying. </summary>
+        IReadOnlyList<CarriedAccount> _carriedAccounts = [];
+
+        /// <summary> Their published profiles, keyed by address. </summary>
+        Dictionary<string, ProfileData?> _carriedProfiles = [];
+
+        /// <summary> The address this app was actually served from, shown so the Tor judgement is checkable. </summary>
+        string ReachedHost => NavManager.BaseUri;
+
         const string BlockedSectionEmoji = "🚫";
 
         /// <summary> Heading of that section. </summary>
@@ -385,11 +457,113 @@ namespace ChaySocial.MainProject.UI.Pages
             if (!SessionService.IsSignedIn)
             {
                 _blocked = [];
+                _carriedAccounts = [];
                 ForgetSecret();
                 return;
             }
 
             _blocked = await ReadBlockedAsync(SessionService.CurrentAddress);
+            _isTorOnly = await AnonymityService.IsTorOnlyAsync();
+            _carriedAccounts = await AnonymityService.ReadCarriedAsync();
+            _carriedProfiles = await ReadCarriedProfilesAsync(_carriedAccounts);
+        }
+
+        /// <summary> Reads the published profile of each carried account, so the switcher shows faces and names. </summary>
+        /// <param name="carried"> The accounts this device holds. </param>
+        /// <returns> Each account's profile keyed by address; a value is null when that account published none. </returns>
+        static async Task<Dictionary<string, ProfileData?>> ReadCarriedProfilesAsync(IReadOnlyList<CarriedAccount> carried)
+        {
+            ProfileData?[] profiles = await Task.WhenAll(carried.Select(account => ProfileService.ReadAsync(account.Address)));
+
+            Dictionary<string, ProfileData?> byAddress = new(carried.Count);
+            for (int index = 0; index < carried.Count; index++)
+            {
+                byAddress[carried[index].Address] = profiles[index];
+            }
+
+            return byAddress;
+        }
+
+        /// <summary> The name drawn for a carried account. </summary>
+        /// <param name="address"> The account's address. </param>
+        /// <returns> Its display name, or the readable head of the address. </returns>
+        string NameFor(string address)
+        {
+            ProfileData? profile = _carriedProfiles.GetValueOrDefault(address);
+            return string.IsNullOrWhiteSpace(profile?.DisplayName)
+                ? ProfileService.FallbackDisplayName(address)
+                : profile.DisplayName;
+        }
+
+        /// <summary> The emoji drawn for a carried account. </summary>
+        /// <param name="address"> The account's address. </param>
+        /// <returns> Its avatar, or the one its address maps to. </returns>
+        string AvatarFor(string address)
+        {
+            ProfileData? profile = _carriedProfiles.GetValueOrDefault(address);
+            return string.IsNullOrWhiteSpace(profile?.Avatar) ? ProfileService.PickAvatar(address) : profile.Avatar;
+        }
+
+        /// <summary> Turns the Tor requirement on or off. It bites on the next load, which is when the address is judged. </summary>
+        /// <returns> A task that completes once the choice is stored. </returns>
+        async Task ToggleTorOnlyAsync()
+        {
+            if (_isChangingAnonymity) return;
+
+            _isChangingAnonymity = true;
+
+            try
+            {
+                _isTorOnly = !_isTorOnly;
+                await AnonymityService.SetTorOnlyAsync(_isTorOnly);
+            }
+            finally
+            {
+                _isChangingAnonymity = false;
+            }
+        }
+
+        /// <summary> Opens another account this device is carrying. </summary>
+        /// <param name="account"> The account to switch to. </param>
+        /// <returns> A task that completes once that account is the open one. </returns>
+        async Task SwitchToAsync(CarriedAccount account)
+        {
+            if (_isChangingAnonymity) return;
+
+            _isChangingAnonymity = true;
+
+            try
+            {
+                if (await SessionService.SwitchToAsync(account.Secret)) NavManager.NavigateTo(ProfileRoute);
+            }
+            catch (Exception error)
+            {
+                Log($"{nameof(Settings)} could not switch to '{account.Address}'.\n{error}", LogLevel.Error);
+            }
+            finally
+            {
+                _isChangingAnonymity = false;
+            }
+        }
+
+        /// <summary> Stops carrying one account on this device. The account itself is untouched. </summary>
+        /// <param name="account"> The account to drop. </param>
+        /// <returns> A task that completes once it is gone from this device. </returns>
+        async Task DropCarriedAsync(CarriedAccount account)
+        {
+            if (_isChangingAnonymity) return;
+
+            _isChangingAnonymity = true;
+
+            try
+            {
+                await AnonymityService.DropAsync(account.Address);
+                _carriedAccounts = await AnonymityService.ReadCarriedAsync();
+            }
+            finally
+            {
+                _isChangingAnonymity = false;
+            }
         }
 
         /// <summary>
