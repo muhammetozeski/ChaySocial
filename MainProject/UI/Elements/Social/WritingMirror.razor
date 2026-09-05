@@ -1,0 +1,49 @@
+@using ChaySocial.MainProject.Moderation
+
+@*
+    Holds a mirror up to what somebody is about to send: it says how the line is likely to read, and then gets out
+    of the way. It never blocks, never disables the send button, never warns and never reports — the writer sees it
+    and decides. Most unkind writing is careless rather than meant, and a mirror at the right moment changes more
+    of it than any punishment afterwards would.
+
+    It stays quiet below the "aimed at a person" band, because telling somebody their swearing was noticed is
+    nagging, and nagging is how a place stops feeling free.
+*@
+
+@if (ShouldShow)
+{
+    <p class="writing-mirror">
+        <span class="writing-mirror-lead">@LeadLabel</span>
+        <span class="writing-mirror-reading">@Verdict.Reason()</span>
+    </p>
+}
+
+<WritingMirrorCss />
+
+@code {
+    /// <summary> The line as it stands right now, mid-typing. </summary>
+    [Parameter, EditorRequired] public string Text { get; set; } = string.Empty;
+
+    /// <summary> What introduces the reading, phrased as an observation rather than an accusation. </summary>
+    const string LeadLabel = "Reads as";
+
+    /// <summary> The gentlest band worth mentioning to a writer; anything below this is left alone. </summary>
+    const ContentBand QuietestWorthMentioning = ContentBand.Abusive;
+
+    /// <summary> How the line reads, recomputed only when the line itself changes. </summary>
+    ContentVerdict Verdict = ContentVerdict.Clean;
+
+    /// <summary> The text the reading was worked out from, so it is not redone on every unrelated render. </summary>
+    string readText = string.Empty;
+
+    /// <summary> True when there is something worth showing the writer. </summary>
+    bool ShouldShow => Verdict.Band >= QuietestWorthMentioning;
+
+    protected override void OnParametersSet()
+    {
+        if (readText == Text) return;
+
+        readText = Text;
+        Verdict = ContentJudge.Judge(Text);
+    }
+}

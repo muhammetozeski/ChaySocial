@@ -1,0 +1,39 @@
+@*
+    Styling for WritingMirror. WritingMirror renders this component itself, so the mirror always arrives with its
+    own CSS attached. Every selector is namespaced "writing-mirror-*" because *Css.razor styles are global.
+*@
+<style>
+    /* Deliberately the quietest line on the screen: no icon, no colour that means danger, no border boxing it in.
+       It is an observation offered to the writer, and it must not read as a ruling being handed down. */
+    .writing-mirror {
+        display: flex;
+        align-items: baseline;
+        gap: @(AppMeasures.Space.Px6)px;
+        margin: @(AppMeasures.Space.Px8)px 0 0 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        animation: writing-mirror-arrive @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+    .writing-mirror-reading {
+        font-style: italic;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    /* Fades in rather than appearing: a line that pops into existence mid-sentence reads as an interruption. */
+    @@keyframes writing-mirror-arrive {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .writing-mirror {
+            animation: none;
+        }
+    }
+</style>

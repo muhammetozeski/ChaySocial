@@ -39,6 +39,9 @@
                      IsDisabled="@IsBusy" />
     </div>
 
+    @* Shown to the writer only, before anything is sent. It reports and blocks nothing. *@
+    <WritingMirror Text="@Text" />
+
     <div class="post-composer-footer">
         <span class="post-composer-counter" style="@CounterStyle">@CounterLabel</span>
 
