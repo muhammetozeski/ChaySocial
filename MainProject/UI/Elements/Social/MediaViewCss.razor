@@ -42,6 +42,13 @@
         background: @(AppColors.BackgroundDeep.ToRgbaHex(true));
     }
 
+    /* A drawing already carries its own ground and rounded corners, so the wrapper stands out of its way rather
+       than framing it twice. */
+    .media-view--drawing {
+        background: transparent;
+        border-color: transparent;
+    }
+
     /* The audio player keeps the card's own padding: unlike a picture it is a control, not a surface. */
     .media-view--audio {
         padding: @(AppMeasures.Space.Small)px;

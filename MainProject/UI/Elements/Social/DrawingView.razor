@@ -1,0 +1,45 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.DataModels
+
+@*
+    Draws a finished drawing back. Inline SVG scaled by its viewBox, so a sketch made on a small board fills
+    whatever card it lands in and stays sharp doing it — there is no data URI and no raster anywhere in the path.
+
+    The inks are read from the theme as the drawing is drawn, which is why a stroke stored an ink index rather
+    than a colour: the same drawing arrives in Starlight, Cream and Forest wearing that reader's colours.
+*@
+
+<svg class="drawing-view"
+     viewBox="0 0 @Sheet.CanvasWidthPx @Sheet.CanvasHeightPx"
+     role="img"
+     aria-label="@Description">
+
+    @foreach (DrawingStroke stroke in Sheet.Strokes)
+    {
+        <polyline points="@PointsOf(stroke)"
+                  fill="none"
+                  stroke="@DrawingInks.HexAt(stroke.InkIndex)"
+                  stroke-width="@stroke.NibWidthPx"
+                  stroke-linecap="round"
+                  stroke-linejoin="round" />
+    }
+</svg>
+
+<DrawingViewCss />
+
+@code {
+    /// <summary> The drawing to show. </summary>
+    [Parameter, EditorRequired] public DrawingSheet Sheet { get; set; } = new(0, 0, []);
+
+    /// <summary> What the drawing shows, for anyone who cannot see it. </summary>
+    [Parameter] public string Description { get; set; } = DefaultDescription;
+
+    /// <summary> Used when the drawing arrived without a caption, so it is still announced as something rather than as nothing. </summary>
+    const string DefaultDescription = "A drawing";
+
+    /// <summary> Writes one stroke's path the way an SVG polyline reads it. </summary>
+    /// <param name="stroke"> The stroke to write out. </param>
+    /// <returns> The path as "x,y x,y …". </returns>
+    static string PointsOf(DrawingStroke stroke)
+        => string.Join(" ", stroke.Points.Select(point => $"{point.X},{point.Y}"));
+}

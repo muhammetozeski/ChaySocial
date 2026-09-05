@@ -3,10 +3,13 @@
 @*
     Draws one attachment once its bytes have been fetched and opened. The media is not loaded until the element
     is actually rendered, so a wall of posts does not pull every picture down at once.
+
+    The gate is "has the content been opened yet", not "is there a data URI": a drawing arrives as strokes and
+    never has a URI, so keying the throbber to one would leave every drawing spinning forever.
 *@
 
 <div class="media-view media-view--@(Attachment.Kind.ToString().ToLowerInvariant())">
-    @if (_dataUri is null)
+    @if (!_hasContent)
     {
         <div class="media-view-waiting">
             @if (_hasFailed)
@@ -34,6 +37,10 @@
             case MediaKind.Video:
                 <video class="media-view-video" src="@_dataUri" controls preload="metadata" playsinline></video>
                 break;
+
+            case MediaKind.Drawing when _sheet is not null:
+                <DrawingView Sheet="@_sheet" Description="@Attachment.Description" />
+                break;
         }
     }
 </div>
@@ -53,13 +60,19 @@
     /// <summary> The attachment to draw. </summary>
     [Parameter, EditorRequired] public MediaAttachment Attachment { get; set; }
 
-    /// <summary> The decrypted media as a data URI, or null while it is still being fetched. </summary>
+    /// <summary> The decrypted media as a data URI, or null for a kind that is not shown through one. </summary>
     string? _dataUri;
+
+    /// <summary> The decrypted drawing, or null when this attachment is not one. </summary>
+    DrawingSheet? _sheet;
+
+    /// <summary> True once the bytes have been fetched, opened and turned into whatever this kind is drawn from. </summary>
+    bool _hasContent;
 
     /// <summary> True once fetching or opening the media has failed, which replaces the throbber with a quiet notice. </summary>
     bool _hasFailed;
 
-    /// <summary> Blob the current data URI belongs to, so a reused element re-fetches when its attachment changes. </summary>
+    /// <summary> Blob the current content belongs to, so a reused element re-fetches when its attachment changes. </summary>
     string _loadedBlobId = string.Empty;
 
     protected override async Task OnParametersSetAsync()
@@ -68,6 +81,8 @@
 
         _loadedBlobId = Attachment.BlobId;
         _dataUri = null;
+        _sheet = null;
+        _hasContent = false;
         _hasFailed = false;
 
         byte[]? content = await MediaService.OpenAsync(Attachment);
@@ -78,6 +93,15 @@
             return;
         }
 
+        if (Attachment.Kind == MediaKind.Drawing)
+        {
+            _sheet = MediaService.ReadDrawing(content);
+            _hasFailed = _sheet is null;
+            _hasContent = _sheet is not null;
+            return;
+        }
+
         _dataUri = MediaService.BuildDataUri(content, Attachment.ContentType);
+        _hasContent = true;
     }
 }
