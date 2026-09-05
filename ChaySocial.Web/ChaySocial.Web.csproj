@@ -11,4 +11,17 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0" />
   </ItemGroup>
 
+  <!-- What this server has been told is not part of what this server IS. The Web SDK treats every file under the
+       project as content and would otherwise publish a running instance's documents, uploaded media and writing
+       permits into the package - so deploying a copy would hand somebody else's posts to a new machine, and
+       publishing over an existing deployment would overwrite its data with whatever was on the build machine. -->
+  <ItemGroup>
+    <Content Remove="StoredDocuments\**" />
+    <Content Remove="StoredMedia\**" />
+    <Content Remove="WritingPermits.txt" />
+    <None Remove="StoredDocuments\**" />
+    <None Remove="StoredMedia\**" />
+    <None Remove="WritingPermits.txt" />
+  </ItemGroup>
+
 </Project>
