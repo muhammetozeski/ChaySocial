@@ -141,6 +141,23 @@
                   CustomClass="settings-card">
 
             <div class="settings-section-heading">
+                <span class="settings-section-emoji">@ArchiveSectionEmoji</span>
+                <h2 class="settings-section-title">@ArchiveSectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@ArchiveSectionDescription</p>
+
+            <a class="settings-archive-link" href="@Archive.ArchiveRoute">@ArchiveSectionLinkLabel</a>
+
+        </CoreCard>
+
+        @* The other half of the same promise: the secret carries who you are, the archive carries what you wrote. *@
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
                 <span class="settings-section-emoji">@SecretSectionEmoji</span>
                 <h2 class="settings-section-title">@SecretSectionHeadline</h2>
             </div>

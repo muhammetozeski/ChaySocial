@@ -153,6 +153,20 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Class added to a switch that is on. </summary>
         const string SwitchOnClass = "is-on";
 
+        /// <summary> Emoji on the section leading to the account's archive. </summary>
+        const string ArchiveSectionEmoji = "🧳";
+
+        /// <summary> Heading of that section. </summary>
+        const string ArchiveSectionHeadline = "Everything you have written";
+
+        /// <summary> Line under it, saying why the archive is the other half of the secret. </summary>
+        const string ArchiveSectionDescription =
+            "Your secret carries who you are to another machine. Your archive carries what you wrote. Seal one and " +
+            "you can walk away from this server whenever you like, and lose nothing by it.";
+
+        /// <summary> What the link into the archive screen says. </summary>
+        const string ArchiveSectionLinkLabel = "Open my archive";
+
         /// <summary> Emoji on the section where the reader decides what their own device covers. </summary>
         const string GuardSectionEmoji = "🪟";
 

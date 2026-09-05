@@ -1,0 +1,99 @@
+@attribute [Route(ArchiveRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    Two halves of one promise. Sealing writes down everything the account has said; bringing one back writes it
+    into whatever server this copy of the app is pointed at. Between them they are the difference between being
+    able to leave and only being told that you could.
+
+    Saving is offered twice on purpose: a link that hands the file over, and the same file as text that can be
+    copied out by hand. A host that refuses downloads should not be able to trap somebody's history.
+*@
+
+@if (SessionService.IsSignedIn)
+{
+    <div class="archive-page">
+
+        <header class="archive-header">
+            <BackButton OnClick="GoBackToSettings" />
+
+            <div class="archive-header-text">
+                <h1 class="archive-title">@PageHeadline</h1>
+                <p class="archive-subtitle">@PageSubtitle</p>
+            </div>
+
+            <span class="archive-header-emoji" role="img" aria-label="@PageHeadline">@PageEmoji</span>
+        </header>
+
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="archive-card">
+
+            <div class="archive-section-heading">
+                <span class="archive-section-emoji">@TakeSectionEmoji</span>
+                <h2 class="archive-section-title">@TakeSectionHeadline</h2>
+            </div>
+            <p class="archive-section-description">@TakeSectionDescription</p>
+
+            <button type="button" class="archive-action" disabled="@_isSealing" @onclick="SealAsync">
+                @(_isSealing ? SealingLabel : SealLabel)
+            </button>
+
+            @if (_sealed is { } archive)
+            {
+                <p class="archive-summary">@SummaryOf(archive)</p>
+
+                <a class="archive-download" download="@SealedFileName" href="@_sealedUri">@DownloadLabel</a>
+
+                <p class="archive-fallback-label">@CopyFallbackLabel</p>
+                <textarea class="archive-fallback" readonly rows="@FallbackRows">@_sealedText</textarea>
+            }
+
+        </CoreCard>
+
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="archive-card">
+
+            <div class="archive-section-heading">
+                <span class="archive-section-emoji">@BringSectionEmoji</span>
+                <h2 class="archive-section-title">@BringSectionHeadline</h2>
+            </div>
+            <p class="archive-section-description">@BringSectionDescription</p>
+
+            <label class="archive-pick">
+                <InputFile OnChange="HandleFileChosen" accept="@AcceptList" class="archive-pick-input" />
+                <span class="archive-pick-label">@PickLabel</span>
+            </label>
+
+            @if (_openFailure is { } refusal)
+            {
+                <p class="archive-refusal">@refusal</p>
+            }
+
+            @if (_opened is { } opened)
+            {
+                <p class="archive-summary">@SummaryOf(opened)</p>
+
+                <button type="button" class="archive-action" disabled="@_isRestoring" @onclick="RestoreAsync">
+                    @(_isRestoring ? RestoringLabel : RestoreLabel)
+                </button>
+            }
+
+            @if (_restored is { } result)
+            {
+                <p class="archive-result">@ResultOf(result)</p>
+            }
+
+        </CoreCard>
+
+    </div>
+}
+
+<ArchiveCss />

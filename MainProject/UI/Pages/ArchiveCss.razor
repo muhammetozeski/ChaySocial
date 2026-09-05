@@ -1,0 +1,187 @@
+@*
+    Styling for the Archive page. The page renders this itself, so it always arrives with its own CSS attached.
+    Every selector is namespaced "archive-*" because *Css.razor styles are global.
+*@
+<style>
+    .archive-page {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(PageMaximumWidthPx)px;
+        margin: 0 auto;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(AppMeasures.Space.Px24)px;
+    }
+
+    .archive-header {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    .archive-header-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .archive-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Title)px;
+        font-weight: @(AppMeasures.Weight.Bold);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .archive-subtitle {
+        margin: @(AppMeasures.Space.Px4)px 0 0 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .archive-header-emoji {
+        font-size: @(AppMeasures.Font.Hero)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .archive-card {
+        width: @(AppMeasures.Percent.Full)%;
+        box-sizing: border-box;
+    }
+
+    .archive-section-heading {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    .archive-section-emoji {
+        font-size: @(AppMeasures.Font.Large)px;
+    }
+
+    .archive-section-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .archive-section-description {
+        margin: @(AppMeasures.Space.Px8)px 0 @(AppMeasures.Space.Px16)px 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    /* Both real actions on this page, styled alike because sealing and writing back are the same weight of thing. */
+    .archive-action {
+        width: @(AppMeasures.Percent.Full)%;
+        box-sizing: border-box;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px20)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font: inherit;
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        cursor: pointer;
+    }
+
+        .archive-action:hover:not(:disabled) {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+        .archive-action:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: default;
+        }
+
+    /* What the file holds, said in words before anybody saves it or writes it back. */
+    .archive-summary {
+        margin: @(AppMeasures.Space.Px12)px 0 0 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .archive-download {
+        display: block;
+        margin-top: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px20)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextOnAccent.ToRgbaHex(true));
+        text-align: center;
+        text-decoration: none;
+    }
+
+    .archive-fallback-label {
+        margin: @(AppMeasures.Space.Px16)px 0 @(AppMeasures.Space.Px6)px 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    /* The same file as text. A host that will not hand over a download must not be able to trap a history. */
+    .archive-fallback {
+        width: @(AppMeasures.Percent.Full)%;
+        box-sizing: border-box;
+        padding: @(AppMeasures.Space.Px10)px;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.BackgroundDeep.ToRgbaHex(true));
+        font-family: @ArchiveTypeface;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        resize: vertical;
+    }
+
+    /* The real input is hidden behind its own label, because a bare file input cannot be styled and looks foreign. */
+    .archive-pick {
+        display: block;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .archive-pick-input {
+        position: absolute;
+        inset: 0;
+        width: @(AppMeasures.Percent.Full)%;
+        height: @(AppMeasures.Percent.Full)%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .archive-pick-label {
+        display: block;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px20)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px dashed @(AppColors.BorderSoft.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        text-align: center;
+    }
+
+    .archive-refusal {
+        margin: @(AppMeasures.Space.Px12)px 0 0 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.Warning.ToRgbaHex(true));
+    }
+
+    .archive-result {
+        margin: @(AppMeasures.Space.Px12)px 0 0 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+</style>
+
+@code {
+    /// <summary> Widest the page's column grows, so a sealed file's text does not stretch into an unreadable line. </summary>
+    const int PageMaximumWidthPx = 640;
+
+    /// <summary> Typeface for the sealed file's text: fixed-width, so it reads as data rather than as prose. </summary>
+    const string ArchiveTypeface = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+}

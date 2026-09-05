@@ -735,6 +735,27 @@
         }
     }
 
+    /* The door to the archive. Styled as a plain full-width link rather than a loud button: taking your work with
+       you should read as an ordinary thing to do, not as an emergency exit. */
+    .settings-archive-link {
+        display: block;
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px20)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        text-align: center;
+        text-decoration: none;
+    }
+
+        .settings-archive-link:hover {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
     /* The reader's own line, drawn as a short list rather than a slider: four plain sentences, one of them true.
        Nothing here is styled as a warning, because choosing what you would rather not see first is not a warning. */
     .settings-guard-choices {
