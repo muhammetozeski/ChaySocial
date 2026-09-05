@@ -1,0 +1,25 @@
+@*
+    Styling for IdentitySigil. IdentitySigil renders this component itself, so the mark always arrives with its own
+    CSS attached. Every selector is namespaced "identity-sigil" because *Css.razor styles are global.
+*@
+<style>
+    /* Fills whatever it is put inside and sits behind that element's own content, so a caller adds the mark to an
+       avatar without touching the avatar's size, its emoji, or anything else it already does. */
+    .identity-sigil {
+        position: absolute;
+        inset: 0;
+        width: @(AppMeasures.Percent.Full)%;
+        height: @(AppMeasures.Percent.Full)%;
+        border-radius: inherit;
+        opacity: @(SigilOpacity);
+        pointer-events: none;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// How strongly the mark reads. Held well back: it is a watermark under the emoji, there to be recognised at a
+    /// glance rather than to compete with the face somebody chose for themselves.
+    /// </summary>
+    const string SigilOpacity = "0.42";
+}

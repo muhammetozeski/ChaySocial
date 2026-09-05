@@ -58,7 +58,7 @@
     /// clickable and the static row draw exactly the same content instead of two copies drifting apart.
     /// </summary>
     RenderFragment PersonSummary => @<text>
-        <AvatarBubble Emoji="@Profile.Avatar" DiameterPx="@RowAvatarDiameterPx" />
+        <AvatarBubble Emoji="@Profile.Avatar" Address="@Profile.Address" DiameterPx="@RowAvatarDiameterPx" />
 
         <span class="person-row-text">
             <span class="person-row-name">@ShownName</span>

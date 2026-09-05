@@ -1,0 +1,86 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.Identity
+@using Microsoft.Maui.Graphics
+
+@*
+    Draws the mark an address carries. Inline SVG rather than a grid of divs, so the mark scales to whatever box
+    holds it and no call site has to work out a pixel size per cell.
+
+    The inks come from the live theme rather than from anything stored, so switching between Starlight, Cream and
+    Forest recolours every mark on screen while leaving every shape exactly as it was — which matters, because the
+    shape is the identity and the colour is only how it is dressed.
+
+    Text that is not an address draws nothing at all. A mark that appeared for a malformed address would be a mark
+    that meant nothing, and the whole point of this is that it cannot be faked.
+*@
+
+@if (Mark is { } mark)
+{
+    <svg class="identity-sigil"
+         viewBox="0 0 @AddressSigil.GridColumnCount @AddressSigil.GridRowCount"
+         aria-hidden="true"
+         focusable="false">
+        @for (int row = 0; row < AddressSigil.GridRowCount; row++)
+        {
+            for (int column = 0; column < AddressSigil.GridColumnCount; column++)
+            {
+                if (!mark.IsLit(column, row)) continue;
+
+                <rect x="@column" y="@row" width="@CellSpan" height="@CellSpan" fill="@InkFor(mark, column)" />
+            }
+        }
+    </svg>
+}
+
+<IdentitySigilCss />
+
+@code {
+    /// <summary> The account to draw. Anything that is not a well-formed address draws nothing. </summary>
+    [Parameter, EditorRequired] public string Address { get; set; } = string.Empty;
+
+    /// <summary> How wide and tall one cell is, in the viewBox's own units — one cell is one unit. </summary>
+    const int CellSpan = 1;
+
+    /// <summary>
+    /// The colours a mark can be drawn in. Read from the theme on every render, so a palette change repaints the
+    /// mark; the fingerprint decides which two of these a given account gets, and that never changes.
+    /// </summary>
+    static Color[] Inks =>
+    [
+        AppColors.Primary,
+        AppColors.PrimaryLight,
+        AppColors.Secondary,
+        AppColors.Accent,
+        AppColors.AccentDark,
+        AppColors.SecondaryDark
+    ];
+
+    /// <summary> The mark for the current address, worked out only when the address itself changes. </summary>
+    AddressSigil? Mark;
+
+    /// <summary> The address the mark was worked out from. </summary>
+    string readAddress = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        if (readAddress == Address) return;
+
+        readAddress = Address;
+        Mark = AddressSigil.Build(Address);
+    }
+
+    /// <summary>
+    /// Which of the two inks a cell is drawn in. The middle column takes the second colour, so every mark has a
+    /// spine down it and reads as a seal rather than as scattered squares.
+    /// </summary>
+    /// <param name="mark"> The mark being drawn. </param>
+    /// <param name="column"> Column of the cell. </param>
+    /// <returns> The fill for that cell. </returns>
+    static string InkFor(AddressSigil mark, int column)
+    {
+        Color[] inks = Inks;
+        bool isSpine = column == AddressSigil.GridColumnCount / 2;
+
+        return inks[isSpine ? mark.AccentIndex(inks.Length) : mark.InkIndex(inks.Length)].ToRgbaHex(true);
+    }
+}

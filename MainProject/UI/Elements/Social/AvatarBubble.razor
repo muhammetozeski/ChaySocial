@@ -1,7 +1,12 @@
 @namespace ChaySocial.MainProject.UI.Elements.Social
 @using ChaySocial.MainProject.DataModels
 
-<span class="avatar-bubble @VariantClass" style="@SizeStyle" role="img" aria-label="@AccessibleLabel">@ShownEmoji</span>
+@* The mark sits under the emoji: an emoji and a display name can both be copied in seconds, and the mark beside
+   them cannot. Callers that pass no address get exactly what they got before. *@
+<span class="avatar-bubble @VariantClass" style="@SizeStyle" role="img" aria-label="@AccessibleLabel">
+    <IdentitySigil Address="@Address" />
+    <span class="avatar-bubble-face">@ShownEmoji</span>
+</span>
 
 <AvatarBubbleCss />
 
@@ -35,6 +40,12 @@
 
     /// <summary> Emoji standing in for a picture. Falls back to <see cref="ProfileData.DefaultAvatar"/> when blank. </summary>
     [Parameter] public string Emoji { get; set; } = ProfileData.DefaultAvatar;
+
+    /// <summary>
+    /// The account this bubble stands for. When given, the mark its address carries is drawn under the emoji;
+    /// when left blank, the bubble looks exactly as it did before there were marks.
+    /// </summary>
+    [Parameter] public string Address { get; set; } = string.Empty;
 
     /// <summary> Width and height of the circle in CSS pixels. </summary>
     [Parameter] public int DiameterPx { get; set; } = DefaultDiameterPx;

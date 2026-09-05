@@ -45,7 +45,7 @@
             <p class="settings-section-description">@AddressSectionDescription</p>
 
             <div class="settings-identity">
-                <AvatarBubble Emoji="@OwnerAvatar" DiameterPx="OwnerAvatarDiameterPx" IsHighlighted="true" />
+                <AvatarBubble Emoji="@OwnerAvatar" Address="@SessionService.CurrentAddress" DiameterPx="OwnerAvatarDiameterPx" IsHighlighted="true" />
 
                 <div class="settings-identity-text">
                     <span class="settings-identity-name">@OwnerName</span>
@@ -320,7 +320,7 @@
                     bool isOpen = account.Address == SessionService.CurrentAddress;
 
                     <li class="settings-account @(isOpen ? OpenAccountClass : string.Empty)" @key="account.Address">
-                        <AvatarBubble Emoji="@AvatarFor(account.Address)" DiameterPx="CarriedAvatarDiameterPx" />
+                        <AvatarBubble Emoji="@AvatarFor(account.Address)" Address="@account.Address" DiameterPx="CarriedAvatarDiameterPx" />
 
                         <span class="settings-account-text">
                             <span class="settings-account-name">@NameFor(account.Address)</span>

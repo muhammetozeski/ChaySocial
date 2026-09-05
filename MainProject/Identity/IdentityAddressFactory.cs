@@ -64,6 +64,17 @@ namespace ChaySocial.MainProject.Identity
             => TryReadFingerprint(address, out byte[] fingerprint)
                && fingerprint.AsSpan().SequenceEqual(Fingerprint(signingPublicKey, encryptionPublicKey));
 
+        /// <summary>
+        /// Hands out the key fingerprint an address encodes, for anything that wants to show the account as
+        /// something other than its text. A malformed address yields nothing, so nothing downstream has to guess
+        /// whether what it was given was really an address.
+        /// </summary>
+        /// <param name="address"> Address to read. </param>
+        /// <param name="fingerprint"> Receives the key fingerprint, or an empty array when the address is malformed. </param>
+        /// <returns> True when the address decoded and its checksum matched. </returns>
+        public bool TryGetFingerprint(string address, out byte[] fingerprint)
+            => TryReadFingerprint(address, out fingerprint);
+
         /// <summary> Decodes an address and verifies its checksum and version. </summary>
         /// <param name="address"> Address to decode. </param>
         /// <param name="fingerprint"> Receives the key fingerprint, or an empty array when the address is malformed. </param>

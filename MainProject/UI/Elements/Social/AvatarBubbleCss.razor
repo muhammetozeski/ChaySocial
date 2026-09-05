@@ -7,6 +7,10 @@
         justify-content: center;
         box-sizing: border-box;
         flex: none;
+        /* The account's mark is laid inside this circle absolutely, so the circle has to be what it is measured
+           against, and the square grid has to be trimmed back to the disc. */
+        position: relative;
+        overflow: hidden;
         border-radius: @(AppMeasures.Radius.Circular)%;
         line-height: @(AppMeasures.LineHeight.None);
         text-align: center;
@@ -14,6 +18,13 @@
         -webkit-user-select: none;
         animation: avatar-bubble-arrive @(AppMeasures.Duration.Normal)s @ArriveEasing backwards;
         transition: transform @(AppMeasures.Duration.Fast)s ease-out, box-shadow @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+    /* The emoji, lifted above the mark. Without a position of its own it would be ordinary inline content and the
+       positioned mark would paint straight over it. */
+    .avatar-bubble-face {
+        position: relative;
+        z-index: @(AppMeasures.ZLayer.Raised);
     }
 
     /* Quiet everyday bubble: the faintest frosted disc, so a wall of avatars never turns into a wall of colour. */
