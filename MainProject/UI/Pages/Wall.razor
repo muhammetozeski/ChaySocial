@@ -81,10 +81,7 @@
         }
         else if (IsLoading && Entries.Count == 0)
         {
-            <div class="wall-status">
-                <CoreSpinner />
-                <p class="wall-status-text">@LoadingLabel</p>
-            </div>
+            <CoreSkeleton Shape="SkeletonShape.Card" />
         }
         else if (Entries.Count == 0 && SelectedFeed == WallFeed.Following)
         {

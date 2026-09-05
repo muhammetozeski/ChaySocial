@@ -31,8 +31,8 @@
 
     @if (IsFirstLoad)
     {
-        <div class="subject-first-load">
-            <CoreSpinner />
+        <div class="subject-feed">
+            <CoreSkeleton Shape="SkeletonShape.Card" />
         </div>
     }
     else if (LoadFailureMessage is not null)

@@ -48,10 +48,7 @@
             <div class="messages-conversation-body">
                 @if (IsFirstLoad)
                 {
-                    <div class="messages-status">
-                        <CoreSpinner />
-                        <p class="messages-status-text">@ConversationLoadingLabel</p>
-                    </div>
+                    <CoreSkeleton Shape="SkeletonShape.Lines" />
                 }
                 else if (LoadFailureMessage is not null)
                 {
@@ -162,10 +159,7 @@
             }
             else if (IsFirstLoad)
             {
-                <div class="messages-status">
-                    <CoreSpinner />
-                    <p class="messages-status-text">@InboxLoadingLabel</p>
-                </div>
+                <CoreSkeleton Shape="SkeletonShape.Row" />
             }
             else if (inbox.Count == 0)
             {

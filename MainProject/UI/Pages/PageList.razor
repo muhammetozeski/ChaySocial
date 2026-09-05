@@ -59,10 +59,7 @@
     }
     else if (IsFirstLoad)
     {
-        <div class="page-list-status">
-            <CoreSpinner />
-            <p class="page-list-status-text">@LoadingLabel</p>
-        </div>
+        <CoreSkeleton Shape="SkeletonShape.Row" />
     }
     else
     {

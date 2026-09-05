@@ -85,10 +85,7 @@
     }
     else if (IsFirstLoad)
     {
-        <div class="groups-status">
-            <CoreSpinner />
-            <p class="groups-status-text">@LoadingLabel</p>
-        </div>
+        <CoreSkeleton Shape="SkeletonShape.Row" />
     }
     else
     {

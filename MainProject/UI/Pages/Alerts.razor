@@ -41,9 +41,7 @@
 
     @if (IsLoading)
     {
-        <div class="alerts-state">
-            <CoreSpinner />
-        </div>
+        <CoreSkeleton Shape="SkeletonShape.Row" />
     }
     else if (LoadFailureMessage is not null)
     {

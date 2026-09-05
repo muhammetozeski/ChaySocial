@@ -1,0 +1,140 @@
+@*
+    Styling for CoreSkeleton. CoreSkeleton renders this component itself, so a placeholder always arrives with its
+    own CSS attached. Every selector is namespaced "core-skeleton-*" because *Css.razor styles are global.
+*@
+<style>
+    .core-skeleton {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+    }
+
+    /* Each placeholder carries the shimmer, and each starts it a little later, so the set ripples down the
+       screen instead of pulsing as one slab. */
+    .core-skeleton-piece {
+        display: flex;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px12)px;
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.XLarge)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        animation: core-skeleton-breathe @(AppMeasures.Duration.Slowest)s ease-in-out infinite;
+    }
+
+    .core-skeleton-piece--row {
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px14)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+    }
+
+    .core-skeleton-avatar {
+        flex: none;
+        width: @(AvatarDiameterPx)px;
+        height: @(AvatarDiameterPx)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        background: @(AppColors.SurfaceStrong.ToRgbaHex(true));
+    }
+
+    .core-skeleton-piece--row .core-skeleton-avatar {
+        width: @(RowAvatarDiameterPx)px;
+        height: @(RowAvatarDiameterPx)px;
+    }
+
+    /* min-width:0 lets the lines shrink with the card rather than forcing it wider than the screen. */
+    .core-skeleton-lines {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+        flex: 1;
+        min-width: 0;
+        padding-top: @(AppMeasures.Space.Px4)px;
+    }
+
+    /* The sheen travels across each bar, which is what makes this read as "coming" rather than "broken". */
+    .core-skeleton-line {
+        height: @(LineHeightPx)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: linear-gradient(
+            @(SheenAngleDegrees)deg,
+            @(AppColors.SurfaceStrong.ToRgbaHex(true)) @(SheenStartPercent)%,
+            @(AppColors.SurfaceNormal.ToRgbaHex(true)) @(SheenMiddlePercent)%,
+            @(AppColors.SurfaceStrong.ToRgbaHex(true)) @(SheenEndPercent)%);
+        background-size: @(SheenWidthPercent)% @(AppMeasures.Percent.Full)%;
+        animation: core-skeleton-sheen @(AppMeasures.Duration.Slower)s linear infinite;
+    }
+
+    .core-skeleton-line--title {
+        width: @(TitleLineWidthPercent)%;
+        height: @(TitleLineHeightPx)px;
+    }
+
+    .core-skeleton-line--short {
+        width: @(ShortLineWidthPercent)%;
+    }
+
+    @@keyframes core-skeleton-sheen {
+        from {
+            background-position: @(-SheenWidthPercent)% 0;
+        }
+
+        to {
+            background-position: @(SheenWidthPercent)% 0;
+        }
+    }
+
+    @@keyframes core-skeleton-breathe {
+        0%, 100% {
+            opacity: @(AppMeasures.Opacity.Muted);
+        }
+
+        50% {
+            opacity: 1;
+        }
+    }
+
+    /* Somebody who asked for less motion still gets the shape, just no movement across it. */
+    @@media (prefers-reduced-motion: reduce) {
+        .core-skeleton-piece,
+        .core-skeleton-line {
+            animation: none;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Side of the round placeholder standing in for a face on a card. </summary>
+    const int AvatarDiameterPx = AppMeasures.Size.Px48;
+
+    /// <summary> Side of that placeholder in the tighter row shape. </summary>
+    const int RowAvatarDiameterPx = AppMeasures.Size.Px36;
+
+    /// <summary> Thickness of one placeholder line. </summary>
+    const int LineHeightPx = 10;
+
+    /// <summary> Thickness of the heading line, which stands a little taller than the rest. </summary>
+    const int TitleLineHeightPx = 12;
+
+    /// <summary> How much of the width the heading line takes. </summary>
+    const int TitleLineWidthPercent = 45;
+
+    /// <summary> How much of it the closing line takes, so a block of text does not end in a straight edge. </summary>
+    const int ShortLineWidthPercent = 70;
+
+    /// <summary> Angle the sheen travels at. </summary>
+    const int SheenAngleDegrees = 90;
+
+    /// <summary> Where the sheen's lighter band begins. </summary>
+    const int SheenStartPercent = 25;
+
+    /// <summary> Where it peaks. </summary>
+    const int SheenMiddlePercent = 50;
+
+    /// <summary> Where it ends. </summary>
+    const int SheenEndPercent = 75;
+
+    /// <summary> How wide the travelling band is relative to the bar, which is what gives it somewhere to travel. </summary>
+    const int SheenWidthPercent = 200;
+}

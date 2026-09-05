@@ -1,0 +1,51 @@
+@*
+    The shape of what is coming, drawn while it is still on its way. A throbber says "wait"; this says "a list of
+    cards is about to be here", so the screen stops changing size the moment the real thing lands and the wait
+    reads as loading rather than as nothing.
+*@
+
+<div class="core-skeleton" aria-hidden="true">
+    @for (int index = 0; index < Count; index++)
+    {
+        <div class="core-skeleton-piece core-skeleton-piece--@(Shape.ToString().ToLowerInvariant())"
+             style="@DelayStyle(index)">
+
+            @if (Shape is SkeletonShape.Card or SkeletonShape.Row)
+            {
+                <span class="core-skeleton-avatar"></span>
+            }
+
+            <span class="core-skeleton-lines">
+                <span class="core-skeleton-line core-skeleton-line--title"></span>
+                <span class="core-skeleton-line"></span>
+
+                @if (Shape is SkeletonShape.Card)
+                {
+                    <span class="core-skeleton-line core-skeleton-line--short"></span>
+                }
+            </span>
+        </div>
+    }
+</div>
+
+<CoreSkeletonCss />
+
+@code {
+    /// <summary> How many placeholders to draw. </summary>
+    [Parameter] public int Count { get; set; } = DefaultCount;
+
+    /// <summary> Which shape the thing being waited for has. </summary>
+    [Parameter] public SkeletonShape Shape { get; set; } = SkeletonShape.Card;
+
+    /// <summary> Placeholders drawn when the caller does not say; enough to fill a first screen without pretending to be a full list. </summary>
+    const int DefaultCount = 3;
+
+    /// <summary> How much later each placeholder starts its shimmer, so the set ripples instead of pulsing as one block. </summary>
+    const float StaggerSeconds = 0.12f;
+
+    /// <summary> Staggers one placeholder's shimmer. </summary>
+    /// <param name="index"> Its position in the set. </param>
+    /// <returns> The inline delay. </returns>
+    static string DelayStyle(int index)
+        => $"animation-delay:{(index * StaggerSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture)}s;";
+}
