@@ -158,10 +158,13 @@
             border-color: @(AppColors.Primary.ToRgbaHex(true));
         }
 
-    /* The emoji is offered rather than typed, so choosing one is a tap instead of a keyboard hunt. */
+    /* The emoji is offered rather than typed, so choosing one is a tap instead of a keyboard hunt. Laid out as a
+       fixed grid rather than a wrapping row: left to wrap, the eighth choice drops onto a line of its own and the
+       set reads as an accident instead of a set. */
     .groups-avatar-row {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(@(AvatarChoiceColumns), 1fr);
+        justify-items: center;
         gap: @(AppMeasures.Space.Px8)px;
     }
 
@@ -249,6 +252,9 @@
 
     /// <summary> Side of one offered emoji in the founding sheet. </summary>
     const int AvatarChoiceDiameterPx = AppMeasures.Size.Px40;
+
+    /// <summary> Emoji per row in the founding sheet; the offered set is a whole number of these, so no row is left with one lonely choice on it. </summary>
+    const int AvatarChoiceColumns = 4;
 
     /// <summary> How far the chosen emoji swells. A string so the decimal survives any OS culture. </summary>
     const string ChosenAvatarScale = "1.1";
