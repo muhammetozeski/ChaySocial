@@ -16,6 +16,8 @@ projede kararı değiştirecek kadar büyük.
 | 11 bit zorluk | **32 dakika** | Tarayıcı |
 | 9 bit zorluk (seçilen) | 2–3 dakika | Tarayıcı |
 | Ön plan / arka plan sekmesi | **2,86 / 0,42 deneme/s** | Tarayıcı |
+| Seçilmiş adres araması | **5,0 aday/s** | Tarayıcı |
+| 1 / 2 / 3 harf beklenen süre | ~6 s / ~3,4 dk / ~1,8 saat | Tarayıcı, 5,0 aday/s'den |
 | İzinden sonra bir gönderi | **13 ms** | Uçtan uca |
 | Proof-of-work'lü her yazma (atıldı) | ~1,4 s | Uçtan uca |
 | Sunucu tarafı proof doğrulaması | 10,6 ms | Sunucu |
@@ -75,6 +77,33 @@ yüzden arayüzde "başka bir şey yap" demek yanlış — kullanıcıya kendi b
 Masaüstü .NET aynı Argon2id'yi tarayıcıdan ~400 kat hızlı çalıştırıyor (konsolda 1013 deneme
 2,5 saniye). Yani proof-of-work, tarayıcıdaki gerçek kullanıcıyı native kod çalıştıran
 saldırgandan çok daha fazla yoruyor; bellek-sertliği bu farkı daraltır ama kapatmaz.
+
+## Seçilmiş adres kaç harfe kadar
+
+Karşılama ekranındaki "adresim şununla başlasın" alanının kaç harf kabul edeceği tahminle değil,
+tarayıcıda sayaç izlenerek belirlendi. İki harf istendi, ilerleme satırındaki sayı 20 saniye arayla
+okundu:
+
+```
+48 aday   ->  20 saniye sonra  ->  148 aday
+(148 - 48) / 20 = 5,0 aday/saniye   (tarayıcı, WASM, ön plan sekmesi)
+```
+
+Kısayolu yok, olması da istenmiyor: her aday tam bir ML-DSA-65 ve ML-KEM-768 anahtar üretimi,
+çünkü adres iki public key'e birden bağlanıyor. Saldırganın başkasının adresini öğütmek için
+ödeyeceği bedel de tam olarak bu.
+
+| Harf | Beklenen deneme | Beklenen süre |
+|---|---|---|
+| 1 | 32 | ~6 saniye |
+| 2 | 1024 | ~3,4 dakika |
+| 3 | 32.768 | ~1,8 saat |
+
+`ChosenLettersMaximumLength = 2` bu tablodan geliyor. Üç harf, kimsenin başında bekleyeceği bir
+süre değil.
+
+Ölçümdeki arama 148'den sonra bir dakikayı bulmadan bitti — beklenenin altında, çünkü 1024
+ortalama, garanti değil. Sonuç `chayqqebpi…chiyac`: istenen iki harf yerinde.
 
 ## Yerleşim
 
