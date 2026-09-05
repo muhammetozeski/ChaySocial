@@ -22,10 +22,18 @@ namespace ChaySocial.MainProject.DataModels
     public sealed record DrawingSheet(int CanvasWidthPx, int CanvasHeightPx, IReadOnlyList<DrawingStroke> Strokes)
     {
         /// <summary> Width of the board, and the width every drawing is stored against. </summary>
-        public const int DrawingCanvasWidthPx = 640;
+        /// <remarks>
+        /// The board is drawn at exactly this many CSS pixels and never scaled, because a pointer event reports
+        /// where it landed in the element's own pixels: the moment the board is stretched or shrunk, those numbers
+        /// stop meaning what the sheet's coordinates mean, and correcting for it would need the element's measured
+        /// size, which is a JavaScript call this project does not make. So the size is chosen to fit the narrowest
+        /// screen the app is checked against rather than to fill a desktop window. Only the board is fixed — a
+        /// finished drawing is geometry and scales to whatever card it lands in.
+        /// </remarks>
+        public const int DrawingCanvasWidthPx = 320;
 
-        /// <summary> Height of the board, in a landscape ratio that suits a card in a feed. </summary>
-        public const int DrawingCanvasHeightPx = 400;
+        /// <summary> Height of the board, in a ratio that suits a card in a feed. </summary>
+        public const int DrawingCanvasHeightPx = 240;
 
         /// <summary>
         /// Strokes one drawing may hold. High enough that nobody sketching hits it, low enough that a sheet arriving

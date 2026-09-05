@@ -1,0 +1,236 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.DataModels
+
+@*
+    A board to draw on, in plain Blazor. The strokes live in C#; the SVG is only how they are shown, which is why
+    the same markup draws the board here and the finished drawing in a feed.
+
+    Pointer capture is a JavaScript API and this project ships none, so a drag that leaves the board has to end the
+    stroke rather than keep it open. Pointer leave and pointer cancel therefore close a stroke exactly as lifting
+    the nib does — the sketch stops at the edge instead of jumping across it when the pointer comes back.
+*@
+
+<div class="drawing-pad">
+
+    <svg class="drawing-pad-sheet"
+         viewBox="0 0 @DrawingSheet.DrawingCanvasWidthPx @DrawingSheet.DrawingCanvasHeightPx"
+         @onpointerdown="StartStroke"
+         @onpointermove="ExtendStroke"
+         @onpointerup="EndStroke"
+         @onpointerleave="EndStroke"
+         @onpointercancel="EndStroke">
+
+        @foreach (DrawingStroke stroke in AllStrokes())
+        {
+            <polyline points="@PointsOf(stroke)"
+                      fill="none"
+                      stroke="@DrawingInks.HexAt(stroke.InkIndex)"
+                      stroke-width="@stroke.NibWidthPx"
+                      stroke-linecap="round"
+                      stroke-linejoin="round" />
+        }
+    </svg>
+
+    <div class="drawing-pad-tools">
+
+        <div class="drawing-pad-inks">
+            @for (int index = 0; index < DrawingInks.Palette.Length; index++)
+            {
+                int inkIndex = index;
+
+                <button type="button"
+                        class="drawing-pad-ink @(inkIndex == _inkIndex ? ChosenClass : string.Empty)"
+                        style="background:@DrawingInks.HexAt(inkIndex);"
+                        title="@InkTitle"
+                        disabled="@IsDisabled"
+                        @onclick="() => _inkIndex = inkIndex"></button>
+            }
+        </div>
+
+        <div class="drawing-pad-nibs">
+            @foreach (int width in NibWidths)
+            {
+                int nibWidth = width;
+
+                <button type="button"
+                        class="drawing-pad-nib @(nibWidth == _nibWidthPx ? ChosenClass : string.Empty)"
+                        title="@NibTitle"
+                        disabled="@IsDisabled"
+                        @onclick="() => _nibWidthPx = nibWidth">
+                    <span class="drawing-pad-nib-dot" style="@NibDotStyle(nibWidth)"></span>
+                </button>
+            }
+        </div>
+
+        <div class="drawing-pad-actions">
+            <button type="button"
+                    class="drawing-pad-action"
+                    title="@UndoTitle"
+                    disabled="@(IsDisabled || _strokes.Count == 0)"
+                    @onclick="UndoAsync">@UndoEmoji</button>
+
+            <button type="button"
+                    class="drawing-pad-action"
+                    title="@ClearTitle"
+                    disabled="@(IsDisabled || _strokes.Count == 0)"
+                    @onclick="ClearAsync">@ClearEmoji</button>
+        </div>
+
+    </div>
+
+</div>
+
+<DrawingPadCss />
+
+@code {
+    /// <summary> True while the drawing is being sealed and uploaded, which locks the board. </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+
+    /// <summary> Raised whenever the drawing changes, so whoever opened the board knows if there is anything on it. </summary>
+    [Parameter] public EventCallback<DrawingSheet> SheetChanged { get; set; }
+
+    /// <summary> Class carried by the ink and nib currently in hand. </summary>
+    const string ChosenClass = "is-chosen";
+
+    /// <summary> Hover text on a colour. </summary>
+    const string InkTitle = "Draw in this colour";
+
+    /// <summary> Hover text on a nib. </summary>
+    const string NibTitle = "Draw with this nib";
+
+    /// <summary> Mark on the control that takes back the last stroke. </summary>
+    const string UndoEmoji = "↩";
+
+    /// <summary> Hover text on it. </summary>
+    const string UndoTitle = "Take back the last stroke";
+
+    /// <summary> Mark on the control that empties the board. </summary>
+    const string ClearEmoji = "🧽";
+
+    /// <summary> Hover text on it. </summary>
+    const string ClearTitle = "Start again";
+
+    /// <summary>
+    /// How far the pointer must travel before another point is kept. Every reported move would fill a stroke's
+    /// whole allowance in a second of drawing, and the points that close together are indistinguishable once the
+    /// line is rounded off anyway.
+    /// </summary>
+    const int LeastPointSpacingPx = 3;
+
+    /// <summary> The three nibs the board offers, thinnest first. </summary>
+    static readonly int[] NibWidths =
+    [
+        DrawingSheet.DrawingNibThinWidthPx,
+        DrawingSheet.DrawingNibMediumWidthPx,
+        DrawingSheet.DrawingNibThickWidthPx
+    ];
+
+    /// <summary> Strokes finished so far. </summary>
+    readonly List<DrawingStroke> _strokes = [];
+
+    /// <summary> Points of the stroke being drawn right now, or empty while the nib is up. </summary>
+    readonly List<DrawingPoint> _openPoints = [];
+
+    /// <summary> Ink currently in hand. </summary>
+    int _inkIndex = DrawingInks.StartingInkIndex;
+
+    /// <summary> Nib currently in hand. </summary>
+    int _nibWidthPx = DrawingSheet.DrawingNibMediumWidthPx;
+
+    /// <summary> True while the nib is down. </summary>
+    bool _isDrawing;
+
+    /// <summary> The drawing as it stands, ready to be sealed. </summary>
+    public DrawingSheet CurrentSheet => new(
+        DrawingSheet.DrawingCanvasWidthPx,
+        DrawingSheet.DrawingCanvasHeightPx,
+        [.. _strokes]);
+
+    /// <summary> Everything to draw: the finished strokes plus the one under the nib, so the line appears as it is made. </summary>
+    /// <returns> The strokes in drawing order. </returns>
+    IEnumerable<DrawingStroke> AllStrokes()
+    {
+        foreach (DrawingStroke stroke in _strokes) yield return stroke;
+
+        if (_openPoints.Count > 0) yield return new DrawingStroke(_inkIndex, _nibWidthPx, _openPoints);
+    }
+
+    /// <summary> Writes one stroke's path the way an SVG polyline reads it. </summary>
+    /// <param name="stroke"> The stroke to write out. </param>
+    /// <returns> The path as "x,y x,y …". </returns>
+    static string PointsOf(DrawingStroke stroke)
+        => string.Join(" ", stroke.Points.Select(point => $"{point.X},{point.Y}"));
+
+    /// <summary> Puts the nib down and starts a stroke. </summary>
+    /// <param name="args"> Where on the board the pointer went down. </param>
+    void StartStroke(PointerEventArgs args)
+    {
+        if (IsDisabled || _strokes.Count >= DrawingSheet.MaximumStrokesPerDrawing) return;
+
+        _isDrawing = true;
+        _openPoints.Clear();
+        _openPoints.Add(PointFrom(args));
+    }
+
+    /// <summary> Adds to the open stroke as the pointer moves, and does nothing while the nib is up. </summary>
+    /// <param name="args"> Where the pointer now is. </param>
+    void ExtendStroke(PointerEventArgs args)
+    {
+        if (!_isDrawing || _openPoints.Count >= DrawingSheet.MaximumPointsPerStroke) return;
+
+        DrawingPoint point = PointFrom(args);
+        DrawingPoint last = _openPoints[^1];
+
+        if (Math.Abs(point.X - last.X) < LeastPointSpacingPx && Math.Abs(point.Y - last.Y) < LeastPointSpacingPx) return;
+
+        _openPoints.Add(point);
+    }
+
+    /// <summary> Lifts the nib and keeps the stroke, whether the pointer was released or left the board. </summary>
+    /// <returns> A task that completes once the change has been handed on. </returns>
+    async Task EndStroke()
+    {
+        if (!_isDrawing) return;
+
+        _isDrawing = false;
+
+        // A tap with no movement is one point, which draws nothing at all as a polyline. It is kept as a stroke
+        // anyway so a dotted sketch is possible: the round line cap turns a single point into a dot.
+        _strokes.Add(new DrawingStroke(_inkIndex, _nibWidthPx, [.. _openPoints]));
+        _openPoints.Clear();
+
+        await SheetChanged.InvokeAsync(CurrentSheet);
+    }
+
+    /// <summary> Takes back the last stroke. </summary>
+    /// <returns> A task that completes once the change has been handed on. </returns>
+    async Task UndoAsync()
+    {
+        if (IsDisabled || _strokes.Count == 0) return;
+
+        _strokes.RemoveAt(_strokes.Count - 1);
+        await SheetChanged.InvokeAsync(CurrentSheet);
+    }
+
+    /// <summary> Empties the board. </summary>
+    /// <returns> A task that completes once the change has been handed on. </returns>
+    async Task ClearAsync()
+    {
+        if (IsDisabled || _strokes.Count == 0) return;
+
+        _strokes.Clear();
+        await SheetChanged.InvokeAsync(CurrentSheet);
+    }
+
+    /// <summary> Sizes the dot that stands for a nib, so the three buttons read as three thicknesses. </summary>
+    /// <param name="nibWidthPx"> The nib the button chooses. </param>
+    /// <returns> The dot's inline size. </returns>
+    static string NibDotStyle(int nibWidthPx) => $"width:{nibWidthPx}px;height:{nibWidthPx}px;";
+
+    /// <summary> Reads the pointer's position on the board, clamped to the sheet so an edge event cannot land outside it. </summary>
+    /// <param name="args"> The pointer event. </param>
+    /// <returns> Where the nib is, in the sheet's own coordinates. </returns>
+    static DrawingPoint PointFrom(PointerEventArgs args) => new(
+        Math.Clamp((int)args.OffsetX, 0, DrawingSheet.DrawingCanvasWidthPx),
+        Math.Clamp((int)args.OffsetY, 0, DrawingSheet.DrawingCanvasHeightPx));
+}

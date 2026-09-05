@@ -1,0 +1,119 @@
+@using ChaySocial.MainProject.DataModels
+
+@*
+    Styling for the drawing board. Every value comes from C# — the shared theme tokens where one exists, the sheet's
+    own constants where the number has to agree with the coordinates strokes are stored in.
+*@
+<style>
+    .drawing-pad {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    /* Exactly the sheet's own size, never scaled: a pointer event reports where it landed in this element's
+       pixels, so stretching the board would silently move every stroke away from where it was drawn. */
+    .drawing-pad-sheet {
+        width: @(DrawingSheet.DrawingCanvasWidthPx)px;
+        height: @(DrawingSheet.DrawingCanvasHeightPx)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.SurfaceStrong.ToRgbaHex(true));
+        cursor: crosshair;
+        /* Without this a drag on a touch screen scrolls the page instead of drawing on the board. */
+        touch-action: none;
+    }
+
+    .drawing-pad-tools {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(DrawingSheet.DrawingCanvasWidthPx)px;
+    }
+
+    .drawing-pad-inks,
+    .drawing-pad-nibs,
+    .drawing-pad-actions {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    .drawing-pad-ink {
+        width: @(InkButtonDiameterPx)px;
+        height: @(InkButtonDiameterPx)px;
+        padding: 0;
+        border: @(AppMeasures.Border.Medium)px solid transparent;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        cursor: pointer;
+        transition: transform @(AppMeasures.Duration.Fast)s, border-color @(AppMeasures.Duration.Fast)s;
+    }
+
+        .drawing-pad-ink:hover:not(:disabled) {
+            transform: scale(@ChosenLift);
+        }
+
+        /* The ring is the theme's own text colour rather than a fixed white, so the chosen ink stays visible on
+           the cream theme as well as the dark ones. */
+        .drawing-pad-ink.is-chosen {
+            border-color: @(AppColors.TextPrimary.ToRgbaHex(true));
+            transform: scale(@ChosenLift);
+        }
+
+    .drawing-pad-nib,
+    .drawing-pad-action {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: @(ToolButtonDiameterPx)px;
+        height: @(ToolButtonDiameterPx)px;
+        padding: 0;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        cursor: pointer;
+        transition: background @(AppMeasures.Duration.Fast)s, border-color @(AppMeasures.Duration.Fast)s;
+    }
+
+        .drawing-pad-nib:hover:not(:disabled),
+        .drawing-pad-action:hover:not(:disabled) {
+            background: @(AppColors.SurfaceStrong.ToRgbaHex(true));
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
+        .drawing-pad-nib.is-chosen {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            background: @(AppColors.SurfaceStrong.ToRgbaHex(true));
+        }
+
+        .drawing-pad-nib:disabled,
+        .drawing-pad-action:disabled,
+        .drawing-pad-ink:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: not-allowed;
+        }
+
+    /* The dot is the nib at its real width, so the three buttons show the three thicknesses rather than describe
+       them. Its own size arrives as inline style from the nib each button stands for. */
+    .drawing-pad-nib-dot {
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        background: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+</style>
+
+@code {
+    /// <summary> Diameter of a colour button: wide enough to tap on a phone without crowding six of them into one row. </summary>
+    const int InkButtonDiameterPx = AppMeasures.Size.Px24;
+
+    /// <summary> Diameter of a nib or action button, sized to sit level with the colours beside them. </summary>
+    const int ToolButtonDiameterPx = AppMeasures.Size.Px32;
+
+    /// <summary> How much the ink in hand swells, so which colour is chosen reads at a glance. A string so the decimal survives any OS culture. </summary>
+    const string ChosenLift = "1.15";
+}
