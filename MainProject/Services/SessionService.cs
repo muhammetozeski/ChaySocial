@@ -43,11 +43,14 @@ namespace ChaySocial.MainProject.Services
         /// once, by whoever actually wants to write.
         /// </summary>
         /// <returns> The seed text to show the owner once, so they can keep it. </returns>
-        public static async Task<string> CreateAccountAsync()
+        public static async Task<string> CreateAccountAsync(byte[]? masterSeed = null)
         {
-            byte[] masterSeed = IdentityScheme.CreateMasterSeed();
-            await AdoptAsync(masterSeed, remember: true);
-            return MasterSeedText.Format(masterSeed);
+            // A seed can arrive from a search for a chosen address. Everything after this point is untouched by
+            // that: a chosen seed is drawn the same way, stored the same way and shown the same way as any other,
+            // because the only thing the search changes is which of the drawn seeds was kept.
+            byte[] seed = masterSeed ?? IdentityScheme.CreateMasterSeed();
+            await AdoptAsync(seed, remember: true);
+            return MasterSeedText.Format(seed);
         }
 
         /// <summary> Signs in with a seed the owner kept from an earlier session or another device. </summary>
