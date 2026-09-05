@@ -40,6 +40,12 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Label on that button. </summary>
         const string PagesLabel = "Pages";
 
+        /// <summary> Emoji on the button that leads to meeting a stranger. </summary>
+        const string StrangersEmoji = "🎲";
+
+        /// <summary> Label on that button. </summary>
+        const string StrangersLabel = "Meet somebody";
+
         /// <summary> Label on that button. </summary>
         const string FoundLabel = "Start a group";
 
@@ -284,5 +290,8 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> Opens the pages screen, which sits beside this one rather than in the bottom bar. </summary>
         void OpenPages() => NavManager.NavigateTo(PageList.PagesRoute);
+
+        /// <summary> Opens the screen that pairs the reader with a stranger. </summary>
+        void OpenStrangers() => NavManager.NavigateTo(Strangers.StrangersRoute);
     }
 }

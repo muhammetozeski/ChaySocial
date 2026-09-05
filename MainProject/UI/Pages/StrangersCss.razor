@@ -1,0 +1,222 @@
+@namespace ChaySocial.MainProject.UI.Pages
+
+@*
+    Styling for Strangers. Strangers renders this component itself, so the screen always arrives with its own CSS
+    attached. Every selector is namespaced "strangers-*" because *Css.razor styles are global.
+*@
+<style>
+    .strangers {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReadingColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        height: calc(@(AppMeasures.Viewport.Full)vh - @(ShellBottomInsetPx)px);
+    }
+
+    /* ------------------------------------------------------------------ the lobby */
+
+    /* Centred in what is left of the screen: waiting for somebody is the only thing happening, so it sits in the
+       middle rather than at the top with emptiness under it. */
+    .strangers-lobby {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: @(AppMeasures.Space.Px16)px;
+        padding: @(AppMeasures.Space.Px24)px;
+        text-align: center;
+        animation: strangers-arrive @(AppMeasures.Duration.Slow)s @SoftLandingEasing both;
+    }
+
+    .strangers-lobby-emoji {
+        font-size: @(AppMeasures.Font.Giant)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        filter: drop-shadow(@AppStyles.ShadowPrimaryGlow);
+    }
+
+    .strangers-lobby-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Hero)px;
+        font-weight: @(AppMeasures.Weight.Black);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        background: linear-gradient(@(BrandGradientAngleDegrees)deg, @(AppColors.PrimaryLight.ToRgbaHex(true)), @(AppColors.Secondary.ToRgbaHex(true)));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .strangers-lobby-text {
+        margin: 0;
+        max-width: @(LobbyTextMaximumWidthPx)px;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .strangers-lobby-button-emoji {
+        margin-right: @(AppMeasures.Space.Px6)px;
+    }
+
+    .strangers-waiting {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    .strangers-waiting-text {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Normal)px;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .strangers-waiting-since {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-variant-numeric: tabular-nums;
+    }
+
+    .strangers-notice {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    /* ------------------------------------------------------------------- the room */
+
+    .strangers-room {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding-bottom: @(ComposerRestingGapPx)px;
+    }
+
+    .strangers-room-header {
+        flex: none;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(AppMeasures.Space.Px12)px;
+    }
+
+    .strangers-room-heading {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px10)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .strangers-room-heading-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px2)px;
+        min-width: 0;
+    }
+
+    .strangers-room-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .strangers-room-note {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    /* The only part that scrolls, laid out bottom-upwards so a long exchange opens on its newest line and a short
+       one still sits down on the composer. */
+    .strangers-thread {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column-reverse;
+        justify-content: flex-start;
+        gap: @(AppMeasures.Space.Px10)px;
+        padding: @(AppMeasures.Space.Px16)px @(AppMeasures.Space.Px20)px 0;
+        padding-right: @(ScrollbarLanePx)px;
+        scrollbar-width: thin;
+        scrollbar-color: @(AppColors.BorderStrong.ToRgbaHex(true)) transparent;
+    }
+
+    .strangers-composer {
+        flex: none;
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px16)px @(AppMeasures.Space.Px20)px 0;
+    }
+
+    @@keyframes strangers-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(ArrivalRisePx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Phone width: the screen keeps everything, it only gives back the padding it can spare. */
+    @@media (max-width: @(NarrowScreenBreakpointPx)px) {
+        .strangers-room-header,
+        .strangers-thread,
+        .strangers-composer {
+            padding-left: @(AppMeasures.Space.Px14)px;
+            padding-right: @(AppMeasures.Space.Px14)px;
+        }
+
+        .strangers-lobby-title {
+            font-size: @(AppMeasures.Font.Title)px;
+        }
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .strangers-lobby {
+            animation: none;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Widest either state's column grows. </summary>
+    const int ReadingColumnMaximumWidthPx = 640;
+
+    /// <summary> Height the shell already reserves for the floating navigation, taken off the viewport here. </summary>
+    const int ShellBottomInsetPx = AppMeasures.Space.Px90;
+
+    /// <summary> Gap between the composer and the navigation below it. </summary>
+    const int ComposerRestingGapPx = AppMeasures.Space.Px16;
+
+    /// <summary> Lane kept clear down the right of the thread so no bubble sits under the scrollbar. </summary>
+    const int ScrollbarLanePx = AppMeasures.Space.Px10;
+
+    /// <summary> Widest the lobby's explanation grows before it wraps. </summary>
+    const int LobbyTextMaximumWidthPx = 420;
+
+    /// <summary> Angle of the two-colour sheen through the heading. </summary>
+    const int BrandGradientAngleDegrees = 135;
+
+    /// <summary> How far the lobby slides up as it fades in. </summary>
+    const int ArrivalRisePx = AppMeasures.Space.Px12;
+
+    /// <summary> Easing that starts fast and settles softly. </summary>
+    const string SoftLandingEasing = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+    /// <summary> Widest viewport still treated as a phone. </summary>
+    const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
+}

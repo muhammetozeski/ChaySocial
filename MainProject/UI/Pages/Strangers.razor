@@ -1,0 +1,124 @@
+@attribute [Route(StrangersRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+@implements IDisposable
+
+@*
+    Meeting somebody at random: an invitation, a wait, and then a room. The three are one screen rather than three,
+    because what changes between them is small and a screen change would make the wait feel longer than it is.
+*@
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<div class="strangers">
+
+    @if (room is null)
+    {
+        <div class="strangers-lobby">
+            <span class="strangers-lobby-emoji">@LobbyEmoji</span>
+            <h1 class="strangers-lobby-title">@LobbyHeadline</h1>
+            <p class="strangers-lobby-text">@LobbyDescription</p>
+
+            @if (WritingLocked.IsLocked)
+            {
+                <WritingLocked />
+            }
+            else if (isWaiting)
+            {
+                <div class="strangers-waiting">
+                    <CoreSpinner />
+                    <p class="strangers-waiting-text">@WaitingLabel</p>
+                    <p class="strangers-waiting-since">@WaitedForLabel</p>
+                </div>
+
+                <CoreButton OnClick="StopWaitingAsync"
+                            Background="@AppColors.SurfaceSubtle"
+                            TextColor="@AppColors.TextSecondary"
+                            BorderRadius="@PillRadiusCss"
+                            Padding="@ActionPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Border="@QuietButtonBorder">
+                    @StopWaitingLabel
+                </CoreButton>
+            }
+            else
+            {
+                <CoreButton OnClick="StartWaitingAsync"
+                            Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                            TextColor="@AppColors.TextOnAccent"
+                            BorderRadius="@PillRadiusCss"
+                            Padding="@ActionPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow">
+                    <span class="strangers-lobby-button-emoji">@StartEmoji</span>
+                    <span>@StartLabel</span>
+                </CoreButton>
+            }
+
+            @if (noticeMessage is not null)
+            {
+                <p class="strangers-notice">@noticeMessage</p>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="strangers-room">
+
+            <header class="strangers-room-header" style="@HeaderSurfaceStyle">
+                <div class="strangers-room-heading">
+                    <AvatarBubble Emoji="@PartnerAvatar" DiameterPx="@PartnerAvatarDiameterPx" IsHighlighted="true" />
+
+                    <div class="strangers-room-heading-text">
+                        <span class="strangers-room-name">@PartnerName</span>
+                        <span class="strangers-room-note">@RoomNote</span>
+                    </div>
+                </div>
+
+                <CoreButton OnClick="LeaveRoomAsync"
+                            Disabled="@isLeaving"
+                            Background="@AppColors.SurfaceSubtle"
+                            TextColor="@AppColors.TextDanger"
+                            BorderRadius="@PillRadiusCss"
+                            Padding="@QuietPaddingCss"
+                            FontSize="@AppMeasures.Font.Small"
+                            Border="@QuietButtonBorder">
+                    @LeaveLabel
+                </CoreButton>
+            </header>
+
+            <div class="strangers-thread">
+                @if (opened.Count == 0)
+                {
+                    <EmptyState Emoji="@QuietRoomEmoji" Headline="@QuietRoomHeadline" Description="@QuietRoomDescription" />
+                }
+                else
+                {
+                    @foreach (OpenedRoomMessage letter in NewestFirst)
+                    {
+                        <MessageBubble @key="letter.Envelope.MessageId"
+                                       Text="@letter.Text"
+                                       IsMine="@letter.IsMine"
+                                       CreatedAtUnixMs="@letter.Envelope.CreatedAtUnixMs"
+                                       IsSenderVerified="@letter.IsSenderVerified"
+                                       CouldDecrypt="@letter.CouldDecrypt" />
+                    }
+                }
+            </div>
+
+            <div class="strangers-composer">
+                <MessageComposer Text="@draftText"
+                                 TextChanged="HandleDraftChanged"
+                                 OnSubmit="SendAsync"
+                                 IsBusy="@isSending"
+                                 Placeholder="@RoomComposerPlaceholder" />
+            </div>
+
+        </div>
+    }
+
+</div>
+
+<StrangersCss />
