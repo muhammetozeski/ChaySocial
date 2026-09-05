@@ -128,7 +128,11 @@ namespace ChaySocial.Web.Api
                     : [];
             }
 
-            List<JsonNode> matched = [.. candidates.Where(document => request.Matches.All(match => Matches(document, match)))];
+            // A request that names no conditions is a request for everything, not a malformed one. Left to the
+            // deserialiser the field simply stays null when it is absent from the body, and reading it directly
+            // turned a perfectly reasonable "give me the newest" into a 500.
+            IReadOnlyList<DocumentMatchRequest> conditions = request.Matches ?? [];
+            List<JsonNode> matched = [.. candidates.Where(document => conditions.All(match => Matches(document, match)))];
 
             if (!string.IsNullOrEmpty(request.SortField))
             {
