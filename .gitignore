@@ -368,3 +368,8 @@ Board/replies.json
 ChaySocial.Web/StoredDocuments/
 ChaySocial.Web/StoredMedia/
 ChaySocial.Web/WritingPermits.txt
+
+# Autonomous loop: personal hook wiring and its runtime state
+.claude/settings.local.json
+Brainstorm/.loop-active
+Brainstorm/.loop-blocks
