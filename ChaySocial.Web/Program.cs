@@ -21,6 +21,12 @@ namespace ChaySocial
         /// <summary> Path prefix every API route sits under, used to keep page-oriented middleware away from them. </summary>
         const string ApiPathPrefix = "/api";
 
+        /// <summary>
+        /// Name of the rule that lets any copy of this app call this server's API. Only the API carries it: the
+        /// pages themselves are served to whoever asks for them and need no such rule.
+        /// </summary>
+        const string AnyClientCorsPolicy = "any-chay-client";
+
         /// <summary> Builds the host, registers the document store, maps both the components and the document routes, and runs. </summary>
         /// <param name="args"> Host arguments handed over by the runtime. </param>
         public static void Main(string[] args)
@@ -58,6 +64,13 @@ namespace ChaySocial
             builder.Services.AddSingleton(new BlobFileStorage(
                 Path.Combine(builder.Environment.ContentRootPath, StoredMediaFolderName)));
 
+            // A server no other copy of this app can call is not really a server anybody can move to. A write
+            // carries the account header and a JSON body, so the browser sends a preflight first; without this it
+            // gets nothing back and the move fails in a way that looks like the new server is empty.
+            builder.Services.AddCors(cors => cors.AddPolicy(
+                AnyClientCorsPolicy,
+                policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+
             var app = builder.Build();
 
             int restoredDocuments = app.Services.GetRequiredService<JsonDocumentStore>().RestoreFromDisk();
@@ -85,6 +98,11 @@ namespace ChaySocial
                 context => !context.Request.Path.StartsWithSegments(ApiPathPrefix),
                 branch => branch.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true));
             app.UseHttpsRedirection();
+
+            // Scoped to the API alone, in the same shape as the guard above it.
+            app.UseWhen(
+                context => context.Request.Path.StartsWithSegments(ApiPathPrefix),
+                branch => branch.UseCors(AnyClientCorsPolicy));
 
             app.UseAntiforgery();
 

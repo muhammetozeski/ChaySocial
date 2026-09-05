@@ -108,6 +108,11 @@
             // Restored before anything is drawn, or the first feed would flash uncovered and then cover itself.
             await ContentGuard.RestoreAsync();
 
+            // Before the session is opened and before anything is read: a device pointed at another server must
+            // reach that server for its very first request, not for its second.
+            string chosenServer = await HomeServerService.ReadAsync();
+            if (chosenServer.Length > 0) await StoreWiring.ApplyAsync(chosenServer);
+
             // Asked before the session is opened: somebody who insists on Tor should not have their account
             // unlocked over a connection they already refused.
             _isTorBlocked = await AnonymityService.IsTorOnlyAsync()

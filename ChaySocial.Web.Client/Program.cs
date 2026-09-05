@@ -26,14 +26,15 @@ namespace ChaySocial.Web.Client
 
             WebAssemblyHost host = builder.Build();
 
-            HttpClient http = new() { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
-            ProofOfWorkClient proofOfWork = new(http);
+            // Wired through the same path the settings screen uses, so there is one answer to "what is this app
+            // talking to" rather than one at boot and a different one after somebody moves servers. Remembering is
+            // off here: where the page came from is a fact, not a choice this device made.
+            HomeServerService.NoteServedFrom(builder.HostEnvironment.BaseAddress);
 
-            AppServices.Configure(
-                new HttpDocumentStore(http, proofOfWork),
+            await StoreWiring.ApplyAsync(
+                builder.HostEnvironment.BaseAddress,
                 new BrowserLocalStore(host.Services.GetRequiredService<ILocalStorageService>()),
-                proofOfWork,
-                new HttpBlobStore(http, proofOfWork));
+                remember: false);
 
             // The stored session is read by MainLayout on its first render, not here: reaching browser storage
             // needs the app to be running, and doing it before RunAsync leaves every visitor looking signed out.

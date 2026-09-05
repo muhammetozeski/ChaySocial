@@ -167,6 +167,103 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> What the link into the archive screen says. </summary>
         const string ArchiveSectionLinkLabel = "Open my archive";
 
+        /// <summary> Emoji on the section that moves this device to another server. </summary>
+        const string ServerSectionEmoji = "🚚";
+
+        /// <summary> Heading of that section. </summary>
+        const string ServerSectionHeadline = "Which server this app talks to";
+
+        /// <summary> Line under it, saying what moving costs and what it does not. </summary>
+        const string ServerSectionDescription =
+            "Point this app somewhere else and it reads and writes there instead. Your secret and everything on this " +
+            "device stay exactly as they are — the same secret opens the same account on any server — but a server " +
+            "that has never seen you will ask for its own writing permit, and it holds its own posts.";
+
+        /// <summary> Introduces the address currently in use. </summary>
+        const string ServerCurrentLabel = "Talking to";
+
+        /// <summary> What the empty address field invites. </summary>
+        const string ServerFieldPlaceholder = "https://another.example/";
+
+        /// <summary> What the button that moves says. </summary>
+        const string ServerMoveLabel = "Move there";
+
+        /// <summary> What it says while the move is happening. </summary>
+        const string ServerMovingLabel = "Moving…";
+
+        /// <summary> What the button returning to the serving machine says. </summary>
+        const string ServerResetLabel = "Back to the server that served this page";
+
+        /// <summary> Shown when the typed text is not an address this app can talk to. </summary>
+        const string ServerUnusableMessage = "That is not an address this app can talk to. It needs to start with http:// or https://.";
+
+        /// <summary> Shown once a move has gone through. </summary>
+        const string ServerMovedMessage = "Moved. Everything on screen now comes from there.";
+
+        /// <summary> The address the reader has typed but not moved to yet. </summary>
+        string _serverAddressTyped = string.Empty;
+
+        /// <summary> True while a move is being applied. </summary>
+        bool _isMovingServer;
+
+        /// <summary> What came of the last move, or null when none has been tried. </summary>
+        string? ServerMessage;
+
+        /// <summary> Points this device at the typed address and tells every open screen to read again. </summary>
+        /// <returns> A task that completes once the move has been applied or refused. </returns>
+        async Task MoveServerAsync()
+        {
+            if (_isMovingServer) return;
+
+            _isMovingServer = true;
+            ServerMessage = null;
+
+            try
+            {
+                if (!await StoreWiring.ApplyAsync(_serverAddressTyped))
+                {
+                    ServerMessage = ServerUnusableMessage;
+                    return;
+                }
+
+                _serverAddressTyped = string.Empty;
+                ServerMessage = ServerMovedMessage;
+
+                // Every page already reloads on these, so whatever is open behind this screen re-reads from the
+                // new server rather than showing the old one's posts until something else happens to change.
+                MainEvents.Trigger(MainEvents.Names.SessionChanged);
+                MainEvents.Trigger(MainEvents.Names.WallChanged);
+            }
+            finally
+            {
+                _isMovingServer = false;
+            }
+        }
+
+        /// <summary> Sends this device back to whichever machine served the page. </summary>
+        /// <returns> A task that completes once the move back has been applied. </returns>
+        async Task ResetServerAsync()
+        {
+            if (_isMovingServer) return;
+
+            _isMovingServer = true;
+            ServerMessage = null;
+
+            try
+            {
+                await HomeServerService.ForgetAsync();
+                await StoreWiring.ApplyAsync(HomeServerService.ServedFrom, remember: false);
+
+                ServerMessage = ServerMovedMessage;
+                MainEvents.Trigger(MainEvents.Names.SessionChanged);
+                MainEvents.Trigger(MainEvents.Names.WallChanged);
+            }
+            finally
+            {
+                _isMovingServer = false;
+            }
+        }
+
         /// <summary> Emoji on the section where the reader decides what their own device covers. </summary>
         const string GuardSectionEmoji = "🪟";
 

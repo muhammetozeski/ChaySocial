@@ -150,6 +150,58 @@
 
         </CoreCard>
 
+        @*
+            The last link in the chain. The archive already lets somebody take their work off a server and the
+            secret already carries who they are; without this the app itself could still only ever speak to the
+            machine that served it, which is what would have made leaving theoretical.
+        *@
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
+                <span class="settings-section-emoji">@ServerSectionEmoji</span>
+                <h2 class="settings-section-title">@ServerSectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@ServerSectionDescription</p>
+
+            <p class="settings-server-current">@ServerCurrentLabel <span class="settings-server-host">@HomeServerService.Current</span></p>
+
+            <input class="settings-server-field"
+                   type="url"
+                   inputmode="url"
+                   spellcheck="false"
+                   disabled="@_isMovingServer"
+                   placeholder="@ServerFieldPlaceholder"
+                   value="@_serverAddressTyped"
+                   @oninput="@(args => _serverAddressTyped = args.Value?.ToString() ?? string.Empty)" />
+
+            @if (ServerMessage is { } serverMessage)
+            {
+                <p class="settings-server-message">@serverMessage</p>
+            }
+
+            <button type="button"
+                    class="settings-server-move"
+                    disabled="@(_isMovingServer || _serverAddressTyped.Trim().Length == 0)"
+                    @onclick="MoveServerAsync">
+                @(_isMovingServer ? ServerMovingLabel : ServerMoveLabel)
+            </button>
+
+            @if (HomeServerService.IsAwayFromHome)
+            {
+                <button type="button"
+                        class="settings-server-reset"
+                        disabled="@_isMovingServer"
+                        @onclick="ResetServerAsync">
+                    @ServerResetLabel
+                </button>
+            }
+
+        </CoreCard>
+
         @* The other half of the same promise: the secret carries who you are, the archive carries what you wrote. *@
         <CoreCard Acrylic="AcrylicLevel.Normal"
                   AcrylicBlur="AppMeasures.Blur.Strong"
