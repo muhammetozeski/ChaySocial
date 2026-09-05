@@ -69,6 +69,12 @@ namespace ChaySocial.MainProject.Services
         /// </summary>
         const int FollowedAccountsPerFeed = 200;
 
+        /// <summary> Most followed subjects a feed gathers from in one pass. </summary>
+        const int FollowedSubjectsPerFeed = 50;
+
+        /// <summary> How many posts are read for each followed subject. </summary>
+        const int PostsReadPerFollowedSubject = 20;
+
         /// <summary>
         /// Followed accounts whose posts are read at the same time. Every followed account is read, but in batches
         /// of this size, so following hundreds of people does not open hundreds of requests at once.
@@ -93,21 +99,28 @@ namespace ChaySocial.MainProject.Services
         {
             if (string.IsNullOrEmpty(viewerAddress) || limit <= 0) return [];
 
+            // Both are read before anything gives up: a reader who follows no accounts but does follow a subject
+            // has a feed, and returning early on the account list alone would leave it permanently empty.
             IReadOnlyList<string> following = await FollowService.ReadFollowingAsync(viewerAddress, FollowedAccountsPerFeed);
-            if (following.Count == 0) return [];
+            IReadOnlyList<string> subjects = await SubjectFollowService.ReadFollowedSubjectsAsync(viewerAddress, FollowedSubjectsPerFeed);
+            if (following.Count == 0 && subjects.Count == 0) return [];
 
             HashSet<string> hidden = await ReadHiddenAddressesAsync(viewerAddress);
             string[] authors = [.. following.Distinct().Where(address => !hidden.Contains(address))];
-            if (authors.Length == 0) return [];
+            if (authors.Length == 0 && subjects.Count == 0) return [];
 
             Task<List<PostData>> postsRead = ReadPostsByAuthorsAsync(authors);
             Task<List<RepostData>> repostsRead = ReadRepostsByAccountsAsync(authors);
-            await Task.WhenAll(postsRead, repostsRead);
+            Task<List<PostData>> subjectPostsRead = ReadPostsBySubjectsAsync(subjects, hidden);
+            await Task.WhenAll(postsRead, repostsRead, subjectPostsRead);
 
             IEnumerable<FeedEntry> written = (await postsRead).Select(FeedEntry.ForPost);
+            IEnumerable<FeedEntry> named = (await subjectPostsRead).Select(FeedEntry.ForPost);
             IEnumerable<FeedEntry> passedOn = await ResolveRepostsAsync(await repostsRead, hidden);
 
-            return NewestFirst([.. written, .. passedOn], limit);
+            // A post that arrives both because its author is followed and because it names a followed subject is
+            // drawn once: NewestFirst already keys on the post and whoever passed it on.
+            return NewestFirst([.. written, .. named, .. passedOn], limit);
         }
 
         /// <summary> Reads the newest posts from the whole app, for a reader who is looking beyond the accounts they follow. </summary>
@@ -222,6 +235,35 @@ namespace ChaySocial.MainProject.Services
         /// </summary>
         /// <param name="authors"> Addresses whose posts to read. </param>
         /// <returns> Every post read, in no particular order. </returns>
+        /// <summary>
+        /// Reads the newest posts naming each followed subject and pours them into one list, in batches for the
+        /// same reason the authors are read in batches.
+        /// </summary>
+        /// <param name="subjects"> Subjects the reader follows, in their stored form. </param>
+        /// <param name="hidden"> Addresses this reader has shut out; their posts are dropped here too. </param>
+        /// <returns> Every post read, in no particular order. </returns>
+        /// <remarks>
+        /// Blocking somebody has to hold whichever way a post arrives. Reaching a reader through a subject they
+        /// follow would otherwise be a way around a block, which would make blocking worth nothing.
+        /// </remarks>
+        static async Task<List<PostData>> ReadPostsBySubjectsAsync(IReadOnlyList<string> subjects, HashSet<string> hidden)
+        {
+            List<PostData> collected = [];
+
+            for (int firstInBatch = 0; firstInBatch < subjects.Count; firstInBatch += AuthorsReadAtOnce)
+            {
+                IEnumerable<string> batch = subjects.Skip(firstInBatch).Take(AuthorsReadAtOnce);
+
+                IReadOnlyList<PostData>[] pages = await Task.WhenAll(
+                    batch.Select(subject => WallService.ReadSubjectAsync(subject, PostsReadPerFollowedSubject)));
+
+                foreach (IReadOnlyList<PostData> page in pages)
+                    collected.AddRange(page.Where(post => !hidden.Contains(post.AuthorAddress)));
+            }
+
+            return collected;
+        }
+
         static async Task<List<PostData>> ReadPostsByAuthorsAsync(IReadOnlyList<string> authors)
         {
             List<PostData> collected = [];

@@ -42,6 +42,9 @@ namespace ChaySocial.MainProject.Events
 
             /// <summary> Raised when the reader changes how far a line has to go before this device covers it. </summary>
             public const string ContentGuardChanged = nameof(ContentGuardChanged);
+
+            /// <summary> Raised when the reader starts or stops following a subject. </summary>
+            public const string SubjectFollowChanged = nameof(SubjectFollowChanged);
         }
 
         /// <summary> Registers a handler that receives every triggered event. </summary>
