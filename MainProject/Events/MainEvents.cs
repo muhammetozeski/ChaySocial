@@ -45,6 +45,9 @@ namespace ChaySocial.MainProject.Events
 
             /// <summary> Raised when the reader starts or stops following a subject. </summary>
             public const string SubjectFollowChanged = nameof(SubjectFollowChanged);
+
+            /// <summary> A panel that covers the screen was offered, redrawn or withdrawn. Payload is null; the host re-reads the list. </summary>
+            public const string OverlayChanged = nameof(OverlayChanged);
         }
 
         /// <summary> Registers a handler that receives every triggered event. </summary>

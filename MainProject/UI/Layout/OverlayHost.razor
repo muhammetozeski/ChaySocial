@@ -1,0 +1,30 @@
+@namespace ChaySocial.MainProject.UI.Layout
+@implements IDisposable
+
+@*
+    Draws every panel handed to OverlayService. It belongs at the very end of the layout, outside every frosted
+    card, because that is the only place in the document where a full-screen panel is actually full-screen.
+
+    A panel that is closed draws nothing, so leaving them all registered costs nothing to render.
+*@
+
+@foreach (RenderFragment panel in OverlayService.Panels)
+{
+    @panel
+}
+
+@code {
+    protected override void OnInitialized() => MainEvents.Subscribe(HandleAppEvent);
+
+    /// <summary> Redraws when a component offers, changes or withdraws a panel. </summary>
+    /// <param name="eventName"> Name of the event that fired. </param>
+    /// <param name="data"> Payload the event carried; this host re-reads the list and ignores it. </param>
+    void HandleAppEvent(string eventName, object? data)
+    {
+        if (eventName != MainEvents.Names.OverlayChanged) return;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => MainEvents.Unsubscribe(HandleAppEvent);
+}

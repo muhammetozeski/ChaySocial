@@ -1,0 +1,27 @@
+@namespace ChaySocial.MainProject.UI.Layout
+@implements IDisposable
+
+@*
+    Wraps a panel that has to cover the screen and draws nothing where it stands. What is written inside is handed
+    to OverlayHost, which lives outside every frosted card and can therefore actually reach the edges of the window.
+
+    Everything inside still belongs to the component that wrote it: its buttons call that component's methods and
+    read its fields. Only where the browser paints it changes.
+*@
+
+@code {
+    /// <summary> The panel to draw somewhere that can cover the screen. </summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Offered on every render rather than once, because the markup is a snapshot of the owning component's state:
+    /// the copy handed over a keystroke ago no longer says what the panel now shows.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (ChildContent is null) OverlayService.Withdraw(this);
+        else OverlayService.Offer(this, ChildContent);
+    }
+
+    public void Dispose() => OverlayService.Withdraw(this);
+}

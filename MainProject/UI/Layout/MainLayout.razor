@@ -52,6 +52,11 @@
         <AppBottomNav />
     }
 
+    @* Last, and a sibling of the page rather than a descendant of anything in it. Every card in this app is
+       frosted, and a frosted ancestor becomes the containing block for everything fixed inside it, so a panel
+       meant to cover the screen only covers the card it was opened from. Drawn from here, it covers the window. *@
+    <OverlayHost />
+
     @* Inside the keyed element on purpose: the body background and typography are written from the palette, and
        left outside they would keep the colours of whichever theme was active when the page first loaded. *@
     <MainLayoutCss />
