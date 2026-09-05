@@ -57,8 +57,30 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> True when this post was written inside a group. </summary>
         public bool IsInGroup => GroupAddress.Length > 0;
 
+        /// <summary>
+        /// The answers this post offers, or empty when it is not asking anything. The question itself is the post's
+        /// own text, so a poll is a post that happens to carry choices rather than a separate kind of thing with a
+        /// separate screen, a separate feed and a separate set of rules.
+        /// </summary>
+        public IReadOnlyList<string> PollChoices { get; init; } = [];
+
+        /// <summary> When the asking closes, or zero when it stays open. </summary>
+        public long PollClosesAtUnixMs { get; init; }
+
+        /// <summary> True when this post is asking something. </summary>
+        public bool IsAsking => PollChoices.Count > 0;
+
         /// <summary> Longest post accepted. </summary>
         public const int MaximumTextLength = 500;
+
+        /// <summary> Most answers a question may offer; past this the row of choices stops being readable. </summary>
+        public const int MaximumPollChoiceCount = 4;
+
+        /// <summary> Longest one answer may be. An answer is a label, not a second post. </summary>
+        public const int MaximumPollChoiceLength = 60;
+
+        /// <summary> Fewest answers a question needs before it is a question at all. </summary>
+        public const int LeastPollChoiceCount = 2;
 
         /// <summary> Id this post is stored under. </summary>
         public DocumentId<PostData> Id => new(PostId);
@@ -107,6 +129,51 @@ namespace ChaySocial.MainProject.DataModels
 
         /// <summary> Liker address, for finding what one account liked. </summary>
         public static readonly DocumentField<LikeData> LikerField = new(nameof(LikerAddress), like => like.LikerAddress);
+    }
+
+    /// <summary>
+    /// One account's answer to one question. Keyed by post and voter, so answering twice overwrites and changing
+    /// your mind is a single write rather than a second vote.
+    /// </summary>
+    /// <remarks>
+    /// Signed, unlike a like. A tally is a claim about what a group of people said, and the whole point of asking
+    /// here rather than anywhere else is that a reader recomputes that claim on their own machine instead of being
+    /// handed a number by whoever runs the server. An unsigned vote would make the number worth exactly as much as
+    /// the server's word.
+    /// </remarks>
+    public sealed record PollVoteData : IStoredDocument<PollVoteData>
+    {
+        public static string CollectionName => "pollvotes";
+
+        /// <summary> Post that was being asked. </summary>
+        public required string PostId { get; init; }
+
+        /// <summary> Address of the account that answered. </summary>
+        public required string VoterAddress { get; init; }
+
+        /// <summary> Which of the post's choices was picked, counted from zero. </summary>
+        public required int ChoiceIndex { get; init; }
+
+        /// <summary> When the answer was given. </summary>
+        public required long CreatedAtUnixMs { get; init; }
+
+        /// <summary> Base64 signature over this answer, produced by the voter's signing key. </summary>
+        public required string Signature { get; init; }
+
+        /// <summary> Id this answer is stored under. </summary>
+        public DocumentId<PollVoteData> Id => IdFor(PostId, VoterAddress);
+
+        /// <summary> Builds the id one account's answer to one question is stored under. </summary>
+        /// <param name="postId"> Post being answered. </param>
+        /// <param name="voterAddress"> Account doing the answering. </param>
+        /// <returns> The document id. </returns>
+        public static DocumentId<PollVoteData> IdFor(string postId, string voterAddress) => new($"{postId}:{voterAddress}");
+
+        /// <summary> Post id, for reading every answer to one question in a single query. </summary>
+        public static readonly DocumentField<PollVoteData> PostField = new(nameof(PostId), vote => vote.PostId);
+
+        /// <summary> Voter address, for finding what one account answered. </summary>
+        public static readonly DocumentField<PollVoteData> VoterField = new(nameof(VoterAddress), vote => vote.VoterAddress);
     }
 
     /// <summary>

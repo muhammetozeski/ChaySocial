@@ -1,3 +1,4 @@
+using System.Globalization;
 using ChaySocial.MainProject.Cryptography;
 using ChaySocial.MainProject.DataModels;
 using ChaySocial.MainProject.Events;
@@ -78,28 +79,49 @@ namespace ChaySocial.MainProject.Services
         /// <param name="attachments"> Media already uploaded for this post, or null for a post that is only text. </param>
         /// <param name="quotedPostId"> Post this one quotes, or empty when it quotes nothing. </param>
         /// <param name="groupAddress"> Group to write it in, or empty to write it on the wall. </param>
+        /// <param name="pollChoices"> Answers to offer, or null when the post is not asking anything. </param>
+        /// <param name="pollClosesAtUnixMs"> When the asking closes, or zero to leave it open. </param>
         /// <returns> The stored post, or null when the post was not publishable. </returns>
         public static async Task<PostData?> PublishAsync(
             PrivateIdentity author,
             string text,
             IReadOnlyList<MediaAttachment>? attachments = null,
             string quotedPostId = "",
-            string groupAddress = "")
+            string groupAddress = "",
+            IReadOnlyList<string>? pollChoices = null,
+            long pollClosesAtUnixMs = 0)
         {
             string trimmed = text.Trim();
 
-            // A post has to carry something: words, media, or somebody else's post it is speaking about.
+            // Blank answers are dropped rather than refused: a composer that offers four boxes should not punish
+            // somebody for filling in two of them.
+            IReadOnlyList<string> choices = pollChoices is null
+                ? []
+                : [.. pollChoices.Select(choice => choice.Trim()).Where(choice => choice.Length > 0)];
+
+            // A post has to carry something: words, media, somebody else's post it is speaking about, or a question.
             bool hasMedia = attachments is { Count: > 0 };
+            bool hasPoll = choices.Count > 0;
             if (trimmed.Length > PostData.MaximumTextLength) return null;
-            if (trimmed.Length == 0 && !hasMedia && quotedPostId.Length == 0) return null;
+            if (trimmed.Length == 0 && !hasMedia && quotedPostId.Length == 0 && !hasPoll) return null;
             if (attachments is { Count: > MediaAttachment.MaximumPerPost }) return null;
+
+            // One answer is not a question, and a choice long enough to be a post of its own stops being a label.
+            if (hasPoll && choices.Count < PostData.LeastPollChoiceCount) return null;
+            if (choices.Count > PostData.MaximumPollChoiceCount) return null;
+            if (choices.Any(choice => choice.Length > PostData.MaximumPollChoiceLength)) return null;
 
             string postId = Base32.Encode(RandomSource.Next(PostIdBytes));
             long createdAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             IReadOnlyList<MediaAttachment> media = attachments ?? [];
 
+            // Settled before signing, not after: a closing time signed here but dropped from the stored record would
+            // leave a post whose own signature does not verify.
+            long closesAt = hasPoll ? pollClosesAtUnixMs : 0;
+
             byte[] transcript = BuildTranscript(
-                postId, author.Public.Address, trimmed, createdAt, string.Empty, media, quotedPostId, groupAddress);
+                postId, author.Public.Address, trimmed, createdAt, string.Empty, media, quotedPostId, groupAddress,
+                choices, closesAt);
 
             PostData post = new()
             {
@@ -110,6 +132,8 @@ namespace ChaySocial.MainProject.Services
                 Attachments = media,
                 QuotedPostId = quotedPostId,
                 GroupAddress = groupAddress,
+                PollChoices = choices,
+                PollClosesAtUnixMs = closesAt,
                 Signature = Convert.ToBase64String(author.Sign(transcript))
             };
 
@@ -229,7 +253,7 @@ namespace ChaySocial.MainProject.Services
 
                 byte[] transcript = BuildTranscript(
                     post.PostId, post.AuthorAddress, post.Text, post.CreatedAtUnixMs, post.Topic,
-                    post.Attachments, post.QuotedPostId, post.GroupAddress);
+                    post.Attachments, post.QuotedPostId, post.GroupAddress, post.PollChoices, post.PollClosesAtUnixMs);
 
                 return AppCryptography.Identities.Verify(transcript, Convert.FromBase64String(post.Signature), author);
             }
@@ -419,6 +443,8 @@ namespace ChaySocial.MainProject.Services
         /// <param name="attachments"> Media hanging off the post; covered by the signature so nobody can swap a picture under it. </param>
         /// <param name="quotedPostId"> Post this one quotes; covered too, so nobody can point a quote at something else. </param>
         /// <param name="groupAddress"> Group the post was written in; covered so nobody can move a post into a group, or out of one. </param>
+        /// <param name="pollChoices"> Answers the post offers; covered so nobody can add, remove or reword a choice under a signature. </param>
+        /// <param name="pollClosesAtUnixMs"> When the asking closes; covered too, or the closing time could be moved under a valid signature. </param>
         /// <returns> The transcript to sign. </returns>
         static byte[] BuildTranscript(
             string postId,
@@ -428,7 +454,9 @@ namespace ChaySocial.MainProject.Services
             string topic,
             IReadOnlyList<MediaAttachment> attachments,
             string quotedPostId,
-            string groupAddress)
+            string groupAddress,
+            IReadOnlyList<string> pollChoices,
+            long pollClosesAtUnixMs)
         {
             TranscriptWriter transcript = new();
             transcript.WriteBytes(PostSignatureDomain);
@@ -452,6 +480,14 @@ namespace ChaySocial.MainProject.Services
             // untouched. See TranscriptWriter.WriteNamedText.
             transcript.WriteNamedText(nameof(PostData.QuotedPostId), quotedPostId);
             transcript.WriteNamedText(nameof(PostData.GroupAddress), groupAddress);
+
+            // Named for the same reason, and text rather than a number: WriteInt64 always writes its eight bytes,
+            // so writing a closing time of zero would change the transcript of every post already signed.
+            foreach (string choice in pollChoices) transcript.WriteNamedText(nameof(PostData.PollChoices), choice);
+            transcript.WriteNamedText(
+                nameof(PostData.PollClosesAtUnixMs),
+                pollClosesAtUnixMs == 0 ? string.Empty : pollClosesAtUnixMs.ToString(CultureInfo.InvariantCulture));
+
             return transcript.ToArray();
         }
     }
