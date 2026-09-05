@@ -1,3 +1,4 @@
+@using ChaySocial.MainProject.Moderation
 @using ChaySocial.MainProject.Text
 
 @*
@@ -7,25 +8,39 @@
 
     The pieces are drawn back to back with no space between them, because each piece carries exactly the
     characters its writer typed: put together they are the original line and nothing else.
+
+    Being the one place every text passes through is also why the curtain lives here. A line the reader asked not
+    to be shown straight away is drawn as a covered button instead — never removed, never withheld, one tap from
+    being read, and the writer is told nothing.
 *@
 
-@foreach (WrittenPiece piece in Pieces)
+@if (IsCovered)
 {
-    @switch (piece.Kind)
+    <button type="button" class="written-line-curtain" @onclick="Reveal" title="@RevealHint">
+        <span class="written-line-curtain-reason">@Verdict.Reason()</span>
+        <span class="written-line-curtain-open">@ShowAnywayLabel</span>
+    </button>
+}
+else
+{
+    @foreach (WrittenPiece piece in Pieces)
     {
-        case WrittenPieceKind.Account:
-            @* Shown short: a full address is longer than most sentences, and a line with two of them in it stops
-               being a line. The whole address is a hover away and, more to the point, one tap away. *@
-            <a class="written-line-name" href="@AccountLink(piece.Value)" title="@piece.Value">@ShortAccount(piece.Value)</a>
-            break;
+        @switch (piece.Kind)
+        {
+            case WrittenPieceKind.Account:
+                @* Shown short: a full address is longer than most sentences, and a line with two of them in it stops
+                   being a line. The whole address is a hover away and, more to the point, one tap away. *@
+                <a class="written-line-name" href="@AccountLink(piece.Value)" title="@piece.Value">@ShortAccount(piece.Value)</a>
+                break;
 
-        case WrittenPieceKind.Subject:
-            <a class="written-line-subject" href="@SubjectLink(piece.Value)" title="@OpenSubjectHint">@piece.Text</a>
-            break;
+            case WrittenPieceKind.Subject:
+                <a class="written-line-subject" href="@SubjectLink(piece.Value)" title="@OpenSubjectHint">@piece.Text</a>
+                break;
 
-        default:
-            @piece.Text
-            break;
+            default:
+                @piece.Text
+                break;
+        }
     }
 }
 
@@ -35,8 +50,20 @@
     /// <summary> The line as its writer typed it. </summary>
     [Parameter, EditorRequired] public string Text { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Whether this line may be covered at all. Left on everywhere text is read; turned off where a reader is
+    /// looking at their own words and being covered from them would be absurd.
+    /// </summary>
+    [Parameter] public bool MayBeCovered { get; set; } = true;
+
     /// <summary> Tooltip on a named subject. </summary>
     const string OpenSubjectHint = "See what else is written under this";
+
+    /// <summary> What the curtain offers. </summary>
+    const string ShowAnywayLabel = "Show anyway";
+
+    /// <summary> Tooltip on the curtain, so the reader knows this is their own setting and not somebody's ruling. </summary>
+    const string RevealHint = "Covered by your own setting. Tap to read it.";
 
     /// <summary> Where a profile lives; the address is appended. </summary>
     const string ProfileRoutePrefix = "/profile/";
@@ -47,7 +74,33 @@
     /// <summary> The line split into words and named things, recomputed only when the text itself changes. </summary>
     IReadOnlyList<WrittenPiece> Pieces = [];
 
-    protected override void OnParametersSet() => Pieces = WrittenText.Read(Text);
+    /// <summary> What this line was read as, recomputed only when the text itself changes. </summary>
+    ContentVerdict Verdict = ContentVerdict.Clean;
+
+    /// <summary> The text the pieces and the verdict were worked out from, so neither is redone for nothing. </summary>
+    string readText = string.Empty;
+
+    /// <summary> Set once the reader has lifted the curtain on this particular line. </summary>
+    bool revealed;
+
+    /// <summary> True when this line is behind a curtain right now. </summary>
+    bool IsCovered => MayBeCovered && !revealed && Verdict.ReachesBand(ContentGuard.Covered);
+
+    protected override void OnParametersSet()
+    {
+        if (readText == Text) return;
+
+        readText = Text;
+        Pieces = WrittenText.Read(Text);
+        Verdict = ContentJudge.Judge(Text);
+
+        // A new line arriving in a reused component starts covered again. Lifting the curtain is a decision about
+        // one thing somebody wrote, not a standing preference — that is what the setting is for.
+        revealed = false;
+    }
+
+    /// <summary> Lifts the curtain on this line, for this reader, until the line changes. </summary>
+    void Reveal() => revealed = true;
 
     /// <summary> Where a named account leads. </summary>
     /// <param name="address"> The address that was named. </param>
@@ -63,7 +116,4 @@
     /// <param name="subject"> The subject that was named, as written. </param>
     /// <returns> That subject's route, in the form subjects are stored under. </returns>
     static string SubjectLink(string subject) => SubjectRoutePrefix + WrittenText.NormaliseSubject(subject);
-
-    /// <summary> Where a named subject leads. </summary>
-    /// <param name="subject"> The subject that was named, as written. </param>
 }

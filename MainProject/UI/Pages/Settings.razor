@@ -1,6 +1,7 @@
 @attribute [Route(SettingsRoute)]
 @inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
 @using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Moderation
 @using ChaySocial.MainProject.Services
 @using ChaySocial.MainProject.UI.Elements.Social
 
@@ -242,6 +243,39 @@
             </button>
 
             <p class="settings-reached-on">@ReachedOnLabel <span class="settings-reached-host">@ReachedHost</span></p>
+
+        </CoreCard>
+
+        @*
+            The only moderation control in the application, and it belongs to the reader rather than to whoever runs
+            the server. Nothing here is sent anywhere, nothing is deleted, and no writer is ever told that a reader
+            covered them — the choice only decides what this device draws behind a curtain the reader can lift.
+        *@
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
+                <span class="settings-section-emoji">@GuardSectionEmoji</span>
+                <h2 class="settings-section-title">@GuardSectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@GuardSectionDescription</p>
+
+            <div class="settings-guard-choices">
+                @foreach (ContentBand band in ContentGuard.Choices)
+                {
+                    ContentBand chosen = band;
+
+                    <button type="button"
+                            class="settings-guard-choice @(ContentGuard.Covered == chosen ? GuardChosenClass : string.Empty)"
+                            @onclick="() => ChooseCoveredBandAsync(chosen)">
+                        <span class="settings-guard-choice-mark"></span>
+                        <span class="settings-guard-choice-text">@ContentGuard.Describe(chosen)</span>
+                    </button>
+                }
+            </div>
 
         </CoreCard>
 

@@ -39,6 +39,9 @@ namespace ChaySocial.MainProject.Events
             public const string GroupsChanged = nameof(GroupsChanged);
             public const string PagesChanged = nameof(PagesChanged);
             public const string MatchChanged = nameof(MatchChanged);
+
+            /// <summary> Raised when the reader changes how far a line has to go before this device covers it. </summary>
+            public const string ContentGuardChanged = nameof(ContentGuardChanged);
         }
 
         /// <summary> Registers a handler that receives every triggered event. </summary>

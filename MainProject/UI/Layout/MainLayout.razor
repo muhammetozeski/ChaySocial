@@ -7,6 +7,7 @@
     which is only reachable once the app is running, so any page rendered before that would decide the visitor
     is a stranger and bounce them to the welcome screen — which is what used to happen to every deep link.
 *@
+@using ChaySocial.MainProject.Moderation
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject NavigationManager NavManager
@@ -103,6 +104,9 @@
         try
         {
             await ThemeManager.RestoreAsync();
+
+            // Restored before anything is drawn, or the first feed would flash uncovered and then cover itself.
+            await ContentGuard.RestoreAsync();
 
             // Asked before the session is opened: somebody who insists on Tor should not have their account
             // unlocked over a connection they already refused.

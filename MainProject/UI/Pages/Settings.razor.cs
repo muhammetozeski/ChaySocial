@@ -1,6 +1,7 @@
 using ChaySocial.MainProject.Constants.ThemeConstants;
 using ChaySocial.MainProject.DataModels;
 using ChaySocial.MainProject.Events;
+using ChaySocial.MainProject.Moderation;
 using ChaySocial.MainProject.Protection;
 using ChaySocial.MainProject.Services;
 
@@ -151,6 +152,25 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> Class added to a switch that is on. </summary>
         const string SwitchOnClass = "is-on";
+
+        /// <summary> Emoji on the section where the reader decides what their own device covers. </summary>
+        const string GuardSectionEmoji = "🪟";
+
+        /// <summary> Heading of that section. </summary>
+        const string GuardSectionHeadline = "What you would rather not see first";
+
+        /// <summary> Line under it, saying plainly what this does and, more importantly, what it does not do. </summary>
+        const string GuardSectionDescription =
+            "Your device reads what arrives and can draw a curtain over the worst of it, which you lift with one tap. " +
+            "Nothing is deleted, nothing leaves this device, and nobody is told you covered them.";
+
+        /// <summary> Class added to the band this reader has chosen. </summary>
+        const string GuardChosenClass = "is-chosen";
+
+        /// <summary> Remembers what this reader wants covered and redraws everything already on screen. </summary>
+        /// <param name="band"> The lowest band to cover. </param>
+        /// <returns> A task that completes once the choice has been stored. </returns>
+        async Task ChooseCoveredBandAsync(ContentBand band) => await ContentGuard.ApplyAndRememberAsync(band);
 
         /// <summary> Emoji on the carried-accounts section. </summary>
         const string AccountsSectionEmoji = "🎭";

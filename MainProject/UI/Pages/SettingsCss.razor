@@ -734,6 +734,60 @@
             transition: none;
         }
     }
+
+    /* The reader's own line, drawn as a short list rather than a slider: four plain sentences, one of them true.
+       Nothing here is styled as a warning, because choosing what you would rather not see first is not a warning. */
+    .settings-guard-choices {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+        margin-top: @(AppMeasures.Space.Px12)px;
+    }
+
+    .settings-guard-choice {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+        box-sizing: border-box;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px14)px;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        cursor: pointer;
+        text-align: left;
+        transition: border-color @(AppMeasures.Duration.Fast)s ease, color @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .settings-guard-choice:hover {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+        .settings-guard-choice.is-chosen {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
+    /* The dot. Empty until this is the chosen line, filled after — the whole state of the setting in one glance. */
+    .settings-guard-choice-mark {
+        flex: none;
+        width: @(GuardChoiceMarkSizePx)px;
+        height: @(GuardChoiceMarkSizePx)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        border: @(AppMeasures.Border.Medium)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+    }
+
+        .settings-guard-choice.is-chosen .settings-guard-choice-mark {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+            background: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+    .settings-guard-choice-text {
+        line-height: @(AppMeasures.LineHeight.Snug);
+    }
 </style>
 
 @code {
@@ -795,4 +849,7 @@
 
     /// <summary> Typeface stack for the grouped secret characters: fixed-width faces first so every group lines up, falling back to whatever monospace the device has. </summary>
     const string SecretTypeface = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+
+    /// <summary> Across of the dot marking which coverage the reader chose: big enough to read at a glance, small enough not to become a button of its own. </summary>
+    const int GuardChoiceMarkSizePx = AppMeasures.Size.Px16;
 }
