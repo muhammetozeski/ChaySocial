@@ -17,8 +17,11 @@
         disabled="@IsDisabled"
         @onclick="Open">@MarkGlyph</button>
 
-<CoreModal IsVisible="@isOpen" IsAcrylic="true" OnBackdropClick="Close">
-    <div class="mention-picker">
+@* Drawn through AppOverlay because this button lives inside the composer's frosted card, and a frosted ancestor
+   traps everything fixed inside it: written here it would cover the card rather than the screen. *@
+<AppOverlay>
+    <CoreModal IsVisible="@isOpen" IsAcrylic="true" OnBackdropClick="Close">
+        <div class="mention-picker">
         <h2 class="mention-picker-title">@Title</h2>
         <p class="mention-picker-subtitle">@Subtitle</p>
 
@@ -73,8 +76,9 @@
                     Border="@CancelBorder">
             @CancelLabel
         </CoreButton>
-    </div>
-</CoreModal>
+        </div>
+    </CoreModal>
+</AppOverlay>
 
 <MentionPickerCss />
 
