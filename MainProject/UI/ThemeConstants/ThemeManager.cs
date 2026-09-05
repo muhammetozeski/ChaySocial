@@ -1,3 +1,4 @@
+using ChaySocial.MainProject.Persistence;
 using ChaySocial.MainProject.Services;
 
 namespace ChaySocial.MainProject.Constants.ThemeConstants
@@ -9,9 +10,6 @@ namespace ChaySocial.MainProject.Constants.ThemeConstants
     /// </summary>
     public static class ThemeManager
     {
-        /// <summary> Key the chosen palette's name is kept under on this device. </summary>
-        const string StorageKey = "chay.theme";
-
         public static AppTheme Current { get; private set; } = AppThemes.PlayfulStarlight;
 
         /// <summary>
@@ -35,7 +33,7 @@ namespace ChaySocial.MainProject.Constants.ThemeConstants
 
             if (AppServices.LocalStore is null) return;
 
-            await AppServices.LocalStore.WriteAsync(StorageKey, theme.Name);
+            await AppServices.LocalStore.WriteAsync(LocalStoreKeys.Theme, theme.Name);
         }
 
         /// <summary>
@@ -47,7 +45,7 @@ namespace ChaySocial.MainProject.Constants.ThemeConstants
         {
             if (AppServices.LocalStore is null) return;
 
-            string? storedName = await AppServices.LocalStore.ReadAsync(StorageKey);
+            string? storedName = await AppServices.LocalStore.ReadAsync(LocalStoreKeys.Theme);
             if (storedName is null) return;
 
             if (AppThemes.FindByName(storedName) is AppTheme stored) Apply(stored);

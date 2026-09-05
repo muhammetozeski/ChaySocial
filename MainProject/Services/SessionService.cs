@@ -1,3 +1,4 @@
+using ChaySocial.MainProject.Persistence;
 using ChaySocial.MainProject.Cryptography;
 using ChaySocial.MainProject.DataModels;
 using ChaySocial.MainProject.Events;
@@ -13,9 +14,6 @@ namespace ChaySocial.MainProject.Services
     /// </summary>
     public static class SessionService
     {
-        /// <summary> Key the master seed is kept under on this device. </summary>
-        const string SeedStorageKey = "chay.master-seed";
-
         /// <summary> The unlocked account, or null when nobody is signed in on this device. </summary>
         public static PrivateIdentity? Current { get; private set; }
 
@@ -35,7 +33,7 @@ namespace ChaySocial.MainProject.Services
         /// <returns> True when a session was restored. </returns>
         public static async Task<bool> RestoreAsync()
         {
-            string? storedSeed = await AppServices.LocalStore.ReadAsync(SeedStorageKey);
+            string? storedSeed = await AppServices.LocalStore.ReadAsync(LocalStoreKeys.MasterSeed);
             return MasterSeedText.TryParse(storedSeed, out byte[] masterSeed) && await AdoptAsync(masterSeed, remember: false);
         }
 
@@ -56,7 +54,15 @@ namespace ChaySocial.MainProject.Services
         /// <param name="secretText"> The seed text, in any spacing or letter case. </param>
         /// <returns> True when the text was a valid seed and the session opened. </returns>
         public static async Task<bool> SignInAsync(string secretText)
-            => MasterSeedText.TryParse(secretText, out byte[] masterSeed) && await AdoptAsync(masterSeed, remember: true);
+        {
+            // Checked before anything is opened. A device emptied here then signs in with the same secret through
+            // the ordinary path below, so what appears a moment later is one unremarkable account and nothing else.
+            // Every way into this app comes through this method, which is why neither the welcome screen nor the
+            // account switcher has to know that a duress secret exists.
+            await PanicService.TryEnterDuressAsync(secretText);
+
+            return MasterSeedText.TryParse(secretText, out byte[] masterSeed) && await AdoptAsync(masterSeed, remember: true);
+        }
 
         /// <summary>
         /// Switches to another account this device is already carrying. The same call as signing in, named for
@@ -73,7 +79,7 @@ namespace ChaySocial.MainProject.Services
             CurrentProfile = null;
             AppServices.ProofOfWork?.Forget();
 
-            await AppServices.LocalStore.DeleteAsync(SeedStorageKey);
+            await AppServices.LocalStore.DeleteAsync(LocalStoreKeys.MasterSeed);
             MainEvents.Trigger(MainEvents.Names.SessionChanged, null);
         }
 
@@ -115,7 +121,7 @@ namespace ChaySocial.MainProject.Services
             {
                 string secret = MasterSeedText.Format(masterSeed);
 
-                await AppServices.LocalStore.WriteAsync(SeedStorageKey, secret);
+                await AppServices.LocalStore.WriteAsync(LocalStoreKeys.MasterSeed, secret);
 
                 // One person is expected to hold several accounts here, so a device remembers every account it has
                 // been signed into rather than only the last one, and switching between them costs one tap.

@@ -1,3 +1,4 @@
+using ChaySocial.MainProject.Persistence;
 using ChaySocial.MainProject.Events;
 using ChaySocial.MainProject.Services;
 
@@ -15,9 +16,6 @@ namespace ChaySocial.MainProject.Moderation
     /// </remarks>
     public static class ContentGuard
     {
-        /// <summary> Key the chosen band is kept under on this device. </summary>
-        const string StorageKey = "chay.content-guard";
-
         /// <summary>
         /// The lowest band this device covers. Someone who never opens Settings gets the top band only: threats and
         /// the heaviest attacks, the one place almost nobody wants to be surprised. Everything short of that arrives
@@ -63,7 +61,7 @@ namespace ChaySocial.MainProject.Moderation
 
             if (AppServices.LocalStore is null) return;
 
-            await AppServices.LocalStore.WriteAsync(StorageKey, band.ToString());
+            await AppServices.LocalStore.WriteAsync(LocalStoreKeys.ContentGuard, band.ToString());
         }
 
         /// <summary>
@@ -75,7 +73,7 @@ namespace ChaySocial.MainProject.Moderation
         {
             if (AppServices.LocalStore is null) return;
 
-            string? stored = await AppServices.LocalStore.ReadAsync(StorageKey);
+            string? stored = await AppServices.LocalStore.ReadAsync(LocalStoreKeys.ContentGuard);
             if (stored is null) return;
 
             if (Enum.TryParse(stored, out ContentBand band) && Choices.Contains(band)) Apply(band);

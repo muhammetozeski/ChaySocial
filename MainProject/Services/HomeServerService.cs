@@ -1,3 +1,5 @@
+using ChaySocial.MainProject.Persistence;
+
 namespace ChaySocial.MainProject.Services
 {
     /// <summary>
@@ -12,9 +14,6 @@ namespace ChaySocial.MainProject.Services
     /// </remarks>
     public static class HomeServerService
     {
-        /// <summary> Key the chosen address is kept under on this device. </summary>
-        const string StorageKey = "chay.home-server";
-
         /// <summary> The address this app was served from, which is where it goes when no other has been chosen. </summary>
         public static string ServedFrom { get; private set; } = string.Empty;
 
@@ -40,7 +39,7 @@ namespace ChaySocial.MainProject.Services
         {
             if (AppServices.LocalStore is null) return string.Empty;
 
-            string? stored = await AppServices.LocalStore.ReadAsync(StorageKey);
+            string? stored = await AppServices.LocalStore.ReadAsync(LocalStoreKeys.HomeServer);
 
             return stored is null ? string.Empty : Normalise(stored);
         }
@@ -58,7 +57,7 @@ namespace ChaySocial.MainProject.Services
             if (usable.Length == 0) return string.Empty;
 
             Current = usable;
-            if (AppServices.LocalStore is not null) await AppServices.LocalStore.WriteAsync(StorageKey, usable);
+            if (AppServices.LocalStore is not null) await AppServices.LocalStore.WriteAsync(LocalStoreKeys.HomeServer, usable);
 
             return usable;
         }
@@ -68,8 +67,13 @@ namespace ChaySocial.MainProject.Services
         public static async Task ForgetAsync()
         {
             Current = ServedFrom;
-            if (AppServices.LocalStore is not null) await AppServices.LocalStore.DeleteAsync(StorageKey);
+            if (AppServices.LocalStore is not null) await AppServices.LocalStore.DeleteAsync(LocalStoreKeys.HomeServer);
         }
+
+        /// <summary> The form an address would be used in, for a caller that wants to judge it before acting. </summary>
+        /// <param name="address"> Address as it was typed. </param>
+        /// <returns> Its usable form, or empty when this app cannot talk to it. </returns>
+        public static string Usable(string address) => Normalise(address);
 
         /// <summary>
         /// The form an address is kept and used in, or empty when the text is not one this app can talk to.
@@ -81,11 +85,6 @@ namespace ChaySocial.MainProject.Services
         /// <c>api/documents</c> — so a base address without one silently loses its last path segment and every
         /// read comes back as 404, which looks like an empty server rather than a mistyped address.
         /// </remarks>
-        /// <summary> The form an address would be used in, for a caller that wants to judge it before acting. </summary>
-        /// <param name="address"> Address as it was typed. </param>
-        /// <returns> Its usable form, or empty when this app cannot talk to it. </returns>
-        public static string Usable(string address) => Normalise(address);
-
         static string Normalise(string address)
         {
             string trimmed = address.Trim();

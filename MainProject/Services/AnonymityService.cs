@@ -15,12 +15,6 @@ namespace ChaySocial.MainProject.Services
     /// </summary>
     public static class AnonymityService
     {
-        /// <summary> Key the "insist on Tor" choice is kept under on this device. </summary>
-        const string TorOnlyKey = "chay.tor-only";
-
-        /// <summary> Key the carried accounts are kept under. </summary>
-        const string CarriedAccountsKey = "chay.accounts";
-
         /// <summary> Separator between two carried accounts in storage. </summary>
         const char AccountSeparator = '\n';
 
@@ -36,15 +30,15 @@ namespace ChaySocial.MainProject.Services
         /// <summary> True when this device has been told to refuse anything that is not Tor. </summary>
         /// <returns> The stored choice, false when none was made. </returns>
         public static async Task<bool> IsTorOnlyAsync()
-            => await AppServices.LocalStore.ReadAsync(TorOnlyKey) == OnValue;
+            => await AppServices.LocalStore.ReadAsync(LocalStoreKeys.TorOnly) == OnValue;
 
         /// <summary> Remembers whether to insist on Tor. </summary>
         /// <param name="torOnly"> True to refuse anything that is not Tor. </param>
         /// <returns> A task that completes once the choice is stored. </returns>
         public static Task SetTorOnlyAsync(bool torOnly)
             => torOnly
-                ? AppServices.LocalStore.WriteAsync(TorOnlyKey, OnValue)
-                : AppServices.LocalStore.DeleteAsync(TorOnlyKey);
+                ? AppServices.LocalStore.WriteAsync(LocalStoreKeys.TorOnly, OnValue)
+                : AppServices.LocalStore.DeleteAsync(LocalStoreKeys.TorOnly);
 
         /// <summary>
         /// Whether the app is being reached over Tor, judged the only way a page honestly can: by the address it
@@ -69,7 +63,7 @@ namespace ChaySocial.MainProject.Services
         /// <returns> The carried accounts, empty when none were kept. </returns>
         public static async Task<IReadOnlyList<CarriedAccount>> ReadCarriedAsync()
         {
-            string? stored = await AppServices.LocalStore.ReadAsync(CarriedAccountsKey);
+            string? stored = await AppServices.LocalStore.ReadAsync(LocalStoreKeys.CarriedAccounts);
             if (string.IsNullOrEmpty(stored)) return [];
 
             List<CarriedAccount> carried = [];
@@ -118,16 +112,16 @@ namespace ChaySocial.MainProject.Services
 
         /// <summary> Forgets every carried account, for somebody handing the device to somebody else. </summary>
         /// <returns> A task that completes once nothing is left. </returns>
-        public static Task DropAllAsync() => AppServices.LocalStore.DeleteAsync(CarriedAccountsKey);
+        public static Task DropAllAsync() => AppServices.LocalStore.DeleteAsync(LocalStoreKeys.CarriedAccounts);
 
         /// <summary> Writes the carried set back to the device. </summary>
         /// <param name="carried"> The accounts to keep. </param>
         /// <returns> A task that completes once they are stored. </returns>
         static Task WriteCarriedAsync(IReadOnlyList<CarriedAccount> carried)
             => carried.Count == 0
-                ? AppServices.LocalStore.DeleteAsync(CarriedAccountsKey)
+                ? AppServices.LocalStore.DeleteAsync(LocalStoreKeys.CarriedAccounts)
                 : AppServices.LocalStore.WriteAsync(
-                    CarriedAccountsKey,
+                    LocalStoreKeys.CarriedAccounts,
                     string.Join(AccountSeparator, carried.Select(account => account.Secret)));
     }
 }
