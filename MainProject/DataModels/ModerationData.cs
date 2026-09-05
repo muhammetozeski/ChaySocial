@@ -13,6 +13,38 @@ namespace ChaySocial.MainProject.DataModels
         Other
     }
 
+    /// <summary> What a report is about. </summary>
+    public enum ReportKind
+    {
+        /// <summary> A post on a wall. </summary>
+        Post,
+
+        /// <summary> An account, rather than any one thing it wrote. </summary>
+        Account,
+
+        /// <summary> A reply under a post. </summary>
+        Comment,
+
+        /// <summary> A private message, which only its recipient could have disclosed. </summary>
+        Message
+    }
+
+    /// <summary> Where a report has got to. </summary>
+    public enum ReportStatus
+    {
+        /// <summary> Filed and not yet looked at. </summary>
+        Open,
+
+        /// <summary> Looked at and acted on. </summary>
+        Upheld,
+
+        /// <summary> Looked at and found to need nothing. </summary>
+        Dismissed,
+
+        /// <summary> Taken back by whoever filed it. </summary>
+        Withdrawn
+    }
+
     /// <summary>
     /// One account's decision to stop seeing another. Stored under a deterministic id, so blocking twice
     /// overwrites the same row and unblocking is a delete.
@@ -62,11 +94,26 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> Account that filed it. </summary>
         public required string ReporterAddress { get; init; }
 
+        /// <summary> What this report is about, which says which of the target fields below is the one filled in. </summary>
+        public ReportKind Kind { get; init; } = ReportKind.Post;
+
         /// <summary> Post being reported; empty when the report is about an account. </summary>
         public string TargetPostId { get; init; } = string.Empty;
 
         /// <summary> Account being reported; empty when the report is about a post. </summary>
         public string TargetAddress { get; init; } = string.Empty;
+
+        /// <summary> Comment being reported; empty for every other kind. </summary>
+        public string TargetCommentId { get; init; } = string.Empty;
+
+        /// <summary> Message being reported; empty for every other kind. </summary>
+        public string TargetMessageId { get; init; } = string.Empty;
+
+        /// <summary> Where this report has got to. </summary>
+        public ReportStatus Status { get; init; } = ReportStatus.Open;
+
+        /// <summary> When it stopped being open, or zero while it still is. </summary>
+        public long ResolvedAtUnixMs { get; init; }
 
         /// <summary> Category the reporter chose. </summary>
         public required ReportReason Reason { get; init; }
@@ -100,5 +147,11 @@ namespace ChaySocial.MainProject.DataModels
 
         /// <summary> Filing time, for reviewing newest complaints first. </summary>
         public static readonly DocumentField<ReportData> CreatedAtField = new(nameof(CreatedAtUnixMs), report => report.CreatedAtUnixMs);
+
+        /// <summary> Reported comment, for finding every complaint about one reply. </summary>
+        public static readonly DocumentField<ReportData> TargetCommentField = new(nameof(TargetCommentId), report => report.TargetCommentId);
+
+        /// <summary> Reported message, for finding every complaint about one message. </summary>
+        public static readonly DocumentField<ReportData> TargetMessageField = new(nameof(TargetMessageId), report => report.TargetMessageId);
     }
 }

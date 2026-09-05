@@ -103,6 +103,97 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Reply the composer is answering, or null while the draft speaks to the post itself. </summary>
         CommentData? answeringReply;
 
+        /// <summary> Reply the report sheet is open for, or null while it is closed. </summary>
+        CommentData? reportedReply;
+
+        /// <summary> True while a report is being written, which swaps the reasons for a throbber. </summary>
+        bool isReportInFlight;
+
+        /// <summary> Every reason the sheet offers, in the order the enum declares them. </summary>
+        static readonly ReportReason[] OfferedReportReasons = Enum.GetValues<ReportReason>();
+
+        /// <summary> Emoji at the top of the report sheet. </summary>
+        const string ReportEmoji = "🚩";
+
+        /// <summary> Heading of that sheet. </summary>
+        const string ReportTitle = "Report this comment";
+
+        /// <summary> Line under it, saying plainly what filing a report does with the words. </summary>
+        const string ReportSubtitle =
+            "Pick what is wrong with it. Your report hands this comment's text to the moderators — it is the only way "
+            + "anybody but its readers sees it.";
+
+        /// <summary> Line under the throbber while a report is going out. </summary>
+        const string ReportSendingLabel = "Sending your report…";
+
+        /// <summary> Label on the button that closes the sheet without reporting. </summary>
+        const string ReportCancelLabel = "Never mind";
+
+        /// <summary> True while the report sheet belongs on screen. </summary>
+        bool IsReportOpen => reportedReply is not null;
+
+        /// <summary> Opens the report sheet for one reply. </summary>
+        /// <param name="reply"> The reply being reported. </param>
+        void OpenReplyReport(CommentData reply) => reportedReply = reply;
+
+        /// <summary> Closes it, leaving a report already going out to finish. </summary>
+        void CloseReplyReport()
+        {
+            if (isReportInFlight) return;
+
+            reportedReply = null;
+        }
+
+        /// <summary> Files the report under the chosen reason and closes the sheet. </summary>
+        /// <param name="reason"> The category the reader picked. </param>
+        /// <returns> A task that completes once the report is stored. </returns>
+        async Task SubmitReplyReportAsync(ReportReason reason)
+        {
+            if (reportedReply is null || isReportInFlight) return;
+
+            isReportInFlight = true;
+
+            try
+            {
+                await ModerationService.ReportCommentAsync(Account, reportedReply, reason);
+            }
+            catch (Exception error)
+            {
+                Log($"{nameof(PostThread)} could not report '{reportedReply.CommentId}'.\n{error}", LogLevel.Error);
+            }
+            finally
+            {
+                isReportInFlight = false;
+                reportedReply = null;
+            }
+        }
+
+        /// <summary> Name of one report reason, as the reader reads it. </summary>
+        /// <param name="reason"> The reason offered. </param>
+        /// <returns> Its label. </returns>
+        static string ReasonLabel(ReportReason reason) => reason switch
+        {
+            ReportReason.Spam => "Spam",
+            ReportReason.Harassment => "Harassment",
+            ReportReason.Violence => "Violence",
+            ReportReason.SexualContent => "Sexual content",
+            ReportReason.Impersonation => "Pretending to be someone",
+            _ => "Something else"
+        };
+
+        /// <summary> Emoji beside one reason, so the sheet can be read at a glance. </summary>
+        /// <param name="reason"> The reason offered. </param>
+        /// <returns> Its emoji. </returns>
+        static string ReasonEmoji(ReportReason reason) => reason switch
+        {
+            ReportReason.Spam => "📢",
+            ReportReason.Harassment => "💢",
+            ReportReason.Violence => "⚠️",
+            ReportReason.SexualContent => "🔞",
+            ReportReason.Impersonation => "🎭",
+            _ => "❓"
+        };
+
         /// <summary>
         /// Profiles of everyone the thread names, keyed by address. An address is read once and then answered from
         /// here, so an account that replied five times costs one fetch and a reload only asks for faces it has not

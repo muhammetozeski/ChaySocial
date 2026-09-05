@@ -308,6 +308,57 @@
                   CustomClass="settings-card">
 
             <div class="settings-section-heading">
+                <span class="settings-section-emoji">@ReportsSectionEmoji</span>
+                <h2 class="settings-section-title">@ReportsSectionHeadline</h2>
+            </div>
+            <p class="settings-section-description">@ReportsSectionDescription</p>
+
+            @if (_reports.Count == 0)
+            {
+                <p class="settings-reports-empty">@NoReportsLabel</p>
+            }
+            else
+            {
+                <ul class="settings-reports">
+                    @foreach (ReportData filed in _reports)
+                    {
+                        @* Declared inside the loop body, so each row's handler carries its own report. *@
+                        ReportData report = filed;
+
+                        <li class="settings-report" @key="report.ReportId">
+                            <span class="settings-report-text">
+                                <span class="settings-report-what">@KindLabel(report.Kind) · @ReasonLabel(report.Reason)</span>
+                                <span class="settings-report-when">@RelativeTimeFormatter.Format(report.CreatedAtUnixMs)</span>
+                            </span>
+
+                            <span class="settings-report-status settings-report-status--@(report.Status.ToString().ToLowerInvariant())">
+                                @StatusLabel(report.Status)
+                            </span>
+
+                            @if (report.Status == ReportStatus.Open)
+                            {
+                                <button type="button"
+                                        class="settings-report-withdraw"
+                                        title="@WithdrawHint"
+                                        disabled="@_isWithdrawing"
+                                        @onclick="() => WithdrawReportAsync(report)">@WithdrawLabel</button>
+                            }
+                        </li>
+                    }
+                </ul>
+
+                <p class="settings-reports-note">@ReportsNote</p>
+            }
+
+        </CoreCard>
+
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="settings-card">
+
+            <div class="settings-section-heading">
                 <span class="settings-section-emoji">@BlockedSectionEmoji</span>
                 <h2 class="settings-section-title">@BlockedSectionHeadline</h2>
             </div>

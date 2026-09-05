@@ -200,6 +200,94 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> The address this app was actually served from, shown so the Tor judgement is checkable. </summary>
         string ReachedHost => NavManager.BaseUri;
 
+        /// <summary> Emoji on the reports section. </summary>
+        const string ReportsSectionEmoji = "🚩";
+
+        /// <summary> Heading of that section. </summary>
+        const string ReportsSectionHeadline = "Reports you filed";
+
+        /// <summary> Line under it. </summary>
+        const string ReportsSectionDescription =
+            "What you reported and where each one got to. Nobody is told you filed these.";
+
+        /// <summary> Shown when this account has reported nothing. </summary>
+        const string NoReportsLabel = "You haven't reported anything.";
+
+        /// <summary> Line under the list, on what withdrawing does. </summary>
+        const string ReportsNote =
+            "Withdrawing takes the complaint back and deletes the content you handed over with it.";
+
+        /// <summary> Label on the control that takes a report back. </summary>
+        const string WithdrawLabel = "Withdraw";
+
+        /// <summary> Tooltip on it. </summary>
+        const string WithdrawHint = "Take this complaint back";
+
+        /// <summary> Reports this account filed, newest first. </summary>
+        IReadOnlyList<ReportData> _reports = [];
+
+        /// <summary> True while a withdrawal is being written. </summary>
+        bool _isWithdrawing;
+
+        /// <summary> What one report is about, as the reader reads it. </summary>
+        /// <param name="kind"> The report's kind. </param>
+        /// <returns> Its label. </returns>
+        static string KindLabel(ReportKind kind) => kind switch
+        {
+            ReportKind.Post => "Post",
+            ReportKind.Account => "Account",
+            ReportKind.Comment => "Comment",
+            _ => "Message"
+        };
+
+        /// <summary> Why it was filed, as the reader reads it. </summary>
+        /// <param name="reason"> The reason chosen. </param>
+        /// <returns> Its label. </returns>
+        static string ReasonLabel(ReportReason reason) => reason switch
+        {
+            ReportReason.Spam => "spam",
+            ReportReason.Harassment => "harassment",
+            ReportReason.Violence => "violence",
+            ReportReason.SexualContent => "sexual content",
+            ReportReason.Impersonation => "impersonation",
+            _ => "something else"
+        };
+
+        /// <summary> Where it got to, as the reader reads it. </summary>
+        /// <param name="status"> The report's status. </param>
+        /// <returns> Its label. </returns>
+        static string StatusLabel(ReportStatus status) => status switch
+        {
+            ReportStatus.Open => "Open",
+            ReportStatus.Upheld => "Acted on",
+            ReportStatus.Dismissed => "Nothing done",
+            _ => "Withdrawn"
+        };
+
+        /// <summary> Takes one of this account's own complaints back. </summary>
+        /// <param name="report"> The report to withdraw. </param>
+        /// <returns> A task that completes once it is withdrawn. </returns>
+        async Task WithdrawReportAsync(ReportData report)
+        {
+            if (_isWithdrawing) return;
+
+            _isWithdrawing = true;
+
+            try
+            {
+                await ModerationService.WithdrawAsync(report, Account.Public);
+                _reports = await ModerationService.ReadFiledByAsync(SessionService.CurrentAddress);
+            }
+            catch (Exception error)
+            {
+                Log($"{nameof(Settings)} could not withdraw '{report.ReportId}'.\n{error}", LogLevel.Error);
+            }
+            finally
+            {
+                _isWithdrawing = false;
+            }
+        }
+
         const string BlockedSectionEmoji = "🚫";
 
         /// <summary> Heading of that section. </summary>
@@ -458,11 +546,13 @@ namespace ChaySocial.MainProject.UI.Pages
             {
                 _blocked = [];
                 _carriedAccounts = [];
+                _reports = [];
                 ForgetSecret();
                 return;
             }
 
             _blocked = await ReadBlockedAsync(SessionService.CurrentAddress);
+            _reports = await ModerationService.ReadFiledByAsync(SessionService.CurrentAddress);
             _isTorOnly = await AnonymityService.IsTorOnlyAsync();
             _carriedAccounts = await AnonymityService.ReadCarriedAsync();
             _carriedProfiles = await ReadCarriedProfilesAsync(_carriedAccounts);

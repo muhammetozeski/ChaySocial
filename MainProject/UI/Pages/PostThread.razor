@@ -104,6 +104,7 @@
                                 IsAnswer="@entry.IsAnswer"
                                 RepliedToName="@RepliedToNameFor(entry)"
                                 OnReply="@(() => StartAnswering(reply))"
+                                OnReport="@(() => OpenReplyReport(reply))"
                                 OnDelete="@(() => DeleteReplyAsync(reply))" />
                 }
             }
@@ -127,5 +128,45 @@
     }
 
 </div>
+
+<CoreModal IsVisible="@IsReportOpen" IsAcrylic="true" OnBackdropClick="CloseReplyReport">
+    <div class="post-thread-report">
+        <span class="post-thread-report-emoji">@ReportEmoji</span>
+        <h2 class="post-thread-report-title">@ReportTitle</h2>
+        <p class="post-thread-report-subtitle">@ReportSubtitle</p>
+
+        @if (isReportInFlight)
+        {
+            <div class="post-thread-report-busy">
+                <CoreSpinner />
+                <p class="post-thread-report-busy-text">@ReportSendingLabel</p>
+            </div>
+        }
+        else
+        {
+            <div class="post-thread-report-reasons">
+                @foreach (ReportReason reason in OfferedReportReasons)
+                {
+                    @* Declared inside the loop body, so each button carries its own reason. *@
+                    ReportReason chosen = reason;
+
+                    <button type="button" class="post-thread-report-reason" @onclick="() => SubmitReplyReportAsync(chosen)">
+                        <span class="post-thread-report-reason-emoji">@ReasonEmoji(chosen)</span>
+                        <span>@ReasonLabel(chosen)</span>
+                    </button>
+                }
+            </div>
+
+            <CoreButton OnClick="CloseReplyReport"
+                        Background="@AppColors.SurfaceSubtle"
+                        TextColor="@AppColors.TextSecondary"
+                        BorderRadius="@ActionButtonRadiusCss"
+                        Padding="@ActionButtonPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal">
+                @ReportCancelLabel
+            </CoreButton>
+        }
+    </div>
+</CoreModal>
 
 <PostThreadCss />

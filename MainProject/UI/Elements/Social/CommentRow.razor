@@ -25,10 +25,17 @@
 
             <p class="comment-row-text"><WrittenLine Text="@Comment.Text" /></p>
 
-            @if (OnReply.HasDelegate)
-            {
-                <button type="button" class="comment-row-reply" title="@ReplyHint" @onclick="HandleReply">@ReplyLabel</button>
-            }
+            <span class="comment-row-controls">
+                @if (OnReply.HasDelegate)
+                {
+                    <button type="button" class="comment-row-reply" title="@ReplyHint" @onclick="HandleReply">@ReplyLabel</button>
+                }
+
+                @if (!CanDelete && OnReport.HasDelegate)
+                {
+                    <button type="button" class="comment-row-report" title="@ReportHint" @onclick="OnReport">@ReportLabel</button>
+                }
+            </span>
         </div>
 
         @if (CanDelete)
@@ -84,6 +91,15 @@
 
     /// <summary> Tooltip on that control. </summary>
     const string ReplyHint = "Answer this comment";
+
+    /// <summary> Raised when the reader reports somebody else's reply. The control only appears when a caller wires this up. </summary>
+    [Parameter] public EventCallback OnReport { get; set; }
+
+    /// <summary> Text on that control. </summary>
+    const string ReportLabel = "Report";
+
+    /// <summary> Tooltip on it. </summary>
+    const string ReportHint = "Report this comment";
 
     /// <summary> Hands the reply request to the page, which owns the composer it lands in. </summary>
     /// <returns> A task that completes once the page has handled it. </returns>

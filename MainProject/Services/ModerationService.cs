@@ -119,6 +119,7 @@ namespace ChaySocial.MainProject.Services
             {
                 ReportId = CreateReportId(),
                 ReporterAddress = reporter.Public.Address,
+                Kind = ReportKind.Post,
                 TargetPostId = post.PostId,
                 Reason = reason,
                 Detail = trimmedDetail,
@@ -149,6 +150,7 @@ namespace ChaySocial.MainProject.Services
             {
                 ReportId = CreateReportId(),
                 ReporterAddress = reporter.Public.Address,
+                Kind = ReportKind.Account,
                 TargetAddress = targetAddress,
                 Reason = reason,
                 Detail = trimmedDetail,
@@ -159,6 +161,130 @@ namespace ChaySocial.MainProject.Services
             MainEvents.Trigger(MainEvents.Names.ModerationChanged, targetAddress);
             return report;
         }
+
+        /// <summary>
+        /// Files a complaint about a reply, disclosing its text the same way a post report discloses a post's.
+        /// </summary>
+        /// <param name="reporter"> The unlocked account filing the complaint. </param>
+        /// <param name="comment"> Reply being complained about; its text is what gets disclosed. </param>
+        /// <param name="reason"> Category the reporter chose. </param>
+        /// <param name="detail"> What the reporter wrote in their own words. </param>
+        /// <returns> The stored report, or null when the detail was too long to store. </returns>
+        public static async Task<ReportData?> ReportCommentAsync(
+            PrivateIdentity reporter,
+            CommentData comment,
+            ReportReason reason,
+            string detail = "")
+        {
+            if (TrimDetail(detail) is not string trimmedDetail) return null;
+
+            ReportData report = new()
+            {
+                ReportId = CreateReportId(),
+                ReporterAddress = reporter.Public.Address,
+                Kind = ReportKind.Comment,
+                TargetCommentId = comment.CommentId,
+                TargetPostId = comment.PostId,
+                TargetAddress = comment.AuthorAddress,
+                Reason = reason,
+                Detail = trimmedDetail,
+                DisclosedContent = comment.Text,
+                CreatedAtUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            };
+
+            await AppServices.Documents.WriteAsync(report.Id, report);
+            MainEvents.Trigger(MainEvents.Names.ModerationChanged, comment.AuthorAddress);
+            return report;
+        }
+
+        /// <summary>
+        /// Files a complaint about a private message. The reporter passes the text they read, because there is no
+        /// other way it could reach anybody: the message is encrypted to its recipient and the server holds only
+        /// ciphertext it cannot open.
+        /// </summary>
+        /// <param name="reporter"> The unlocked account filing the complaint, who must be the one who received it. </param>
+        /// <param name="message"> The envelope being complained about. </param>
+        /// <param name="decryptedText"> What the reporter read, which is what they are choosing to disclose. </param>
+        /// <param name="reason"> Category the reporter chose. </param>
+        /// <param name="detail"> What the reporter wrote in their own words. </param>
+        /// <returns> The stored report, or null when the reporter was not a party to the message or the detail was too long. </returns>
+        /// <remarks>
+        /// Only the recipient may report: the sender complaining about their own message would be disclosing
+        /// somebody else's inbox, and nobody outside the pair holds anything to disclose in the first place.
+        /// </remarks>
+        public static async Task<ReportData?> ReportMessageAsync(
+            PrivateIdentity reporter,
+            MessageData message,
+            string decryptedText,
+            ReportReason reason,
+            string detail = "")
+        {
+            if (message.RecipientAddress != reporter.Public.Address) return null;
+            if (TrimDetail(detail) is not string trimmedDetail) return null;
+
+            ReportData report = new()
+            {
+                ReportId = CreateReportId(),
+                ReporterAddress = reporter.Public.Address,
+                Kind = ReportKind.Message,
+                TargetMessageId = message.MessageId,
+                TargetAddress = message.SenderAddress,
+                Reason = reason,
+                Detail = trimmedDetail,
+                DisclosedContent = decryptedText,
+                CreatedAtUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            };
+
+            await AppServices.Documents.WriteAsync(report.Id, report);
+            MainEvents.Trigger(MainEvents.Names.ModerationChanged, message.SenderAddress);
+            return report;
+        }
+
+        /// <summary> Reads what one account has reported, newest first, so they can see where each complaint got to. </summary>
+        /// <param name="reporterAddress"> The account that filed them. </param>
+        /// <param name="limit"> Largest number of reports to return. </param>
+        /// <returns> That account's reports, newest first. </returns>
+        public static async Task<IReadOnlyList<ReportData>> ReadFiledByAsync(string reporterAddress, int limit = ReportPageSize)
+        {
+            if (string.IsNullOrEmpty(reporterAddress) || limit <= 0) return [];
+
+            DocumentQuery<ReportData> query = new DocumentQuery<ReportData>()
+                .WithMatch(ReportData.ReporterField, reporterAddress)
+                .WithSort(ReportData.CreatedAtField, descending: true)
+                .WithLimit(limit);
+
+            return (await AppServices.Documents.QueryAsync(query)).Documents;
+        }
+
+        /// <summary>
+        /// Takes a complaint back. Only whoever filed it may, and only while it is still open — a report already
+        /// acted on is a record of something that happened, not a draft.
+        /// </summary>
+        /// <param name="report"> The report to withdraw. </param>
+        /// <param name="reporter"> Account asking; anybody else is refused. </param>
+        /// <returns> True once it is withdrawn. </returns>
+        public static async Task<bool> WithdrawAsync(ReportData report, PublicIdentity reporter)
+        {
+            if (report.ReporterAddress != reporter.Address) return false;
+            if (report.Status != ReportStatus.Open) return false;
+
+            ReportData withdrawn = report with
+            {
+                Status = ReportStatus.Withdrawn,
+                ResolvedAtUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+
+                // The disclosure goes with it. Somebody taking a complaint back should not leave behind the
+                // content they only handed over in order to make it.
+                DisclosedContent = string.Empty
+            };
+
+            await AppServices.Documents.WriteAsync(withdrawn.Id, withdrawn);
+            MainEvents.Trigger(MainEvents.Names.ModerationChanged, report.TargetAddress);
+            return true;
+        }
+
+        /// <summary> Reports read back in one page. </summary>
+        public const int ReportPageSize = 50;
 
         /// <summary> Draws the id a new report is stored under, the same way a post id is drawn. </summary>
         /// <returns> Base32 text over <see cref="ReportIdRandomBytes"/> random bytes. </returns>

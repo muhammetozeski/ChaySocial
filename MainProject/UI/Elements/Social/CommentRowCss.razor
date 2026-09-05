@@ -34,10 +34,17 @@
         overflow-wrap: anywhere;
     }
 
-    /* A word, not a button: answering is offered without competing with what the person actually wrote. */
-    .comment-row-reply {
-        align-self: flex-start;
+    .comment-row-controls {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
         margin-top: @(AppMeasures.Space.Px4)px;
+    }
+
+    /* Words, not buttons: answering and reporting are offered without competing with what the person wrote. */
+    .comment-row-reply,
+    .comment-row-report {
+        align-self: flex-start;
         padding: 0;
         border: none;
         background: none;
@@ -51,6 +58,11 @@
 
         .comment-row-reply:hover {
             color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+        /* Reporting warms rather than lights up: it is available, not encouraged. */
+        .comment-row-report:hover {
+            color: @(AppColors.TextWarning.ToRgbaHex(true));
         }
 
     /* Round emoji chip standing in for the author's picture. */
