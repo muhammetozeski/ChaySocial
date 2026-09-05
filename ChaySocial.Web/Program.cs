@@ -27,6 +27,14 @@ namespace ChaySocial
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            // Nothing here keeps a trail of who asked for what and when. The hosting layer's own request logging
+            // writes a line per request, and those lines are exactly the record this app promises not to hold, so
+            // it is turned off rather than merely left unread. Warnings and errors still come through: silencing
+            // a fault is not the same as declining to keep a diary of visitors.
+            builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting", LogLevel.Warning);
+            builder.Logging.AddFilter("Microsoft.AspNetCore.Routing", LogLevel.Warning);
+            builder.Logging.AddFilter("Microsoft.AspNetCore.StaticFiles", LogLevel.Warning);
+
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents()
