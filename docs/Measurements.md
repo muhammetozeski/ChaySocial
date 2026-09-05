@@ -24,6 +24,8 @@ projede kararı değiştirecek kadar büyük.
 | Cron emniyet ağı | **~85 beklenen ateşleme, 2 gerçekleşen** | Harness |
 | 3 saatlik boşta kalma | **0 ateşleme** | Harness |
 | Emoji fontu (gönderilmedi) | 24 MB | Kaynaklar |
+| Bir satırı okunduğu hale indirme | 3,49 µs | Masaüstü, 84 karakter |
+| Tam içerik hükmü | **5,71 µs** | Masaüstü, 84 karakter |
 
 ---
 
@@ -85,6 +87,21 @@ pageH: 790   innerHeight: 700     -> .app-page bir gezinme çubuğu (90px) kadar
 
 İkincisi ekran görüntüsünde bile zor fark ediliyordu, çünkü `overflow-x: hidden` taşmayı
 gizliyor ve `scrollWidth` temiz görünüyor. Gerçek ölçü elemanın kendi genişliği.
+
+## İçerik hükmü
+
+Bir gönderiyi okundu­ğu hale indirmek 3,49 µs, kategori ve bant dahil tam hüküm 5,71 µs — masaüstü .NET'te,
+84 karakterlik bir satır için, 200.000 tekrarın ortalaması.
+
+Hesap her çizimde değil, **metin değiştiğinde** yapılıyor: `WrittenLine` ve `WritingMirror` sonucu tuttukları
+metinle birlikte saklıyor. Yani bir akış kaydırılırken hiçbir şey yeniden hükme varılmıyor.
+
+Tarayıcı süresi ayrıca ölçülmedi; burada yazan rakam masaüstü rakamıdır. Yirmi gönderilik bir akış gözle
+görülür gecikme olmadan çiziliyor, ama bu gözlem, ölçüm değil.
+
+Prob sonuçları: kaçamak testleri **20/20**, hüküm testleri **29/29**. Kaçamak testleri aynı kelimenin on beş
+farklı yazılışını (aksan, Kiril, Yunan, tam genişlik, leetspeak, basılı tutulan tuş, sıfır genişlikli karakter,
+yumuşak tire, boşlukla ve noktayla ayırma) tek forma indiriyor.
 
 ## Cron emniyet ağı
 
