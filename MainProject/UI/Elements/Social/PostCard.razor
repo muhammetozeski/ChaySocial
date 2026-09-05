@@ -55,6 +55,10 @@
             <p class="post-card-text"><WrittenLine Text="@Post.Text" /></p>
         }
 
+        @* Drawn under the question's own words, because the choices are an answer to them rather than a thing of
+           their own. A post that is not asking anything renders nothing here. *@
+        <PollView Post="@Post" />
+
         @foreach (MediaAttachment attachment in Post.Attachments)
         {
             <MediaView Attachment="@attachment" @key="attachment.BlobId" />

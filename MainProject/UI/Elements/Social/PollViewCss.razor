@@ -1,0 +1,96 @@
+@*
+    Styling for PollView. PollView renders this component itself, so a question always arrives with its own CSS
+    attached. Every selector is namespaced "poll-view-*" because *Css.razor styles are global.
+*@
+<style>
+    .poll-view {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+        margin-top: @(AppMeasures.Space.Px12)px;
+    }
+
+    /* Before answering: each choice is a plain wide button, because the only thing being asked for is one tap. */
+    .poll-view-choice-button {
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px14)px;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        cursor: pointer;
+        text-align: left;
+        transition: border-color @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .poll-view-choice-button:hover:not(:disabled) {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+        .poll-view-choice-button:disabled {
+            opacity: @(AppMeasures.Opacity.Dim);
+            cursor: default;
+        }
+
+    /* After answering: the same row, with the share drawn as a filled bar behind the words rather than beside them,
+       so the shape of the result is readable before any of the numbers are. */
+    .poll-view-result {
+        position: relative;
+        overflow: hidden;
+        box-sizing: border-box;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px14)px;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+        /* The reader's own answer, marked so they can find it without counting. */
+        .poll-view-result.is-chosen {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
+    .poll-view-bar {
+        position: absolute;
+        inset: 0 auto 0 0;
+        background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+        transition: width @(AppMeasures.Duration.Normal)s ease-out;
+    }
+
+    .poll-view-result-text {
+        position: relative;
+        z-index: @(AppMeasures.ZLayer.Raised);
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    .poll-view-choice {
+        overflow-wrap: anywhere;
+    }
+
+    .poll-view-share {
+        flex: none;
+        font-weight: @(AppMeasures.Weight.Medium);
+    }
+
+    /* "Signed" is doing real work in this line: it says the number counts answers that proved who gave them, not
+       rows somebody put in a table. */
+    .poll-view-count {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .poll-view-bar {
+            transition: none;
+        }
+    }
+</style>

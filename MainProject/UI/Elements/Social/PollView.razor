@@ -1,0 +1,121 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+
+@*
+    The answers to a question, as buttons before this reader has answered and as bars afterwards.
+
+    The bar widths are worked out in C# and written as inline style, the way the composer's counter colour already
+    is: a share is a number that only exists at render time, so it cannot come from a stylesheet, and writing it
+    inline is how this project puts a computed measurement on an element without a bare number in the CSS.
+
+    The count under the bars says how many answers *verified*, not how many documents exist. That distinction is
+    the whole reason polls are worth having here, so it is stated where it is read rather than left implied.
+*@
+
+@if (Post.IsAsking)
+{
+    <div class="poll-view">
+        @for (int index = 0; index < Post.PollChoices.Count; index++)
+        {
+            int choiceIndex = index;
+            string choice = Post.PollChoices[choiceIndex];
+
+            @if (Tally.ShowsResults)
+            {
+                <div class="poll-view-result @(Tally.ReaderChoice == choiceIndex ? ChosenClass : string.Empty)">
+                    <div class="poll-view-bar" style="width:@(Tally.ShareOf(choiceIndex))%;"></div>
+
+                    <span class="poll-view-result-text">
+                        <span class="poll-view-choice">@choice</span>
+                        <span class="poll-view-share">@(Tally.ShareOf(choiceIndex))%</span>
+                    </span>
+                </div>
+            }
+            else
+            {
+                <button type="button"
+                        class="poll-view-choice-button"
+                        disabled="@IsAnswering"
+                        @onclick="@(() => AnswerAsync(choiceIndex))">
+                    @choice
+                </button>
+            }
+        }
+
+        <p class="poll-view-count">@CountLabel</p>
+    </div>
+}
+
+<PollViewCss />
+
+@code {
+    /// <summary> The post being asked. </summary>
+    [Parameter, EditorRequired] public PostData Post { get; set; } = default!;
+
+    /// <summary> Class marking the answer this reader gave. </summary>
+    const string ChosenClass = "is-chosen";
+
+    /// <summary> Said when nobody has answered yet, so an empty poll does not read as broken. </summary>
+    const string NoAnswersLabel = "No answers yet";
+
+    /// <summary> Added once the asking has closed. </summary>
+    const string ClosedLabel = " · closed";
+
+    /// <summary> What the tally is at, recomputed when the post changes and after this reader answers. </summary>
+    PollTally Tally = PollTally.Empty;
+
+    /// <summary> The post the tally was counted for. </summary>
+    string countedPostId = string.Empty;
+
+    /// <summary> True while an answer is being written, so a second tap cannot land mid-write. </summary>
+    bool IsAnswering;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Post.IsAsking || countedPostId == Post.PostId) return;
+
+        countedPostId = Post.PostId;
+        await CountAsync();
+    }
+
+    /// <summary> Records this reader's answer and counts again. </summary>
+    /// <param name="choiceIndex"> Which choice they picked. </param>
+    /// <returns> A task that completes once the answer is stored and the tally redrawn. </returns>
+    async Task AnswerAsync(int choiceIndex)
+    {
+        if (IsAnswering || !SessionService.IsSignedIn) return;
+
+        IsAnswering = true;
+
+        try
+        {
+            await PollService.CastVoteAsync(Post, SessionService.Current!, choiceIndex);
+            await CountAsync();
+        }
+        finally
+        {
+            IsAnswering = false;
+        }
+    }
+
+    /// <summary> Reads the answers back and keeps only the ones that verify. </summary>
+    /// <returns> A task that completes once the tally is in hand. </returns>
+    async Task CountAsync() => Tally = await PollService.ReadTallyAsync(Post, SessionService.CurrentAddress);
+
+    /// <summary> How many answers were counted, said in the number English would use. </summary>
+    string CountLabel
+    {
+        get
+        {
+            string counted = Tally.Total switch
+            {
+                0 => NoAnswersLabel,
+                1 => "1 signed answer",
+                _ => $"{Tally.Total} signed answers"
+            };
+
+            return Tally.IsClosed ? counted + ClosedLabel : counted;
+        }
+    }
+}
