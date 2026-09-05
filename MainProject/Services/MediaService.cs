@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ChaySocial.MainProject.Cryptography;
 using ChaySocial.MainProject.DataModels;
 
@@ -15,8 +16,18 @@ namespace ChaySocial.MainProject.Services
         {
             [MediaKind.Image] = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/avif"],
             [MediaKind.Audio] = ["audio/webm", "audio/ogg", "audio/mpeg", "audio/wav", "audio/mp4"],
-            [MediaKind.Video] = ["video/webm", "video/mp4", "video/ogg"]
+            [MediaKind.Video] = ["video/webm", "video/mp4", "video/ogg"],
+            [MediaKind.Drawing] = [DrawingContentType]
         };
+
+        /// <summary>
+        /// Type a drawing travels as. It is the app's own, because a drawing is not a file anybody has: it is made
+        /// here, and it is drawn back as strokes rather than decoded by the browser.
+        /// </summary>
+        public const string DrawingContentType = "application/chay-drawing+json";
+
+        /// <summary> How a drawing is written down and read back: the same shape both ways, so a round trip is exact. </summary>
+        static readonly JsonSerializerOptions DrawingJson = new(JsonSerializerDefaults.Web);
 
         /// <summary>
         /// Encrypts a file and uploads it.
@@ -59,6 +70,47 @@ namespace ChaySocial.MainProject.Services
                 content.Length,
                 Trim(description, MediaAttachment.MaximumDescriptionLength),
                 durationSeconds);
+        }
+
+        /// <summary>
+        /// Seals a drawing and uploads it, down the same path a photograph takes. Nothing new is trusted with it:
+        /// the sheet becomes bytes here and is encrypted on this device like any other attachment, so the server
+        /// holds a drawing it cannot look at.
+        /// </summary>
+        /// <param name="sheet"> The drawing as it stands on the board. </param>
+        /// <param name="description"> Short text describing the drawing for anyone who cannot see it. </param>
+        /// <param name="cancellationToken"> Cancels the upload. </param>
+        /// <returns> The attachment to hang on a post or message, or null when the upload failed. </returns>
+        public static Task<MediaAttachment?> UploadDrawingAsync(
+            DrawingSheet sheet,
+            string description = "",
+            CancellationToken cancellationToken = default)
+            => UploadAsync(
+                JsonSerializer.SerializeToUtf8Bytes(sheet, DrawingJson),
+                DrawingContentType,
+                description,
+                durationSeconds: 0,
+                cancellationToken);
+
+        /// <summary>
+        /// Reads a drawing back out of the bytes an attachment was made from. A sheet that arrives malformed or
+        /// larger than the board allows comes back as null rather than as an exception, because it reached this
+        /// device across a network and is therefore somebody else's claim rather than this device's own work.
+        /// </summary>
+        /// <param name="content"> The decrypted bytes. </param>
+        /// <returns> The drawing, or null when the bytes were not a drawable sheet. </returns>
+        public static DrawingSheet? ReadDrawing(ReadOnlySpan<byte> content)
+        {
+            try
+            {
+                DrawingSheet? sheet = JsonSerializer.Deserialize<DrawingSheet>(content, DrawingJson);
+                return sheet is not null && sheet.IsDrawable ? sheet : null;
+            }
+            catch (JsonException error)
+            {
+                Log($"An attachment claimed to be a drawing and was not.\n{error}", LogLevel.Warning);
+                return null;
+            }
         }
 
         /// <summary>

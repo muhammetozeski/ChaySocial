@@ -10,7 +10,10 @@ namespace ChaySocial.MainProject.DataModels
         Audio,
 
         /// <summary> A video, drawn as a player with a poster frame. </summary>
-        Video
+        Video,
+
+        /// <summary> A drawing made inside the app, drawn back as the strokes it was made of. </summary>
+        Drawing
     }
 
     /// <summary>
