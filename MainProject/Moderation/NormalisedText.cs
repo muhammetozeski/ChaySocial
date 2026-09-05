@@ -17,14 +17,23 @@ namespace ChaySocial.MainProject.Moderation
     /// The same line with the spaces taken out. A word broken up on purpose — <c>f u c k</c>, <c>f.u.c.k</c> — is
     /// whole again here, at the price of words running into their neighbours, so this form is worth less as evidence.
     /// </param>
-    public readonly record struct NormalisedText(string Words, string Squeezed)
+    /// <param name="WasBrokenUp">
+    /// True when the line shows the marks of a word deliberately taken apart: invisible characters sitting inside a
+    /// word, or a run of single letters standing alone. Only then is <see cref="Squeezed"/> worth consulting — in
+    /// ordinary writing it merely glues neighbours together, which is how "the rapist" becomes "therapist".
+    /// </param>
+    public readonly record struct NormalisedText(string Words, string Squeezed, bool WasBrokenUp)
     {
         /// <summary> Longest run of one letter that ordinary spelling produces; anything longer is emphasis or evasion. </summary>
         /// <remarks> English doubles letters and stops there: <c>ll</c>, <c>ss</c>, <c>ee</c>. A third is a person leaning on the key. </remarks>
         const int LongestNaturalLetterRun = 2;
 
+        /// <summary> How many single letters have to stand alone in a row before the writing counts as taken apart. </summary>
+        /// <remarks> Two is ordinary English — "a b test", "I a m" never happens but "a x" does. Three in a row does not occur by accident. </remarks>
+        const int ShortestSplitRun = 3;
+
         /// <summary> Nothing at all, for a line with no readable characters in it. </summary>
-        public static readonly NormalisedText Empty = new(string.Empty, string.Empty);
+        public static readonly NormalisedText Empty = new(string.Empty, string.Empty, false);
 
         /// <summary> True when the line held nothing a reader could read. </summary>
         public bool IsEmpty => Words.Length == 0;
@@ -49,12 +58,19 @@ namespace ChaySocial.MainProject.Moderation
             char previousKept = '\0';
             int runLength = 0;
             bool pendingSeparator = false;
+            bool brokenByInvisible = false;
 
             for (int index = 0; index < text.Length; index++)
             {
                 char character = text[index];
 
-                if (IsInvisible(character)) continue;
+                if (IsInvisible(character))
+                {
+                    // An invisible character standing between two letters is somebody cutting a word in half. The
+                    // same character at the edge of a word is usually a stray brought along by a paste.
+                    if (HasLetterTowards(text, index, -1) && HasLetterTowards(text, index, 1)) brokenByInvisible = true;
+                    continue;
+                }
 
                 char letter = Confusables.ToPlainLetter(character);
 
@@ -102,7 +118,55 @@ namespace ChaySocial.MainProject.Moderation
             if (words.Length == 0) return Empty;
 
             string plain = words.ToString();
-            return new NormalisedText(plain, plain.Replace(" ", string.Empty));
+            return new NormalisedText(plain, Squeeze(plain), brokenByInvisible || HasRunOfSingleLetters(plain));
+        }
+
+        /// <summary>
+        /// Joins the words back together and lets every remaining digit stand in for its letter.
+        /// </summary>
+        /// <param name="plain"> The normalised line, words separated by single spaces. </param>
+        /// <returns> The line with no spaces left in it. </returns>
+        /// <remarks>
+        /// A digit that survived into here had no letter beside it while the words were still apart — which is what
+        /// "1 d 1 0 t" looks like. Once the spaces are gone it does have letters beside it, so it is read as one. The
+        /// cost of being wrong is small because this form is only consulted for writing that was broken up on purpose.
+        /// </remarks>
+        static string Squeeze(string plain)
+        {
+            StringBuilder squeezed = new(plain.Length);
+
+            foreach (char character in plain)
+            {
+                if (character == ' ') continue;
+                squeezed.Append(Confusables.StandInLetter(character));
+            }
+
+            return squeezed.ToString();
+        }
+
+        /// <summary>
+        /// True when the line contains a run of single letters standing on their own, which is what a word looks
+        /// like after somebody has spaced or full-stopped it apart.
+        /// </summary>
+        /// <param name="plain"> The normalised line, words separated by single spaces. </param>
+        /// <returns> True when the writing was taken apart. </returns>
+        static bool HasRunOfSingleLetters(string plain)
+        {
+            int lonely = 0;
+            int start = 0;
+
+            while (start <= plain.Length)
+            {
+                int end = plain.IndexOf(' ', start);
+                if (end < 0) end = plain.Length;
+
+                lonely = end - start == 1 ? lonely + 1 : 0;
+                if (lonely >= ShortestSplitRun) return true;
+
+                start = end + 1;
+            }
+
+            return false;
         }
 
         /// <summary>
