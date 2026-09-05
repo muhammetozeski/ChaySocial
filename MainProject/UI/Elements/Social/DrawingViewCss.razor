@@ -3,11 +3,14 @@
     drawn in, which the viewBox does on its own — there is nothing here that has to know the board's size.
 *@
 <style>
+    /* The ground is the page's deepest tone rather than a glass tint, because a sent message's bubble is painted
+       in the theme's own primary and a translucent ground would let that colour through — leaving a drawing in
+       primary ink almost invisible on it. */
     .drawing-view {
         display: block;
         width: @(AppMeasures.Percent.Full)%;
         height: auto;
         border-radius: @(AppMeasures.Radius.Large)px;
-        background: @(AppColors.SurfaceStrong.ToRgbaHex(true));
+        background: @(AppColors.BackgroundDeep.ToRgbaHex(true));
     }
 </style>
