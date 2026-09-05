@@ -72,8 +72,11 @@
 <PostComposerCss />
 
 @code {
-    /// <summary> Invitation shown in the empty textarea; it keeps the app's tea-house voice. </summary>
-    const string ComposerPlaceholder = "What is steeping today?";
+    /// <summary> Invitation shown in the empty textarea. A caller can change it, so a group's composer can ask about that room rather than about the wall. </summary>
+    [Parameter] public string ComposerPlaceholder { get; set; } = DefaultPlaceholder;
+
+    /// <summary> The invitation used when a caller supplies none; it keeps the app's tea-house voice. </summary>
+    const string DefaultPlaceholder = "What is steeping today?";
 
     /// <summary> Marks the publish button. </summary>
     const string ShareEmoji = "✨";

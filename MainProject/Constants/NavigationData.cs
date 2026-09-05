@@ -8,6 +8,7 @@ static class NavigationData
 {
     static ITuple Pages => (
         Wall: "🏠",
+        Groups: "🫂",
         Search: "🔍",
         Messages: "💬",
         Alerts: "🔔",

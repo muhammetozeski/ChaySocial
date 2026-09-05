@@ -1,0 +1,188 @@
+@attribute [Route(GroupsRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    Every group the reader belongs to, and every other one they could join. Founding happens here too, in a sheet
+    rather than on its own screen, because a group is a few lines of text and a screen change for that reads as
+    more ceremony than the thing deserves.
+*@
+
+<PageTitle>@PageHeadline</PageTitle>
+
+<div class="groups-page">
+
+    <header class="groups-header">
+        <div class="groups-header-text">
+            <h1 class="groups-title">@PageHeadline</h1>
+            <p class="groups-subtitle">@PageSubtitle</p>
+        </div>
+
+        <span class="groups-header-emoji" role="img" aria-label="@PageHeadline">@PageEmoji</span>
+    </header>
+
+    @if (WritingLocked.IsLocked)
+    {
+        <WritingLocked />
+    }
+    else
+    {
+        <CoreButton OnClick="OpenFounding"
+                    Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                    TextColor="@AppColors.TextOnAccent"
+                    BorderRadius="@PillRadiusCss"
+                    Padding="@ActionPaddingCss"
+                    FontSize="@AppMeasures.Font.Normal"
+                    Shadow="@AppStyles.ShadowPrimaryGlow"
+                    CustomClass="groups-found-button">
+            <span class="groups-found-emoji">@FoundEmoji</span>
+            <span>@FoundLabel</span>
+        </CoreButton>
+    }
+
+    @if (LoadFailureMessage is not null)
+    {
+        <EmptyState Emoji="@LoadFailedEmoji" Headline="@LoadFailedHeadline" Description="@LoadFailureMessage">
+            <Action>
+                <CoreButton OnClick="ReloadAsync"
+                            Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                            TextColor="@AppColors.TextOnAccent"
+                            BorderRadius="@PillRadiusCss"
+                            Padding="@ActionPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow">
+                    @TryAgainLabel
+                </CoreButton>
+            </Action>
+        </EmptyState>
+    }
+    else if (IsFirstLoad)
+    {
+        <div class="groups-status">
+            <CoreSpinner />
+            <p class="groups-status-text">@LoadingLabel</p>
+        </div>
+    }
+    else
+    {
+        @if (mine.Count > 0)
+        {
+            <section class="groups-section">
+                <h2 class="groups-section-title">@MineSectionTitle</h2>
+
+                <ul class="groups-list">
+                    @foreach (GroupData group in mine)
+                    {
+                        <GroupRow @key="group.Address"
+                                  Group="@group"
+                                  IsMember="true"
+                                  MemberCount="@MemberCountOf(group)"
+                                  OnOpen="() => OpenGroup(group.Address)" />
+                    }
+                </ul>
+            </section>
+        }
+
+        <section class="groups-section">
+            <h2 class="groups-section-title">@DiscoverSectionTitle</h2>
+
+            @if (others.Count == 0)
+            {
+                <EmptyState Emoji="@EmptyEmoji" Headline="@EmptyHeadline" Description="@EmptyDescription" />
+            }
+            else
+            {
+                <ul class="groups-list">
+                    @foreach (GroupData group in others)
+                    {
+                        <GroupRow @key="group.Address"
+                                  Group="@group"
+                                  IsMember="false"
+                                  MemberCount="@MemberCountOf(group)"
+                                  IsJoining="@(joiningAddress == group.Address)"
+                                  OnOpen="() => OpenGroup(group.Address)"
+                                  OnJoin="() => JoinAsync(group)" />
+                    }
+                </ul>
+            }
+        </section>
+    }
+
+</div>
+
+<CoreModal IsVisible="@isFoundingOpen" IsAcrylic="true" OnBackdropClick="CloseFounding">
+    <div class="groups-found-sheet">
+        <span class="groups-found-sheet-emoji">@FoundEmoji</span>
+        <h2 class="groups-found-sheet-title">@FoundSheetTitle</h2>
+        <p class="groups-found-sheet-subtitle">@FoundSheetSubtitle</p>
+
+        <input class="groups-field"
+               type="text"
+               placeholder="@NamePlaceholder"
+               maxlength="@GroupData.MaximumNameLength"
+               value="@draftName"
+               disabled="@isFounding"
+               @oninput="HandleNameInput" />
+
+        <input class="groups-field"
+               type="text"
+               placeholder="@DescriptionPlaceholder"
+               maxlength="@GroupData.MaximumDescriptionLength"
+               value="@draftDescription"
+               disabled="@isFounding"
+               @oninput="HandleDescriptionInput" />
+
+        <div class="groups-avatar-row">
+            @foreach (string choice in AvatarChoices)
+            {
+                @* Declared inside the loop body, so each button carries its own emoji rather than the last one. *@
+                string emoji = choice;
+
+                <button type="button"
+                        class="groups-avatar @(draftAvatar == emoji ? SelectedAvatarClass : string.Empty)"
+                        disabled="@isFounding"
+                        @onclick="() => draftAvatar = emoji">@emoji</button>
+            }
+        </div>
+
+        @if (foundErrorMessage is not null)
+        {
+            <p class="groups-found-error">@foundErrorMessage</p>
+        }
+
+        <div class="groups-found-actions">
+            <CoreButton OnClick="CloseFounding"
+                        Disabled="@isFounding"
+                        Background="@AppColors.SurfaceSubtle"
+                        TextColor="@AppColors.TextSecondary"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Border="@QuietButtonBorder">
+                @CancelLabel
+            </CoreButton>
+
+            <CoreButton OnClick="FoundAsync"
+                        Disabled="@(!CanFound)"
+                        Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                        TextColor="@AppColors.TextOnAccent"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@ActionPaddingCss"
+                        FontSize="@AppMeasures.Font.Normal"
+                        Shadow="@AppStyles.ShadowPrimaryGlow">
+                @if (isFounding)
+                {
+                    <CoreSpinner SizePx="@BusySpinnerDiameterPx" BorderWidthPx="@BusySpinnerBorderPx" Color="@AppColors.TextOnAccent" />
+                }
+                else
+                {
+                    <span>@FoundConfirmLabel</span>
+                }
+            </CoreButton>
+        </div>
+    </div>
+</CoreModal>
+
+<GroupsCss />

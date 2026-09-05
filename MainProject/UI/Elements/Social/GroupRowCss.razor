@@ -1,0 +1,137 @@
+@*
+    Styling for GroupRow. GroupRow renders this component itself, so a row always arrives with its own CSS
+    attached. Every selector is namespaced "group-row-*" because *Css.razor styles are global.
+*@
+<style>
+    .group-row-item {
+        display: block;
+    }
+
+    .group-row {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        transition: transform @(AppMeasures.Duration.Fast)s ease-out, box-shadow @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+    .group-row:hover {
+        transform: translateY(-@(HoverLiftPx)px);
+        box-shadow: @(AppStyles.ShadowMedium);
+    }
+
+    /* The row itself is the tap target that opens the group, so it is a real button stripped back to plain text
+       styling. The join control sits outside it, or tapping join would also navigate. */
+    .group-row-open {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        flex: 1;
+        min-width: 0;
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .group-row-avatar {
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: @(AvatarDiameterPx)px;
+        height: @(AvatarDiameterPx)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        font-size: @(AppMeasures.Font.Large)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderTop.ToRgbaHex(true));
+    }
+
+    /* min-width:0 lets a long description shrink instead of pushing the join button off the row. */
+    .group-row-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px2)px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .group-row-name {
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+    /* Clipped to one line: a listing is for choosing between rooms, not for reading them. */
+    .group-row-description {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .group-row-members {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-variant-numeric: tabular-nums;
+    }
+
+    .group-row-join {
+        flex: none;
+    }
+
+    /* A settled state rather than a control: the reader is already in, and there is nothing here to press. */
+    .group-row-badge {
+        flex: none;
+        padding: @(AppMeasures.Space.Px4)px @(AppMeasures.Space.Px12)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.Primary.ToRgbaHex(true));
+        background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+    }
+
+    .group-row-badge--closed {
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        border-color: @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: none;
+    }
+
+    /* Phone width: the join control drops under the text rather than squeezing the name into a column. */
+    @@media (max-width: @(NarrowScreenBreakpointPx)px) {
+        .group-row {
+            flex-wrap: wrap;
+        }
+
+        .group-row-join,
+        .group-row-badge {
+            width: @(AppMeasures.Percent.Full)%;
+            text-align: center;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Side of the round emoji chip standing in for the group's picture. </summary>
+    const int AvatarDiameterPx = AppMeasures.Size.Px48;
+
+    /// <summary> How far a row lifts under the pointer — a nudge, not a jump. </summary>
+    const int HoverLiftPx = AppMeasures.Space.Px2;
+
+    /// <summary> Widest viewport still treated as a phone, below which the row wraps. </summary>
+    const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
+}

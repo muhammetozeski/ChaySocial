@@ -1,0 +1,114 @@
+@using ChaySocial.MainProject.DataModels
+
+@*
+    One group in a listing: its emoji, its name, what it is for, and how many people are in it. The whole row is a
+    button that opens the group, with the join control sitting beside it as its own button so tapping "join" never
+    also navigates.
+*@
+
+<li class="group-row-item">
+    <div class="group-row" style="@SurfaceStyle">
+        <button type="button" class="group-row-open" title="@OpenHint" @onclick="OnOpen">
+            <span class="group-row-avatar">@Group.Avatar</span>
+
+            <span class="group-row-text">
+                <span class="group-row-name">@Group.Name</span>
+
+                @if (Group.Description.Length > 0)
+                {
+                    <span class="group-row-description">@Group.Description</span>
+                }
+
+                <span class="group-row-members">@MemberLabel</span>
+            </span>
+        </button>
+
+        @if (IsMember)
+        {
+            <span class="group-row-badge">@MemberBadgeLabel</span>
+        }
+        else if (Group.IsOpen && OnJoin.HasDelegate)
+        {
+            <CoreButton OnClick="OnJoin"
+                        Disabled="@IsJoining"
+                        Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                        TextColor="@AppColors.TextOnAccent"
+                        BorderRadius="@PillRadiusCss"
+                        Padding="@JoinPaddingCss"
+                        FontSize="@AppMeasures.Font.Small"
+                        Shadow="@AppStyles.ShadowPrimaryGlow"
+                        CustomClass="group-row-join">
+                @if (IsJoining)
+                {
+                    <CoreSpinner SizePx="@JoinSpinnerDiameterPx" BorderWidthPx="@JoinSpinnerBorderPx" Color="@AppColors.TextOnAccent" />
+                }
+                else
+                {
+                    <span>@JoinLabel</span>
+                }
+            </CoreButton>
+        }
+        else
+        {
+            <span class="group-row-badge group-row-badge--closed">@ClosedBadgeLabel</span>
+        }
+    </div>
+</li>
+
+<GroupRowCss />
+
+@code {
+    /// <summary> The group being drawn. </summary>
+    [Parameter, EditorRequired] public GroupData Group { get; set; } = default!;
+
+    /// <summary> True when the reader is already in it, which swaps the join button for a quiet badge. </summary>
+    [Parameter] public bool IsMember { get; set; }
+
+    /// <summary> How many people are in it. </summary>
+    [Parameter] public int MemberCount { get; set; }
+
+    /// <summary> True while this particular group is being joined, which turns its button into a throbber. </summary>
+    [Parameter] public bool IsJoining { get; set; }
+
+    /// <summary> Raised when the reader opens the group. </summary>
+    [Parameter] public EventCallback OnOpen { get; set; }
+
+    /// <summary> Raised when the reader joins it. The control only appears when a caller wires this up. </summary>
+    [Parameter] public EventCallback OnJoin { get; set; }
+
+    /// <summary> Tooltip on the row itself. </summary>
+    const string OpenHint = "Open this group";
+
+    /// <summary> Label on the join button. </summary>
+    const string JoinLabel = "Join";
+
+    /// <summary> Badge shown in place of that button once the reader is a member. </summary>
+    const string MemberBadgeLabel = "Joined";
+
+    /// <summary> Badge shown for a group nobody may let themselves into. </summary>
+    const string ClosedBadgeLabel = "By invitation";
+
+    /// <summary> Member count for a group of exactly one, where the plural would read wrong. </summary>
+    const string SingleMemberLabel = "1 member";
+
+    /// <summary> Member count for any other number; the placeholder takes the count. </summary>
+    const string ManyMembersFormat = "{0} members";
+
+    /// <summary> Fully rounded corners on the join button, as a CSS length. </summary>
+    static readonly string PillRadiusCss = $"{AppMeasures.Radius.Pill}px";
+
+    /// <summary> Inside spacing of that button. </summary>
+    static readonly string JoinPaddingCss = $"{AppMeasures.Space.Px6}px {AppMeasures.Space.Px16}px";
+
+    /// <summary> Diameter of the throbber inside it while a join runs. </summary>
+    const int JoinSpinnerDiameterPx = AppMeasures.Size.Px16;
+
+    /// <summary> Ring thickness of that throbber. </summary>
+    const int JoinSpinnerBorderPx = AppMeasures.Border.Thin;
+
+    /// <summary> The frosted ground the row sits on. </summary>
+    string SurfaceStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle);
+
+    /// <summary> The member count as it is read. </summary>
+    string MemberLabel => MemberCount == 1 ? SingleMemberLabel : string.Format(ManyMembersFormat, MemberCount);
+}

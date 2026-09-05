@@ -1,0 +1,199 @@
+@attribute [Route(GroupRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    One group: who it is, who is in it, what has been said inside it, and — for a member — the composer that says
+    the next thing. Somebody who is not a member sees the room but not its words, because a group that anybody can
+    read is a wall with extra steps.
+*@
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<div class="group-screen">
+
+    <header class="group-header" style="@HeaderSurfaceStyle">
+        <BackButton OnClick="GoBackToGroups" />
+
+        <div class="group-heading">
+            <span class="group-heading-name">@HeadingName</span>
+            <span class="group-heading-members">@MemberLabel</span>
+        </div>
+
+        @if (IsRefreshing)
+        {
+            <CoreSpinner SizePx="@RefreshSpinnerDiameterPx"
+                         BorderWidthPx="@RefreshSpinnerBorderPx"
+                         Color="@AppColors.Primary" />
+        }
+    </header>
+
+    @if (IsFirstLoad)
+    {
+        <div class="group-first-load">
+            <CoreSpinner />
+        </div>
+    }
+    else if (LoadFailureMessage is not null)
+    {
+        <EmptyState Emoji="@LoadFailedEmoji" Headline="@LoadFailedHeadline" Description="@LoadFailureMessage">
+            <Action>
+                <CoreButton OnClick="ReloadAsync"
+                            Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                            TextColor="@AppColors.TextOnAccent"
+                            BorderRadius="@PillRadiusCss"
+                            Padding="@ActionPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow">
+                    @TryAgainLabel
+                </CoreButton>
+            </Action>
+        </EmptyState>
+    }
+    else if (group is null)
+    {
+        <EmptyState Emoji="@MissingEmoji" Headline="@MissingHeadline" Description="@MissingDescription">
+            <Action>
+                <CoreButton OnClick="GoBackToGroups"
+                            Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                            TextColor="@AppColors.TextOnAccent"
+                            BorderRadius="@PillRadiusCss"
+                            Padding="@ActionPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow">
+                    @BackToGroupsLabel
+                </CoreButton>
+            </Action>
+        </EmptyState>
+    }
+    else
+    {
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="@AppMeasures.Blur.Normal"
+                  BorderRadius="@CardRadiusCss"
+                  Padding="@CardPaddingCss"
+                  CustomClass="group-card">
+
+            <div class="group-identity">
+                <span class="group-avatar">@group.Avatar</span>
+
+                <div class="group-identity-text">
+                    <span class="group-name">@group.Name</span>
+                    <AddressChip Address="@group.Address" />
+                </div>
+            </div>
+
+            @if (group.Description.Length > 0)
+            {
+                <p class="group-description">@group.Description</p>
+            }
+
+            @if (!IsFounderVerified)
+            {
+                <div class="group-badge-row">
+                    <CoreChip Icon="@UnverifiedEmoji"
+                              Text="@UnverifiedLabel"
+                              Background="@AppColors.SurfaceTintAccent"
+                              TextColor="@AppColors.TextWarning"
+                              FontSize="@AppMeasures.Font.XSmall"
+                              PaddingX="@AppMeasures.Space.Px10"
+                              PaddingY="@AppMeasures.Space.Px4"
+                              BorderRadius="@PillRadiusCss"
+                              Border="@UnverifiedChipBorder" />
+                </div>
+            }
+
+            <div class="group-actions">
+                @if (IsMember)
+                {
+                    @if (IsFounder)
+                    {
+                        <span class="group-role">@FounderRoleLabel</span>
+                    }
+                    else
+                    {
+                        <CoreButton OnClick="LeaveAsync"
+                                    Disabled="@isChangingMembership"
+                                    Background="@AppColors.SurfaceSubtle"
+                                    TextColor="@AppColors.TextSecondary"
+                                    BorderRadius="@PillRadiusCss"
+                                    Padding="@ActionPaddingCss"
+                                    FontSize="@AppMeasures.Font.Small"
+                                    Border="@QuietButtonBorder">
+                            @LeaveLabel
+                        </CoreButton>
+                    }
+                }
+                else if (group.IsOpen)
+                {
+                    <CoreButton OnClick="JoinAsync"
+                                Disabled="@isChangingMembership"
+                                Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                                TextColor="@AppColors.TextOnAccent"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Shadow="@AppStyles.ShadowPrimaryGlow">
+                        @JoinLabel
+                    </CoreButton>
+                }
+                else
+                {
+                    <span class="group-role">@ClosedLabel</span>
+                }
+            </div>
+
+        </CoreCard>
+
+        @if (!IsMember)
+        {
+            <EmptyState Emoji="@OutsideEmoji" Headline="@OutsideHeadline" Description="@OutsideDescription" />
+        }
+        else
+        {
+            @if (WritingLocked.IsLocked)
+            {
+                <WritingLocked />
+            }
+            else
+            {
+                <PostComposer Text="@draftText"
+                              TextChanged="HandleDraftChanged"
+                              Attachments="@draftAttachments"
+                              AttachmentsChanged="HandleDraftAttachmentsChanged"
+                              OnSubmit="PublishAsync"
+                              IsBusy="@isPublishing"
+                              Avatar="@ComposerAvatar"
+                              ComposerPlaceholder="@GroupComposerPlaceholder" />
+            }
+
+            @if (posts.Count == 0)
+            {
+                <EmptyState Emoji="@QuietEmoji" Headline="@QuietHeadline" Description="@QuietDescription" />
+            }
+            else
+            {
+                <div class="group-feed">
+                    @foreach (PostData post in posts)
+                    {
+                        <PostCard @key="post.PostId"
+                                  Post="post"
+                                  AuthorProfile="@AuthorProfileFor(post)"
+                                  IsLiked="@EngagementFor(post).IsLikedByViewer"
+                                  LikeCount="@EngagementFor(post).LikeCount"
+                                  CommentCount="@EngagementFor(post).CommentCount"
+                                  OnLike="() => ToggleLikeAsync(post)"
+                                  OnDelete="() => DeletePostAsync(post)"
+                                  OnOpenAuthor="() => OpenAuthor(post.AuthorAddress)"
+                                  OnOpenComments="() => OpenComments(post.PostId)" />
+                    }
+                </div>
+            }
+        }
+    }
+
+</div>
+
+<GroupCss />

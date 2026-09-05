@@ -1,0 +1,267 @@
+@namespace ChaySocial.MainProject.UI.Pages
+
+@*
+    Styling for Groups. Groups renders this component itself, so the page always arrives with its own CSS
+    attached. Every selector is namespaced "groups-*" because *Css.razor styles are global.
+*@
+<style>
+    .groups-page {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReadingColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(ListBottomInsetPx)px;
+        animation: groups-arrive @(AppMeasures.Duration.Slow)s @SoftLandingEasing both;
+    }
+
+    .groups-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: @(AppMeasures.Space.Px16)px;
+    }
+
+    /* min-width:0 lets a long heading shrink instead of pushing the emoji off the row. */
+    .groups-header-text {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px4)px;
+        min-width: 0;
+    }
+
+    /* The two brand colours run through the heading, the way every other page in the app opens. */
+    .groups-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Hero)px;
+        font-weight: @(AppMeasures.Weight.Black);
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Tight);
+        background: linear-gradient(@(BrandGradientAngleDegrees)deg, @(AppColors.PrimaryLight.ToRgbaHex(true)), @(AppColors.Secondary.ToRgbaHex(true)));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .groups-subtitle {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .groups-header-emoji {
+        flex-shrink: 0;
+        font-size: @(AppMeasures.Font.Headline)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        filter: drop-shadow(@AppStyles.ShadowPrimaryGlow);
+    }
+
+    .groups-found-button {
+        align-self: flex-start;
+    }
+
+    .groups-found-emoji {
+        margin-right: @(AppMeasures.Space.Px6)px;
+    }
+
+    .groups-section {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px10)px;
+    }
+
+    .groups-section-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .groups-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px10)px;
+    }
+
+    .groups-status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px40)px @(AppMeasures.Space.Px24)px;
+        text-align: center;
+    }
+
+    .groups-status-text {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    /* ------------------------------------------------------------ the founding sheet */
+
+    .groups-found-sheet {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(SheetMaximumWidthPx)px;
+        text-align: left;
+    }
+
+    .groups-found-sheet-emoji {
+        align-self: center;
+        font-size: @(AppMeasures.Font.Giant)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .groups-found-sheet-title {
+        margin: 0;
+        text-align: center;
+        font-size: @(AppMeasures.Font.Large)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .groups-found-sheet-subtitle {
+        margin: 0;
+        text-align: center;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .groups-field {
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px14)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Large)px;
+        font: inherit;
+        font-size: @(AppMeasures.Font.Normal)px;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        outline: none;
+    }
+
+        .groups-field:focus {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+        }
+
+    /* The emoji is offered rather than typed, so choosing one is a tap instead of a keyboard hunt. */
+    .groups-avatar-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    .groups-avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: @(AvatarChoiceDiameterPx)px;
+        height: @(AvatarChoiceDiameterPx)px;
+        padding: 0;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Medium)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        cursor: pointer;
+        transition: border-color @(AppMeasures.Duration.Fast)s, transform @(AppMeasures.Duration.Fast)s;
+    }
+
+        .groups-avatar.is-chosen {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+            transform: scale(@ChosenAvatarScale);
+        }
+
+        .groups-avatar:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: default;
+        }
+
+    .groups-found-error {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextDanger.ToRgbaHex(true));
+    }
+
+    .groups-found-actions {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: @(AppMeasures.Space.Px10)px;
+    }
+
+    @@keyframes groups-arrive {
+        from {
+            opacity: 0;
+            transform: translateY(@(PageArrivalRisePx)px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Phone width: the page keeps everything, it only gives back the padding it can spare. */
+    @@media (max-width: @(NarrowScreenBreakpointPx)px) {
+        .groups-page {
+            padding-left: @(AppMeasures.Space.Px14)px;
+            padding-right: @(AppMeasures.Space.Px14)px;
+        }
+
+        .groups-title {
+            font-size: @(AppMeasures.Font.Title)px;
+        }
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .groups-page {
+            animation: none;
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Widest the column of groups grows; past this a row gets tiring to track across. </summary>
+    const int ReadingColumnMaximumWidthPx = 640;
+
+    /// <summary> Space kept under the last row: the floating navigation's own height plus a gap. </summary>
+    const int ListBottomInsetPx = AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px40;
+
+    /// <summary> Widest the founding sheet grows on a large screen. </summary>
+    const int SheetMaximumWidthPx = 420;
+
+    /// <summary> Side of one offered emoji in the founding sheet. </summary>
+    const int AvatarChoiceDiameterPx = AppMeasures.Size.Px40;
+
+    /// <summary> How far the chosen emoji swells. A string so the decimal survives any OS culture. </summary>
+    const string ChosenAvatarScale = "1.1";
+
+    /// <summary> Angle of the two-colour sheen through the heading, matching every other gradient surface. </summary>
+    const int BrandGradientAngleDegrees = 135;
+
+    /// <summary> How far the page slides up as it fades in. </summary>
+    const int PageArrivalRisePx = AppMeasures.Space.Px12;
+
+    /// <summary> Easing that starts fast and settles softly. </summary>
+    const string SoftLandingEasing = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+    /// <summary> Widest viewport still treated as a phone, below which the page tightens its spacing. </summary>
+    const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
+}
