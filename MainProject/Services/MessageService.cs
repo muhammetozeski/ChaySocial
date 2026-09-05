@@ -124,8 +124,13 @@ namespace ChaySocial.MainProject.Services
             byte[] nonce = RandomSource.Next(AppCryptography.Cipher.NonceSize);
             byte[] associatedData = BuildAssociatedData(conversationId, senderAddress, recipientAddress, createdAt);
 
+            // Padded before it is sealed, so what lands on disk is one of a handful of sizes. A sealed body is
+            // otherwise exactly as long as its contents, which makes length the one thing a stored letter tells
+            // perfectly to whoever holds the collection.
+            byte[] paddedBody = EnvelopePadding.Pad(Encoding.UTF8.GetBytes(trimmed));
+
             byte[] ciphertext = AppCryptography.Cipher.Encrypt(
-                Encoding.UTF8.GetBytes(trimmed),
+                paddedBody,
                 secret.SharedSecret,
                 nonce,
                 associatedData);
@@ -146,8 +151,9 @@ namespace ChaySocial.MainProject.Services
 
                 senderEncapsulation = Convert.ToBase64String(ownSecret.Encapsulation);
                 senderNonce = Convert.ToBase64String(ownNonce);
+                // Padded too, or the sender's copy would give away the length the recipient's copy just hid.
                 senderCiphertext = Convert.ToBase64String(AppCryptography.Cipher.Encrypt(
-                    Encoding.UTF8.GetBytes(trimmed),
+                    paddedBody,
                     ownSecret.SharedSecret,
                     ownNonce,
                     associatedData));
@@ -259,7 +265,9 @@ namespace ChaySocial.MainProject.Services
 
             if (!AppCryptography.Cipher.TryDecrypt(ciphertext, sharedSecret, nonce, associatedData, out byte[] plaintext)) return false;
 
-            text = Encoding.UTF8.GetString(plaintext);
+            // Letters written before envelopes were padded are still out there, so an unpadded body is read the way
+            // it always was rather than refused.
+            text = EnvelopePadding.TryUnpad(plaintext, out string unpadded) ? unpadded : Encoding.UTF8.GetString(plaintext);
             return true;
         }
 
@@ -316,9 +324,11 @@ namespace ChaySocial.MainProject.Services
                 message.RecipientAddress,
                 message.CreatedAtUnixMs);
 
-            return AppCryptography.Cipher.TryDecrypt(ciphertext, reader.Decapsulate(encapsulation), nonce, associatedData, out byte[] plaintext)
-                ? new RevealedMessage(Encoding.UTF8.GetString(plaintext), revealedMedia)
-                : null;
+            if (!AppCryptography.Cipher.TryDecrypt(ciphertext, reader.Decapsulate(encapsulation), nonce, associatedData, out byte[] plaintext)) return null;
+
+            return new RevealedMessage(
+                EnvelopePadding.TryUnpad(plaintext, out string unpadded) ? unpadded : Encoding.UTF8.GetString(plaintext),
+                revealedMedia);
         }
 
         /// <summary>
