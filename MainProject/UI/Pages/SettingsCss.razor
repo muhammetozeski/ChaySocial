@@ -8,6 +8,7 @@
 *@
 <style>
     .settings-page {
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
         gap: @(AppMeasures.Space.Px16)px;
@@ -91,6 +92,7 @@
     /* A whole row is the switch, so the label and its explanation are part of the tap target rather than
        decoration beside a small control. */
     .settings-switch {
+        box-sizing: border-box;
         display: flex;
         align-items: center;
         gap: @(AppMeasures.Space.Px12)px;
@@ -701,6 +703,7 @@
     /* Phone width: the screen keeps every control, it only gives back the padding and type size it can spare. */
     @@media (max-width: @(NarrowScreenBreakpointPx)px) {
         .settings-page {
+        box-sizing: border-box;
             padding-left: @(AppMeasures.Space.Px14)px;
             padding-right: @(AppMeasures.Space.Px14)px;
         }

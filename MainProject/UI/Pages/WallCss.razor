@@ -3,7 +3,10 @@
    (this project uses no CSS isolation), so bare names would leak into every other component. Wall renders
    this component itself, so the page always arrives with its styling attached. *@
 <style>
+    /* border-box, or the side padding is added to a full-width page and every card hangs off the right edge —
+       hidden rather than scrollable, because the shell clips horizontal overflow. */
     .wall-page {
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
         gap: @(AppMeasures.Space.Px16)px;
@@ -159,6 +162,7 @@
 
     /* The reported post's opening lines, so the reader can see they are reporting the post they meant to. */
     .wall-report-quote {
+        box-sizing: border-box;
         display: -webkit-box;
         -webkit-line-clamp: @(ReportQuoteVisibleLineCount);
         -webkit-box-orient: vertical;
