@@ -60,6 +60,12 @@
     /// <summary> Address of the account this button follows or unfollows. Named in the button's tooltip and spoken name so a row of these is never ambiguous. </summary>
     [Parameter] public string TargetAddress { get; set; } = string.Empty;
 
+    /// <summary>
+    /// What to call the thing being followed, when it is not an account with an address. A subject page passes its
+    /// own name here; leave it empty and the button names the account instead.
+    /// </summary>
+    [Parameter] public string TargetLabel { get; set; } = string.Empty;
+
     /// <summary> True when the reader already follows <see cref="TargetAddress"/>. </summary>
     [Parameter] public bool IsFollowing { get; set; }
 
@@ -96,9 +102,12 @@
         get
         {
             string action = IsFollowing ? UnfollowActionText : FollowActionText;
-            string account = AddressChip.Shorten(TargetAddress);
 
-            return account.Length == 0 ? action : $"{action} {account}";
+            // A subject names itself; an account is named by its shortened address, because a screen reader should
+            // not have to spell out forty characters of base32 to say whose button this is.
+            string named = TargetLabel.Length > 0 ? TargetLabel : AddressChip.Shorten(TargetAddress);
+
+            return named.Length == 0 ? action : $"{action} {named}";
         }
     }
 }

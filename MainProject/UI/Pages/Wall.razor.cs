@@ -126,6 +126,7 @@ namespace ChaySocial.MainProject.UI.Pages
         [
             MainEvents.Names.WallChanged,
             MainEvents.Names.FollowChanged,
+            MainEvents.Names.SubjectFollowChanged,
             MainEvents.Names.ModerationChanged,
             MainEvents.Names.SessionChanged
         ];

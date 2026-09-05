@@ -21,6 +21,12 @@
             <span class="subject-count">@CountLabel</span>
         </div>
 
+        @* Following a subject is the same act as following a person, so it is the same pill. *@
+        <FollowButton TargetLabel="@SubjectLabel"
+                      IsFollowing="@IsFollowingSubject"
+                      IsBusy="@IsFollowBusy"
+                      OnToggle="ToggleSubjectFollowAsync" />
+
         @if (IsRefreshing)
         {
             <CoreSpinner SizePx="@RefreshSpinnerDiameterPx"

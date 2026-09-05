@@ -109,6 +109,36 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Browser tab title. </summary>
         string PageTitleText => SubjectLabel;
 
+        /// <summary> True when the reader already follows this subject. </summary>
+        bool IsFollowingSubject;
+
+        /// <summary> True while the follow is being written, so a second press cannot land mid-write. </summary>
+        bool IsFollowBusy;
+
+        /// <summary>
+        /// Starts or stops following this subject. The row is written first and the pill flipped after, so the pill
+        /// never claims something the store has not accepted.
+        /// </summary>
+        /// <returns> A task that completes once the interest has been written or withdrawn. </returns>
+        async Task ToggleSubjectFollowAsync()
+        {
+            if (IsFollowBusy || !SessionService.IsSignedIn) return;
+
+            IsFollowBusy = true;
+
+            try
+            {
+                if (IsFollowingSubject) await SubjectFollowService.UnfollowAsync(Account, WantedSubject);
+                else await SubjectFollowService.FollowAsync(Account, WantedSubject);
+
+                IsFollowingSubject = !IsFollowingSubject;
+            }
+            finally
+            {
+                IsFollowBusy = false;
+            }
+        }
+
         /// <summary> Header line under the subject: how much is written under it. </summary>
         string CountLabel => posts.Count switch
         {
@@ -140,6 +170,8 @@ namespace ChaySocial.MainProject.UI.Pages
         protected override async Task LoadAsync()
         {
             loadedSubject = WantedSubject;
+
+            IsFollowingSubject = await SubjectFollowService.IsFollowingAsync(SessionService.CurrentAddress, WantedSubject);
 
             IReadOnlyList<PostData> found = await WallService.ReadSubjectAsync(WantedSubject);
 
