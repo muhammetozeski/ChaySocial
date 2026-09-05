@@ -87,6 +87,16 @@
                 </button>
             }
 
+            @if (CanBeTipped)
+            {
+                <button type="button"
+                        class="post-card-action post-card-action--tip"
+                        title="@TipHint"
+                        @onclick="() => isTipOpen = true">
+                    <span class="post-card-action-icon">@TipEmoji</span>
+                </button>
+            }
+
             @if (OnQuote.HasDelegate)
             {
                 <button type="button" class="post-card-action" title="@QuoteHint" @onclick="HandleQuote">
@@ -115,6 +125,36 @@
         </div>
 
     </CoreCard>
+
+    @* Nothing here moves money: the address is shown so the reader can pay it from their own wallet, which is
+       also the only shape that keeps the server out of it entirely. *@
+    <CoreModal IsVisible="@isTipOpen" IsAcrylic="true" OnBackdropClick="() => isTipOpen = false">
+        <div class="post-card-tip">
+            <span class="post-card-tip-emoji">@TipEmoji</span>
+            <h2 class="post-card-tip-title">@TipSheetTitle @DisplayName</h2>
+            <p class="post-card-tip-text">@TipSheetDescription</p>
+
+            <span class="post-card-tip-chain">@AuthorProfile?.TipCurrency</span>
+
+            @* A read-only field rather than a copy button: selecting text needs no script, and this app writes none. *@
+            <input class="post-card-tip-address"
+                   type="text"
+                   readonly
+                   value="@AuthorProfile?.TipAddress"
+                   aria-label="@TipAddressLabel" />
+
+            <p class="post-card-tip-note">@TipSheetNote</p>
+
+            <CoreButton OnClick="() => isTipOpen = false"
+                        Background="@AppColors.SurfaceSubtle"
+                        TextColor="@AppColors.TextSecondary"
+                        BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                        Padding="@TipCloseButtonPadding"
+                        FontSize="@AppMeasures.Font.Normal">
+                @TipCloseLabel
+            </CoreButton>
+        </div>
+    </CoreModal>
 }
 
 <PostCardCss />
@@ -152,6 +192,41 @@
 
     /// <summary> Class appended to the repost action while the reader has carried this post; it carries the lit colours. </summary>
     const string RepostedModifierClass = "is-reposted";
+
+    /// <summary> Marks the action that offers to send the author a little money. </summary>
+    const string TipEmoji = "🫖";
+
+    /// <summary> Tooltip on that action, in the app's own words for it. </summary>
+    const string TipHint = "Buy them a chay";
+
+    /// <summary> Leads the author's name in the sheet's heading. </summary>
+    const string TipSheetTitle = "Buy a chay for";
+
+    /// <summary> Line under that heading, saying plainly who is and is not involved. </summary>
+    const string TipSheetDescription =
+        "Send it from your own wallet. Nothing goes through us — we only carry the address, and its owner signed it.";
+
+    /// <summary> Line under the address, on what the app can and cannot promise about it. </summary>
+    const string TipSheetNote = "The signature proves the account published this address. It cannot prove the address is a good one.";
+
+    /// <summary> Spoken label on the address field, for a screen reader. </summary>
+    const string TipAddressLabel = "Payment address";
+
+    /// <summary> Label on the button that closes the sheet. </summary>
+    const string TipCloseLabel = "Done";
+
+    /// <summary> Inside spacing of that button. </summary>
+    static readonly string TipCloseButtonPadding = $"{AppMeasures.Space.Px10}px {AppMeasures.Space.Px20}px";
+
+    /// <summary> True while the sheet showing the author's payment address is open. </summary>
+    bool isTipOpen;
+
+    /// <summary>
+    /// True when this author publishes somewhere to send money and the signature over it holds. A profile whose
+    /// signature fails is drawn with no way to pay at all, because the alternative is sending money to whoever
+    /// tampered with the record.
+    /// </summary>
+    bool CanBeTipped;
 
     /// <summary> Marks the action that quotes this post into a new one. </summary>
     const string QuoteEmoji = "❝";
@@ -270,7 +345,13 @@
     /// always belongs to the post currently on screen.
     /// </summary>
     protected override void OnParametersSet()
-        => IsSignatureTrusted = Post is not null && WallService.VerifyAuthorship(Post, AuthorProfile);
+    {
+        IsSignatureTrusted = Post is not null && WallService.VerifyAuthorship(Post, AuthorProfile);
+
+        // Checked here rather than at every repaint, and only against a profile the card was actually handed:
+        // a payment address is worth exactly as much as the signature over it.
+        CanBeTipped = !IsOwnPost && ProfileService.VerifyTipAddress(AuthorProfile);
+    }
 
     /// <summary> True when the signed-in account wrote this post, which swaps the report button for a delete button. </summary>
     bool IsOwnPost => Post is not null && SessionService.IsSignedIn && Post.AuthorAddress == SessionService.CurrentAddress;

@@ -262,6 +262,51 @@
         font-variant-numeric: tabular-nums;
     }
 
+    /* Explains a field that has consequences money-wise, so it gets a sentence rather than a label alone. */
+    .profile-field-hint {
+        margin: 0;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+    }
+
+    .profile-chain-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    /* Picking the chosen chain again clears it, which is how somebody takes the offer down without a second control. */
+    .profile-chain {
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px14)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        cursor: pointer;
+        transition: border-color @(AppMeasures.Duration.Fast)s, color @(AppMeasures.Duration.Fast)s, background @(AppMeasures.Duration.Fast)s;
+    }
+
+        .profile-chain.is-chosen {
+            border-color: @(AppColors.Gold.ToRgbaHex(true));
+            background: @(AppColors.SurfaceTintAccent.ToRgbaHex(true));
+            color: @(AppColors.Gold.ToRgbaHex(true));
+            font-weight: @(AppMeasures.Weight.Medium);
+        }
+
+        .profile-chain:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: default;
+        }
+
+    /* Fixed-width, because a mistaken character in a payment address costs money. */
+    .profile-input--address {
+        font-family: @MonospaceStack;
+        font-size: @(AppMeasures.Font.XSmall)px;
+    }
+
     .profile-avatar-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(@(AvatarChoiceDiameterPx)px, 1fr));
@@ -475,6 +520,9 @@
 </style>
 
 @code {
+    /// <summary> Fixed-width faces for a payment address, where a mistaken character costs money. </summary>
+    const string MonospaceStack = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+
     /// <summary> Height the first-load throbber is centred in, as a share of the viewport, so the spinner sits where the header will appear rather than at the very top. </summary>
     const int ScreenPlaceholderHeightVh = AppMeasures.Viewport.Most;
 

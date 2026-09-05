@@ -37,6 +37,92 @@ namespace ChaySocial.MainProject.Services
         }
 
         /// <summary>
+        /// Publishes where somebody can send this account a little money, signed so nobody can put their own
+        /// address there instead. Passing an empty address takes the offer down again.
+        /// </summary>
+        /// <param name="owner"> The unlocked account whose profile it is. </param>
+        /// <param name="currency"> Which chain the address belongs to. </param>
+        /// <param name="tipAddress"> The payment address; trimmed, and refused when it is too long to be one. </param>
+        /// <returns> The stored profile, or null when there was no profile to change or the address was unusable. </returns>
+        public static async Task<ProfileData?> SetTipAddressAsync(PrivateIdentity owner, string currency, string tipAddress)
+        {
+            ProfileData? profile = await ReadAsync(owner.Public.Address);
+            if (profile is null) return null;
+
+            string trimmedAddress = tipAddress.Trim();
+            string trimmedCurrency = currency.Trim();
+
+            if (trimmedAddress.Length > ProfileData.MaximumTipAddressLength) return null;
+
+            // Taking the offer down clears the signature with it, so nothing is left that could be replayed.
+            bool takingItDown = trimmedAddress.Length == 0 || trimmedCurrency.Length == 0;
+
+            ProfileData updated = takingItDown
+                ? profile with { TipCurrency = string.Empty, TipAddress = string.Empty, TipSignature = string.Empty }
+                : profile with
+                {
+                    TipCurrency = trimmedCurrency,
+                    TipAddress = trimmedAddress,
+                    TipSignature = Convert.ToBase64String(
+                        owner.Sign(BuildTipTranscript(owner.Public.Address, trimmedCurrency, trimmedAddress)))
+                };
+
+            await SaveAsync(updated);
+            return updated;
+        }
+
+        /// <summary>
+        /// Checks that a payment address really was published by the account whose profile it sits in. A profile
+        /// that fails this is drawn without any way to send money, because the alternative is sending it to
+        /// whoever tampered with the record.
+        /// </summary>
+        /// <param name="profile"> Profile to check, or null. </param>
+        /// <returns> True when the address is present and its signature holds. </returns>
+        public static bool VerifyTipAddress(ProfileData? profile)
+        {
+            if (profile is null || !profile.AcceptsTips || profile.TipSignature.Length == 0) return false;
+
+            try
+            {
+                byte[] signingKey = Convert.FromBase64String(profile.SigningPublicKey);
+                byte[] encryptionKey = Convert.FromBase64String(profile.EncryptionPublicKey);
+
+                // The address commits to the keys, so checking that first is what stops somebody publishing a
+                // profile full of their own keys under another account's name.
+                if (!Cryptography.AppCryptography.Addresses.Matches(profile.Address, signingKey, encryptionKey)) return false;
+
+                PublicIdentity owner = new(profile.Address, signingKey, encryptionKey);
+                byte[] transcript = BuildTipTranscript(profile.Address, profile.TipCurrency, profile.TipAddress);
+
+                return Cryptography.AppCryptography.Identities.Verify(
+                    transcript, Convert.FromBase64String(profile.TipSignature), owner);
+            }
+            catch (FormatException error)
+            {
+                Log($"Profile '{profile.Address}' carries a malformed payment address.\n{error}", LogLevel.Warning);
+                return false;
+            }
+        }
+
+        /// <summary> Separates this signature from every other one the app produces. </summary>
+        static readonly byte[] TipSignatureDomain = "ChaySocial/Tip/v1"u8.ToArray();
+
+        /// <summary> Builds the exact bytes an owner signs and a reader verifies. </summary>
+        /// <param name="accountAddress"> The account publishing the offer. </param>
+        /// <param name="currency"> Which chain the address belongs to. </param>
+        /// <param name="tipAddress"> The payment address. </param>
+        /// <returns> The transcript to sign. </returns>
+        static byte[] BuildTipTranscript(string accountAddress, string currency, string tipAddress)
+        {
+            Text.TranscriptWriter transcript = new();
+            transcript.WriteBytes(TipSignatureDomain);
+            transcript.WriteText(accountAddress);
+            transcript.WriteText(currency);
+            transcript.WriteText(tipAddress);
+            return transcript.ToArray();
+        }
+
+        /// <summary>
         /// Returns the account's profile, creating a starter one the first time. Signing in on a second device
         /// therefore finds the existing profile instead of overwriting it.
         /// </summary>

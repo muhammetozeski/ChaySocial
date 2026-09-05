@@ -116,6 +116,37 @@
                     <span class="profile-counter">@RemainingBioCharacters</span>
                 </div>
 
+                @* Optional, and off unless a chain is picked. The address is signed on save, so nobody holding
+                   the documents can put their own address here instead. *@
+                <div class="profile-field">
+                    <span class="profile-field-label">@TipSectionLabel</span>
+                    <p class="profile-field-hint">@TipSectionHint</p>
+
+                    <div class="profile-chain-row">
+                        @foreach (string chain in TipCurrencies)
+                        {
+                            @* Declared inside the loop body, so each button carries its own chain. *@
+                            string option = chain;
+
+                            <button type="button"
+                                    class="profile-chain @(DraftTipCurrency == option ? ChosenChainClass : string.Empty)"
+                                    disabled="@IsSavingProfile"
+                                    @onclick="() => HandleTipCurrencyChosen(option)">@option</button>
+                        }
+                    </div>
+
+                    @if (DraftTipCurrency.Length > 0)
+                    {
+                        <input class="profile-input profile-input--address"
+                               type="text"
+                               maxlength="@ProfileData.MaximumTipAddressLength"
+                               placeholder="@TipAddressPlaceholder"
+                               value="@DraftTipAddress"
+                               disabled="@IsSavingProfile"
+                               @oninput="HandleTipAddressInput" />
+                    }
+                </div>
+
                 @if (EditErrorMessage is not null)
                 {
                     <p class="profile-error">@EditErrorMessage</p>

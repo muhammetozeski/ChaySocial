@@ -324,6 +324,45 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Bio the owner has typed in the editor. </summary>
         string DraftBio = string.Empty;
 
+        /// <summary> Chain the owner is typing a payment address for, empty when they take no tips. </summary>
+        string DraftTipCurrency = string.Empty;
+
+        /// <summary> Payment address the owner is typing, empty when they take no tips. </summary>
+        string DraftTipAddress = string.Empty;
+
+        /// <summary> Chains the editor offers, anonymity-first because that is what this app is for. </summary>
+        static readonly string[] TipCurrencies = ["Monero", "Bitcoin", "Lightning"];
+
+        /// <summary> Heading over the tip fields in the editor. </summary>
+        const string TipSectionLabel = "Let people buy you a chay";
+
+        /// <summary> Line under it, saying what the app does and does not do with the address. </summary>
+        const string TipSectionHint =
+            "Optional. Pick a chain and paste your own address; it is signed with your key so nobody can swap it. "
+            + "Money never passes through us — people pay you from their own wallet.";
+
+        /// <summary> Grey prompt in the address field. </summary>
+        const string TipAddressPlaceholder = "Paste your receiving address…";
+
+        /// <summary> Class marking the chosen chain. </summary>
+        const string ChosenChainClass = "is-chosen";
+
+        /// <summary> True when the owner changed either half of the tip offer, which is what makes it worth re-signing. </summary>
+        /// <param name="current"> The profile as it stands. </param>
+        /// <returns> True when the offer needs writing again. </returns>
+        bool HasTipChanged(ProfileData current)
+            => !string.Equals(current.TipCurrency, DraftTipCurrency.Trim(), StringComparison.Ordinal)
+               || !string.Equals(current.TipAddress, DraftTipAddress.Trim(), StringComparison.Ordinal);
+
+        /// <summary> Takes the chosen chain from the editor. </summary>
+        /// <param name="currency"> The chain, or empty to take the offer down. </param>
+        void HandleTipCurrencyChosen(string currency)
+            => DraftTipCurrency = string.Equals(DraftTipCurrency, currency, StringComparison.Ordinal) ? string.Empty : currency;
+
+        /// <summary> Keeps the typed payment address on the page. </summary>
+        /// <param name="args"> The input event. </param>
+        void HandleTipAddressInput(ChangeEventArgs args) => DraftTipAddress = args.Value?.ToString() ?? string.Empty;
+
         /// <summary> What is wrong with the edited profile, or null while it is fine. </summary>
         string? EditErrorMessage;
 
@@ -627,6 +666,8 @@ namespace ChaySocial.MainProject.UI.Pages
             DraftAvatar = ShownAvatar;
             DraftDisplayName = ShownName;
             DraftBio = ShownBio;
+            DraftTipCurrency = ShownProfile?.TipCurrency ?? string.Empty;
+            DraftTipAddress = ShownProfile?.TipAddress ?? string.Empty;
             EditErrorMessage = null;
             ActionNotice = null;
             IsEditing = true;
@@ -697,6 +738,14 @@ namespace ChaySocial.MainProject.UI.Pages
                 };
 
                 await ProfileService.SaveAsync(updated);
+
+                // The payment address is signed rather than merely stored, so it is set through its own call
+                // instead of being folded into the record above.
+                if (HasTipChanged(current))
+                {
+                    updated = await ProfileService.SetTipAddressAsync(Account, DraftTipCurrency, DraftTipAddress) ?? updated;
+                }
+
                 SessionService.UpdateCurrentProfile(updated);
 
                 ShownProfile = updated;
