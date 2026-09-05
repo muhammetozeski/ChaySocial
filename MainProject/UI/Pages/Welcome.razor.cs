@@ -1,4 +1,5 @@
 using ChaySocial.MainProject.Constants.ThemeConstants;
+using ChaySocial.MainProject.Identity;
 using ChaySocial.MainProject.Services;
 using Microsoft.AspNetCore.Components;
 
@@ -145,8 +146,40 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> True while the screen should show how far the account's proof of work has come. </summary>
         bool IsSolvingProof => IsBusy && _proofAttempts > 0;
 
-        /// <summary> Wording of the progress line; the placeholder takes the attempt count. </summary>
-        const string ProofProgressFormat = "Minting your account — {0} attempts so far. This is what keeps bot farms out.";
+        /// <summary>
+        /// Wording of the progress line; the placeholder takes the attempt count. It describes what is actually
+        /// happening — drawing accounts until one is named the way somebody asked — rather than the proof of work
+        /// this line originally advertised and never once appeared for.
+        /// </summary>
+        const string ProofProgressFormat = "Drawing accounts — {0} so far, until one is named the way you asked.";
+
+        /// <summary> Letters the reader would like their address to begin with; empty for an ordinary account. </summary>
+        string _chosenLetters = string.Empty;
+
+        /// <summary> Label above the field asking for those letters. </summary>
+        const string ChosenLettersLabel = "Would you like your address to start with something?";
+
+        /// <summary> What the empty field invites. </summary>
+        const string ChosenLettersPlaceholder = "up to two letters, optional";
+
+        /// <summary> Line under it, saying what asking costs and what it does not. </summary>
+        const string ChosenLettersNote =
+            "Your device draws accounts until one is named that way. One letter takes seconds, two takes a few " +
+            "minutes, and nothing is sent anywhere while it looks — leave it empty and your account is instant.";
+
+        /// <summary> Shown when the letters could never begin an address. </summary>
+        const string ChosenLettersUnusableMessage = "An address can only use a–z and 2–7, and at most two letters can be chosen.";
+
+        /// <summary> Ties the label to the field, so tapping the label lands in the box. </summary>
+        const string ChosenLettersFieldId = "welcome-chosen-letters";
+
+        /// <summary> True when something has been typed that could not begin any address. </summary>
+        bool HasUnusableLetters => _chosenLetters.Trim().Length > 0 && !ChosenAddressSearch.IsSearchable(_chosenLetters);
+
+        /// <summary> Keeps <see cref="_chosenLetters"/> in step with the field on every keystroke. </summary>
+        /// <param name="args"> The input event carrying the field's new contents. </param>
+        void HandleChosenLettersInput(ChangeEventArgs args)
+            => _chosenLetters = args.Value?.ToString() ?? string.Empty;
 
         /// <summary> Redraws the progress line as the search runs, hopping back onto the render thread to do it. </summary>
         /// <param name="attempts"> Attempts made so far. </param>
@@ -181,7 +214,16 @@ namespace ChaySocial.MainProject.UI.Pages
 
             try
             {
-                _secretText = await SessionService.CreateAccountAsync();
+                // A search runs before the account exists, so nothing has been created if it is given up on and no
+                // server ever learns one was attempted.
+                byte[]? chosen = null;
+                if (ChosenAddressSearch.IsSearchable(_chosenLetters))
+                {
+                    _proofAttempts = 0;
+                    chosen = await ChosenAddressSearch.SearchAsync(_chosenLetters, ReportProofProgress);
+                }
+
+                _secretText = await SessionService.CreateAccountAsync(chosen);
                 _stage = WelcomeStage.KeepSecret;
             }
             catch (Exception error)

@@ -95,6 +95,82 @@
         line-height: @(AppMeasures.LineHeight.None);
     }
 
+    /* The optional row that asks what the address should begin with. It sits above the create button but stays
+       quiet: left-aligned small text rather than another headline, so the button is still the loud thing. */
+    .welcome-chosen {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+        margin-bottom: @(AppMeasures.Space.Px16)px;
+        text-align: left;
+    }
+
+    .welcome-chosen-label {
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    /* Prefix and input share one sunken well, so the two read as a single address being spelled out. */
+    .welcome-chosen-field {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px8)px;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px14)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.BackgroundDeep.WithAlpha(SecretBoxTintOpacity).ToRgbaHex(true));
+        transition: border-color @(AppMeasures.Duration.Fast)s, box-shadow @(AppMeasures.Duration.Fast)s;
+    }
+
+        .welcome-chosen-field:focus-within {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            box-shadow: @AppStyles.ShadowPrimaryGlow;
+        }
+
+    /* Divided off from the field beside it, otherwise the fixed prefix and the placeholder run together into one
+       sentence and it looks as though "chay" were part of what somebody is being asked to type. */
+    .welcome-chosen-prefix {
+        padding-right: @(AppMeasures.Space.Px8)px;
+        border-right: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        font-family: @SecretFontStack;
+        font-size: @(AppMeasures.Font.Normal)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .welcome-chosen-input {
+        flex: 1;
+        min-width: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        font-family: @SecretFontStack;
+        font-size: @(AppMeasures.Font.Normal)px;
+        letter-spacing: @(AppMeasures.Tracking.Wide)px;
+    }
+
+        .welcome-chosen-input:focus {
+            outline: none;
+        }
+
+        .welcome-chosen-input::placeholder {
+            color: @(AppColors.TextMuted.ToRgbaHex(true));
+            font-family: inherit;
+            letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        }
+
+        .welcome-chosen-input:disabled {
+            opacity: @(AppMeasures.Opacity.Dim);
+        }
+
+    .welcome-chosen-note {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
     /* The quiet second path. It is a plain text row until it is hovered or focused, so it never competes with
        the create button beside it. */
     .welcome-recall-toggle {

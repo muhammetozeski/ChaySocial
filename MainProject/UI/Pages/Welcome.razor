@@ -43,6 +43,35 @@
                 }
             </div>
 
+            @* Optional, and quiet enough that leaving it alone is obviously fine: an empty field means an instant
+               account, and the prefix is shown rather than typed so nobody spends their two letters on "ch". *@
+            <div class="welcome-chosen">
+                <label class="welcome-chosen-label" for="@ChosenLettersFieldId">@ChosenLettersLabel</label>
+
+                <div class="welcome-chosen-field">
+                    <span class="welcome-chosen-prefix">@AppCryptography.AddressPrefix</span>
+                    <input id="@ChosenLettersFieldId"
+                           class="welcome-chosen-input"
+                           type="text"
+                           autocomplete="off"
+                           spellcheck="false"
+                           maxlength="@ChosenAddressSearch.ChosenLettersMaximumLength"
+                           placeholder="@ChosenLettersPlaceholder"
+                           disabled="@IsBusy"
+                           value="@_chosenLetters"
+                           @oninput="HandleChosenLettersInput" />
+                </div>
+
+                @if (HasUnusableLetters)
+                {
+                    <p class="welcome-error">@ChosenLettersUnusableMessage</p>
+                }
+                else
+                {
+                    <p class="welcome-chosen-note">@ChosenLettersNote</p>
+                }
+            </div>
+
             @* CoreButton is used directly rather than a preset button because the pill radius, padding and font
                size arrive as inline style from CoreButton itself, where no class rule could override them. *@
             <CoreButton OnClick="CreateAccountAsync"
