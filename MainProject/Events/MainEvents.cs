@@ -38,6 +38,7 @@ namespace ChaySocial.MainProject.Events
             public const string ModerationChanged = nameof(ModerationChanged);
             public const string GroupsChanged = nameof(GroupsChanged);
             public const string PagesChanged = nameof(PagesChanged);
+            public const string MatchChanged = nameof(MatchChanged);
         }
 
         /// <summary> Registers a handler that receives every triggered event. </summary>

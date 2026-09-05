@@ -83,13 +83,15 @@ namespace ChaySocial.MainProject.Services
         /// </param>
         /// <param name="attachments"> Media already uploaded for this message, or null for a message that is only text. </param>
         /// <param name="quotedMessageId"> Message this one replies to, or empty when it replies to nothing. </param>
+        /// <param name="conversationIdOverride"> Conversation to file it under, for a stranger-chat room; empty uses the one the two correspondents share. </param>
         public static async Task<MessageData?> SendAsync(
             PrivateIdentity sender,
             ProfileData recipientProfile,
             string text,
             bool isVanishing = false,
             IReadOnlyList<MediaAttachment>? attachments = null,
-            string quotedMessageId = "")
+            string quotedMessageId = "",
+            string conversationIdOverride = "")
         {
             string trimmed = text.Trim();
             IReadOnlyList<MediaAttachment> media = attachments ?? [];
@@ -109,7 +111,12 @@ namespace ChaySocial.MainProject.Services
 
             string senderAddress = sender.Public.Address;
             string recipientAddress = recipient.Address;
-            string conversationId = MessageData.ConversationIdFor(senderAddress, recipientAddress);
+            // Ordinarily a message belongs to the conversation its two correspondents share. A stranger-chat room
+            // hands its own id instead, so what is said in it stays out of both postboxes and can be thrown away
+            // whole when the room ends. The id is inside the signature either way.
+            string conversationId = conversationIdOverride.Length > 0
+                ? conversationIdOverride
+                : MessageData.ConversationIdFor(senderAddress, recipientAddress);
             string messageId = Base32.Encode(RandomSource.Next(MessageIdBytes));
             long createdAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
@@ -396,6 +403,10 @@ namespace ChaySocial.MainProject.Services
 
             foreach (MessageData message in received.Concat(sent))
             {
+                // A chat with a stranger belongs to its room, not to a postbox: it is temporary by design and is
+                // thrown away when either side walks out, so listing it here would promise something else.
+                if (MatchRoomData.IsRoomConversation(message.ConversationId)) continue;
+
                 if (newestPerConversation.TryGetValue(message.ConversationId, out MessageData? held)
                     && held.CreatedAtUnixMs >= message.CreatedAtUnixMs)
                 {
