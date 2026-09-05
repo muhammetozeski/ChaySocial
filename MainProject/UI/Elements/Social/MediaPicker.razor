@@ -94,8 +94,12 @@
     /// <summary> Line drawn under the picker after a file was refused, or null when nothing was. </summary>
     string? _message;
 
-    /// <summary> Media types the file picker offers. </summary>
-    static readonly string AcceptList = MediaService.BuildAcceptList();
+    /// <summary>
+    /// Media types the file picker offers. The kinds are named rather than left to default to every registered
+    /// kind, because this control only ever takes a file off the device: a kind the app makes for itself has no
+    /// business appearing in the operating system's file dialog.
+    /// </summary>
+    static readonly string AcceptList = MediaService.BuildAcceptList(MediaKind.Image, MediaKind.Audio, MediaKind.Video);
 
     /// <summary> True while another file may still be attached. </summary>
     bool CanAddMore => !IsDisabled && !_isUploading && Attachments.Count < MediaAttachment.MaximumPerPost;
