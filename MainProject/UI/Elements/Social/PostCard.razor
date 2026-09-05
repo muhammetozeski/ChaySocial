@@ -22,7 +22,11 @@
 
         <div class="post-card-header">
             <button type="button" class="post-card-identity" title="@OpenAuthorHint" @onclick="HandleOpenAuthor">
-                <span class="post-card-avatar">@AvatarEmoji</span>
+                @* The feed is where a copied name and emoji would do their work, so the author's own mark goes here. *@
+                <span class="post-card-avatar">
+                    <IdentitySigil Address="@Post.AuthorAddress" />
+                    <span class="post-card-avatar-face">@AvatarEmoji</span>
+                </span>
                 <span class="post-card-identity-text">
                     <span class="post-card-name">@DisplayName</span>
                     <span class="post-card-address">@ShortenedAddress</span>

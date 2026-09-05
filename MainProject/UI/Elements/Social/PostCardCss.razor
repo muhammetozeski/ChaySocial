@@ -36,6 +36,10 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        /* The author's mark is laid inside this disc absolutely, so the disc has to be what it is measured against
+           and the square grid has to be trimmed back to the circle. */
+        position: relative;
+        overflow: hidden;
         width: @(AppMeasures.Size.Px44)px;
         height: @(AppMeasures.Size.Px44)px;
         border-radius: @(AppMeasures.Radius.Circular)%;
@@ -45,6 +49,12 @@
         box-shadow: @AppStyles.ShadowPrimaryGlow;
         transition: transform @(AppMeasures.Duration.Fast)s @SoftLandingEasing;
     }
+
+        /* The emoji, lifted above the mark. Without a position of its own the positioned mark would paint over it. */
+        .post-card-avatar-face {
+            position: relative;
+            z-index: @(AppMeasures.ZLayer.Raised);
+        }
 
     .post-card-identity:active .post-card-avatar {
         transform: scale(@AvatarPressedScale);
