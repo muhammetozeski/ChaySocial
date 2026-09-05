@@ -181,9 +181,15 @@
 
     /// <summary> Turns a byte count into a short readable size. </summary>
     /// <param name="byteCount"> Size of the media. </param>
-    /// <returns> The size in kibibytes or mebibytes. </returns>
+    /// <returns> The size in bytes, kibibytes or mebibytes. </returns>
+    /// <remarks>
+    /// Bytes are spelled out below a kibibyte because a drawing is a few hundred of them, and rounding that to
+    /// "0 KB" told its author their work weighed nothing.
+    /// </remarks>
     static string FormatSize(long byteCount)
     {
+        if (byteCount < BytesPerKibibyte) return $"{byteCount} B";
+
         double kibibytes = byteCount / BytesPerKibibyte;
         return kibibytes < BytesPerKibibyte ? $"{kibibytes:F0} KB" : $"{kibibytes / BytesPerKibibyte:F1} MB";
     }
