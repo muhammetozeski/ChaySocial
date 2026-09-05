@@ -212,7 +212,8 @@ namespace ChaySocial.Web.Api
         /// a farm that is happy to spend it. One slow permit per account is what makes a thousand posting accounts
         /// expensive, which is the thing worth making expensive.
         /// </remarks>
-        static readonly string[] PermittedWritingCollections = ["posts", "comments", "messages", "reposts", "groups", "subjects"];
+        static readonly string[] PermittedWritingCollections =
+            ["posts", "comments", "messages", "reposts", "groups", "subjects", "pages", "pageeditors"];
 
         /// <summary> Registers every document route on the application. </summary>
         /// <param name="app"> Application to register on. </param>
