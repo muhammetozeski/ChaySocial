@@ -1,0 +1,111 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.DataModels
+
+@*
+    Turns a post into a question. Closed by default and one tap away, because most posts are not asking anything
+    and a composer that always shows four empty boxes would be a composer about polls.
+
+    The number of boxes is derived rather than remembered: two to begin with, and one more each time the last one
+    is filled, up to the limit. There is no "add a choice" button to press and no row-count state to get out of
+    step with the answers themselves.
+*@
+
+<div class="poll-composer">
+    <button type="button"
+            class="poll-composer-toggle @(IsOpen ? OpenClass : string.Empty)"
+            disabled="@IsDisabled"
+            title="@ToggleHint"
+            @onclick="ToggleAsync">
+        @ToggleEmoji
+    </button>
+
+    @if (IsOpen)
+    {
+        <div class="poll-composer-choices">
+            @for (int index = 0; index < ShownRowCount; index++)
+            {
+                int rowIndex = index;
+
+                <input class="poll-composer-choice"
+                       type="text"
+                       maxlength="@PostData.MaximumPollChoiceLength"
+                       disabled="@IsDisabled"
+                       placeholder="@PlaceholderFor(rowIndex)"
+                       value="@ValueAt(rowIndex)"
+                       @oninput="@(args => SetChoiceAsync(rowIndex, args.Value?.ToString() ?? string.Empty))" />
+            }
+        </div>
+    }
+</div>
+
+<PollComposerCss />
+
+@code {
+    /// <summary> The answers as they stand, blanks included; the service drops the blanks when it publishes. </summary>
+    [Parameter] public IReadOnlyList<string> Choices { get; set; } = [];
+
+    /// <summary> Hands the answers back to the page that owns them. </summary>
+    [Parameter] public EventCallback<IReadOnlyList<string>> ChoicesChanged { get; set; }
+
+    /// <summary> True while a publish is running, so the boxes cannot be edited mid-flight. </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+
+    /// <summary> Mark on the button that opens and closes the answers. </summary>
+    const string ToggleEmoji = "📊";
+
+    /// <summary> What the button says it does. </summary>
+    const string ToggleHint = "Ask something instead of saying it";
+
+    /// <summary> Class carried by the button while the answers are open. </summary>
+    const string OpenClass = "is-open";
+
+    /// <summary> Placeholder on the boxes an answer is needed in. </summary>
+    const string RequiredChoicePlaceholder = "An answer";
+
+    /// <summary> Placeholder on the boxes beyond the two a question needs. </summary>
+    const string OptionalChoicePlaceholder = "Another answer, if you like";
+
+    /// <summary> True while the answers are showing. </summary>
+    bool IsOpen;
+
+    /// <summary> How many boxes to draw: the two a question needs, then one more per answer already given. </summary>
+    int ShownRowCount => Math.Min(Math.Max(PostData.LeastPollChoiceCount, FilledCount + 1), PostData.MaximumPollChoiceCount);
+
+    /// <summary> How many answers actually carry something. </summary>
+    int FilledCount => Choices.Count(choice => choice.Trim().Length > 0);
+
+    /// <summary> Opens the answers, or closes them and throws away whatever was typed. </summary>
+    /// <returns> A task that completes once the page has taken the change. </returns>
+    async Task ToggleAsync()
+    {
+        IsOpen = !IsOpen;
+
+        // Closing means "never mind": leaving the answers behind would publish a question the writer decided
+        // against, and they would have no way of seeing that it was still there.
+        if (!IsOpen) await ChoicesChanged.InvokeAsync([]);
+    }
+
+    /// <summary> The answer in one box, or nothing when that box has not been reached yet. </summary>
+    /// <param name="index"> Which box. </param>
+    /// <returns> What is in it. </returns>
+    string ValueAt(int index) => index < Choices.Count ? Choices[index] : string.Empty;
+
+    /// <summary> What an empty box invites. </summary>
+    /// <param name="index"> Which box. </param>
+    /// <returns> Its placeholder. </returns>
+    static string PlaceholderFor(int index)
+        => index < PostData.LeastPollChoiceCount ? RequiredChoicePlaceholder : OptionalChoicePlaceholder;
+
+    /// <summary> Records what was typed into one box. </summary>
+    /// <param name="index"> Which box. </param>
+    /// <param name="text"> What is now in it. </param>
+    /// <returns> A task that completes once the page has taken the change. </returns>
+    async Task SetChoiceAsync(int index, string text)
+    {
+        List<string> updated = [.. Choices];
+        while (updated.Count <= index) updated.Add(string.Empty);
+
+        updated[index] = text;
+        await ChoicesChanged.InvokeAsync(updated);
+    }
+}

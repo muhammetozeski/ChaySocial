@@ -148,6 +148,9 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Media already uploaded for the post being written but not published yet. </summary>
         IReadOnlyList<MediaAttachment> ComposerAttachments = [];
 
+        /// <summary> Answers typed into the composer for a question not published yet, blanks included. </summary>
+        IReadOnlyList<string> ComposerPollChoices = [];
+
         /// <summary> Post the composer is quoting, or null while a plain post is being written. </summary>
         PostData? ComposerQuotedPost;
 
@@ -382,6 +385,10 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="attachments"> The media currently attached. </param>
         void HandleComposerAttachmentsChanged(IReadOnlyList<MediaAttachment> attachments) => ComposerAttachments = attachments;
 
+        /// <summary> Takes the answers as they are typed. </summary>
+        /// <param name="choices"> The answers currently in the composer, blanks included. </param>
+        void HandleComposerPollChoicesChanged(IReadOnlyList<string> choices) => ComposerPollChoices = choices;
+
         /// <summary> Points the composer at a post to speak about, and scrolls nothing: the composer is already at the top. </summary>
         /// <param name="post"> Post being quoted. </param>
         void StartQuoting(PostData post)
@@ -444,12 +451,14 @@ namespace ChaySocial.MainProject.UI.Pages
             try
             {
                 PostData? published = await WallService.PublishAsync(
-                    WritingAs.Signer, ComposerText, ComposerAttachments, ComposerQuotedPost?.PostId ?? string.Empty);
+                    WritingAs.Signer, ComposerText, ComposerAttachments, ComposerQuotedPost?.PostId ?? string.Empty,
+                    pollChoices: ComposerPollChoices);
 
                 if (published is null) return;
 
                 ComposerText = string.Empty;
                 ComposerAttachments = [];
+                ComposerPollChoices = [];
                 StopQuoting();
             }
             finally

@@ -1,0 +1,72 @@
+@*
+    Styling for PollComposer. PollComposer renders this component itself. Every selector is namespaced
+    "poll-composer-*" because *Css.razor styles are global.
+*@
+<style>
+    .poll-composer {
+        display: contents;
+    }
+
+    /* The same round tool as the mention and media pickers beside it, so asking something reads as one more thing
+       a post can carry rather than as a mode the composer switches into. */
+    .poll-composer-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: @(AppMeasures.Size.Px36)px;
+        height: @(AppMeasures.Size.Px36)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        cursor: pointer;
+        transition: border-color @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .poll-composer-toggle:hover:not(:disabled) {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+        .poll-composer-toggle.is-open {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+            background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+        }
+
+        .poll-composer-toggle:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: default;
+        }
+
+    /* Breaks out of the tool row onto its own full-width line: the answers are part of the post being written, not
+       another button sitting next to the picker. */
+    .poll-composer-choices {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px6)px;
+        flex-basis: @(AppMeasures.Percent.Full)%;
+        margin-top: @(AppMeasures.Space.Px8)px;
+    }
+
+    .poll-composer-choice {
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px8)px @(AppMeasures.Space.Px12)px;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+        .poll-composer-choice::placeholder {
+            color: @(AppColors.TextMuted.ToRgbaHex(true));
+        }
+
+        .poll-composer-choice:focus {
+            outline: none;
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+</style>

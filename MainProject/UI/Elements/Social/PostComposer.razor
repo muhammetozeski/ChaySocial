@@ -37,6 +37,10 @@
         <MediaPicker Attachments="@Attachments"
                      AttachmentsChanged="@AttachmentsChanged"
                      IsDisabled="@IsBusy" />
+
+        <PollComposer Choices="@PollChoices"
+                      ChoicesChanged="@PollChoicesChanged"
+                      IsDisabled="@IsBusy" />
     </div>
 
     @* Shown to the writer only, before anything is sent. It reports and blocks nothing. *@
@@ -132,6 +136,12 @@
     /// <summary> Raised whenever the attached set changes, so the page owns it alongside the text. </summary>
     [Parameter] public EventCallback<IReadOnlyList<MediaAttachment>> AttachmentsChanged { get; set; }
 
+    /// <summary> Answers this post is offering, blanks included; empty when it is not asking anything. </summary>
+    [Parameter] public IReadOnlyList<string> PollChoices { get; set; } = [];
+
+    /// <summary> Hands the answers back to the page that owns them. </summary>
+    [Parameter] public EventCallback<IReadOnlyList<string>> PollChoicesChanged { get; set; }
+
     /// <summary> Post the writer is quoting, or null when they are writing a plain post. </summary>
     [Parameter] public PostData? QuotedPost { get; set; }
 
@@ -184,13 +194,20 @@
     }
 
     /// <summary>
-    /// True when the share button should accept a tap. A post needs something to say — words or media — and must
-    /// not run past the text limit, and no publish may already be running.
+    /// True when the share button should accept a tap. A post needs something to say — words, media, somebody
+    /// else's post, or a question with real answers in it — and must not run past the text limit, and no publish
+    /// may already be running.
     /// </summary>
     bool CanSubmit => !IsBusy
         && OnSubmit.HasDelegate
-        && (PublishableLength > 0 || Attachments.Count > 0 || QuotedPost is not null)
+        && (PublishableLength > 0 || Attachments.Count > 0 || QuotedPost is not null || IsAskingSomething)
         && PublishableLength <= PostData.MaximumTextLength;
+
+    /// <summary>
+    /// True when the answers typed so far make a question. One filled box is somebody still typing, not a poll,
+    /// and the same rule is enforced again in the service so this is a courtesy rather than the gate.
+    /// </summary>
+    bool IsAskingSomething => PollChoices.Count(choice => choice.Trim().Length > 0) >= PostData.LeastPollChoiceCount;
 
     /// <summary> Hands each keystroke's text back to the page that owns it. </summary>
     /// <param name="args"> The input event carrying the textarea's new contents. </param>
