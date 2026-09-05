@@ -38,6 +38,12 @@
                  AttachmentsChanged="@AttachmentsChanged"
                  IsDisabled="@IsBusy" />
 
+    @* A drawing seals and travels exactly as a photograph does, so a sketch sent from here is inside the same
+       end-to-end encryption as the words beside it. *@
+    <DrawingPicker Attachments="@Attachments"
+                   AttachmentsChanged="@AttachmentsChanged"
+                   IsDisabled="@IsBusy" />
+
     <CoreButton Gradient="@SendGradient"
                 TextColor="@AppColors.TextOnFilledSurface"
                 BorderRadius="@(AppMeasures.Radius.Circular + "%")"

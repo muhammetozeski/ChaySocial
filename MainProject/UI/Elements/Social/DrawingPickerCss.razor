@@ -1,20 +1,13 @@
+@using ChaySocial.MainProject.DataModels
+
 @*
-    Styling for the control that opens the board and for the panel the board sits in.
+    Styling for the control that opens the board and for the surface the board sits on.
 *@
 <style>
     .drawing-picker {
         display: flex;
         align-items: center;
     }
-
-        /* Open, the control takes a whole line of the composer's tool row and stacks the board under its button,
-           so the board keeps its full width however narrow the screen is. */
-        .drawing-picker.is-open {
-            flex-basis: @(AppMeasures.Percent.Full)%;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: @(AppMeasures.Space.Px12)px;
-        }
 
     /* Sized and coloured to match the poll button beside it, so the composer's tool row reads as one row of
        controls rather than as a button that happens to be nearby. */
@@ -49,6 +42,26 @@
             cursor: not-allowed;
         }
 
+    .drawing-picker-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        @AppStyles.BuildBackdropFrost()
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        padding: @(BackdropInsetPx)px;
+        overscroll-behavior: contain;
+        z-index: @(AppMeasures.ZLayer.Modal);
+        animation: drawing-picker-arrive @(AppMeasures.Duration.Normal)s ease-out;
+    }
+
+    /* Wide enough for the board, the hairline drawn around it and this panel's own padding, and no wider: the
+       board is a fixed size, a panel that outgrew it would only add empty glass, and a panel two pixels short of
+       it puts a scrollbar under a drawing. */
     .drawing-picker-panel {
         box-sizing: border-box;
         display: flex;
@@ -56,7 +69,20 @@
         align-items: center;
         gap: @(AppMeasures.Space.Px12)px;
         width: @(AppMeasures.Percent.Full)%;
-        animation: drawing-picker-unfold @(AppMeasures.Duration.Normal)s ease-out both;
+        max-width: @(DrawingSheet.DrawingCanvasWidthPx + BoardFrameWidthPx + PanelInsetPx + PanelInsetPx)px;
+        max-height: @(AppMeasures.Viewport.Most)vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: @(PanelInsetPx)px;
+        border-radius: @(AppMeasures.Radius.XLarge)px;
+        box-shadow: @AppStyles.ShadowHeavy;
+    }
+
+    .drawing-picker-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
     }
 
     .drawing-picker-caption {
@@ -118,10 +144,9 @@
             cursor: not-allowed;
         }
 
-    @@keyframes drawing-picker-unfold {
+    @@keyframes drawing-picker-arrive {
         from {
             opacity: 0;
-            transform: translateY(-@(UnfoldDropPx)px);
         }
     }
 </style>
@@ -130,6 +155,19 @@
     /// <summary> Diameter of the button that opens the board, matched to the poll button it stands beside. </summary>
     const int OpenButtonDiameterPx = AppMeasures.Size.Px32;
 
-    /// <summary> How far the board drops from as it unfolds, so it reads as opening out of the button above it. </summary>
-    const int UnfoldDropPx = AppMeasures.Space.Px8;
+    /// <summary>
+    /// Room left between the board's panel and the edge of the screen. Small on purpose: the board is a fixed size
+    /// and cannot shrink to make room, so every pixel spent here is a pixel the narrowest screen has to spare.
+    /// </summary>
+    const int BackdropInsetPx = AppMeasures.Space.Px8;
+
+    /// <summary> Room inside the panel, around the board and the controls under it. </summary>
+    const int PanelInsetPx = AppMeasures.Space.Px16;
+
+    /// <summary>
+    /// How much wider the board is than its own drawing area: the hairline down each side. The board cannot use
+    /// border-box sizing — that would shrink the area the strokes are drawn against and pull every point away
+    /// from where the pointer reported it — so the frame is added to the panel instead.
+    /// </summary>
+    const int BoardFrameWidthPx = AppMeasures.Border.Thin * 2;
 }

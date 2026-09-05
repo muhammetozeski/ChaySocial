@@ -3,75 +3,78 @@
 @using ChaySocial.MainProject.Services
 
 @*
-    The control that opens the board, and the panel the board sits in. It hands back attachments through the same
-    pair the file picker uses, so the composer had to learn nothing new: to a post, a drawing is an attachment.
+    The control that opens the board, and the surface the board sits on. It hands back attachments through the same
+    pair the file picker uses, so neither composer had to learn anything new: to a post, a drawing is an attachment.
 
-    The board opens in the composer rather than over the screen. An overlay would be the obvious choice and it does
-    not work here: the composer is a frosted card, and an ancestor carrying backdrop-filter becomes the containing
-    block for everything fixed inside it, so a full-screen backdrop opened from in here is trapped inside the card.
-    That is a real defect and it already affects the name picker beside this button; it belongs to that control's
-    own repair rather than to this one.
+    The surface is written here rather than borrowed from CoreModal because the board cannot be scaled and a modal
+    leaves 223 px across on a 375 px screen — narrower than the board itself. This one keeps its inset small enough
+    that the board fits on the narrowest screen the app is checked against. It goes out through AppOverlay, because
+    both composers are frosted and anything fixed inside a frosted card is trapped in it.
 *@
 
-<div class="drawing-picker @(_isOpen ? OpenClass : string.Empty)">
-
+<div class="drawing-picker">
     <button type="button"
             class="drawing-picker-open @(_isOpen ? ChosenClass : string.Empty)"
             title="@OpenTitle"
             disabled="@(!CanOpen)"
             @onclick="Toggle">@OpenEmoji</button>
+</div>
 
+<AppOverlay>
     @if (_isOpen)
     {
-        <div class="drawing-picker-panel">
+        <div class="drawing-picker-backdrop" @onclick="Close">
+            <div class="drawing-picker-panel" style="@PanelStyle" @onclick:stopPropagation>
 
-            <DrawingPad SheetChanged="TakeSheet" IsDisabled="@_isSealing" />
+                <p class="drawing-picker-title">@PanelTitle</p>
 
-            <input class="drawing-picker-caption"
-                   type="text"
-                   maxlength="@MediaAttachment.MaximumDescriptionLength"
-                   placeholder="@CaptionPlaceholder"
-                   disabled="@_isSealing"
-                   value="@_caption"
-                   @oninput="HandleCaptionInput" />
+                <DrawingPad SheetChanged="TakeSheet" IsDisabled="@_isSealing" />
 
-            @if (_message is not null)
-            {
-                <p class="drawing-picker-message">@_message</p>
-            }
+                <input class="drawing-picker-caption"
+                       type="text"
+                       maxlength="@MediaAttachment.MaximumDescriptionLength"
+                       placeholder="@CaptionPlaceholder"
+                       disabled="@_isSealing"
+                       value="@_caption"
+                       @oninput="HandleCaptionInput" />
 
-            <div class="drawing-picker-footer">
-                <button type="button"
-                        class="drawing-picker-quiet"
-                        disabled="@_isSealing"
-                        @onclick="Close">@CancelLabel</button>
+                @if (_message is not null)
+                {
+                    <p class="drawing-picker-message">@_message</p>
+                }
 
-                <CoreButton OnClick="AttachAsync"
-                            Disabled="@(!CanAttach)"
-                            Gradient="@((AppColors.Primary, AppColors.Secondary))"
-                            TextColor="@AppColors.TextOnAccent"
-                            BorderRadius="@(AppMeasures.Radius.Pill + "px")"
-                            Padding="@AttachButtonPadding"
-                            FontSize="@AppMeasures.Font.Normal"
-                            Shadow="@AppStyles.ShadowPrimaryGlow"
-                            CustomClass="drawing-picker-attach">
-                    @if (_isSealing)
-                    {
-                        <CoreSpinner SizePx="@SealingSpinnerSizePx"
-                                     BorderWidthPx="@SealingSpinnerBorderPx"
-                                     Color="@AppColors.TextOnAccent" />
-                    }
-                    else
-                    {
-                        <span>@AttachLabel</span>
-                    }
-                </CoreButton>
+                <div class="drawing-picker-footer">
+                    <button type="button"
+                            class="drawing-picker-quiet"
+                            disabled="@_isSealing"
+                            @onclick="Close">@CancelLabel</button>
+
+                    <CoreButton OnClick="AttachAsync"
+                                Disabled="@(!CanAttach)"
+                                Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                                TextColor="@AppColors.TextOnAccent"
+                                BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                                Padding="@AttachButtonPadding"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Shadow="@AppStyles.ShadowPrimaryGlow"
+                                CustomClass="drawing-picker-attach">
+                        @if (_isSealing)
+                        {
+                            <CoreSpinner SizePx="@SealingSpinnerSizePx"
+                                         BorderWidthPx="@SealingSpinnerBorderPx"
+                                         Color="@AppColors.TextOnAccent" />
+                        }
+                        else
+                        {
+                            <span>@AttachLabel</span>
+                        }
+                    </CoreButton>
+                </div>
+
             </div>
-
         </div>
     }
-
-</div>
+</AppOverlay>
 
 <DrawingPickerCss />
 
@@ -91,11 +94,11 @@
     /// <summary> What that control says it does. </summary>
     const string OpenTitle = "Draw something instead of attaching it";
 
-    /// <summary> Class the control carries while the board is open, so the tools row gives it a line of its own. </summary>
-    const string OpenClass = "is-open";
-
     /// <summary> Class the button carries while the board is open, matching how the poll button marks itself. </summary>
     const string ChosenClass = "is-chosen";
+
+    /// <summary> Headline over the board. </summary>
+    const string PanelTitle = "Draw something";
 
     /// <summary> What the empty caption field invites. </summary>
     const string CaptionPlaceholder = "What is it? (for anyone who cannot see it)";
@@ -132,6 +135,9 @@
 
     /// <summary> Line under the caption after an attempt failed, or null when none has. </summary>
     string? _message;
+
+    /// <summary> The panel's own frosted glass, so the board sits on the same surface every other panel does. </summary>
+    string PanelStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Strong, AppMeasures.Blur.Heavy);
 
     /// <summary> True while the board may be opened: a post carries only so many attachments. </summary>
     bool CanOpen => !IsDisabled && (_isOpen || Attachments.Count < MediaAttachment.MaximumPerPost);
