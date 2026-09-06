@@ -21,6 +21,9 @@ namespace ChaySocial.MainProject.Services
         /// <summary> Value written for a choice that is on. </summary>
         const string OnValue = "1";
 
+        /// <summary> Value written for a choice that is off, where the absent key means on. </summary>
+        const string OffValue = "0";
+
         /// <summary> What a Tor address ends with. </summary>
         const string OnionSuffix = ".onion";
 
@@ -39,6 +42,25 @@ namespace ChaySocial.MainProject.Services
             => torOnly
                 ? AppServices.LocalStore.WriteAsync(LocalStoreKeys.TorOnly, OnValue)
                 : AppServices.LocalStore.DeleteAsync(LocalStoreKeys.TorOnly);
+
+        /// <summary>
+        /// True when this device holds a letter for a moment before sending it.
+        /// </summary>
+        /// <returns> The stored choice; on by default, because the one it protects against costs nothing to run. </returns>
+        /// <remarks>
+        /// Stored as a refusal rather than a permission: an absent key means the delay is on, so a device that has
+        /// never been told anything holds its letters. Somebody who would rather not wait says so, once.
+        /// </remarks>
+        public static async Task<bool> IsSendDelayedAsync()
+            => await AppServices.LocalStore.ReadAsync(LocalStoreKeys.SendDelay) != OffValue;
+
+        /// <summary> Remembers whether to hold letters before sending them. </summary>
+        /// <param name="delayed"> True to hold them. </param>
+        /// <returns> A task that completes once the choice is stored. </returns>
+        public static Task SetSendDelayedAsync(bool delayed)
+            => delayed
+                ? AppServices.LocalStore.DeleteAsync(LocalStoreKeys.SendDelay)
+                : AppServices.LocalStore.WriteAsync(LocalStoreKeys.SendDelay, OffValue);
 
         /// <summary>
         /// Whether the app is being reached over Tor, judged the only way a page honestly can: by the address it

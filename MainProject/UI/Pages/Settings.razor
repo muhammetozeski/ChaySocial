@@ -311,6 +311,19 @@
                 <span class="settings-switch-track"><span class="settings-switch-knob"></span></span>
             </button>
 
+            @* Sealing the words and rounding the stored clock leave one thing showing: when a letter arrived. A
+               short random wait before it goes takes that away too. *@
+            <button type="button"
+                    class="settings-switch @(_isSendDelayed ? SwitchOnClass : string.Empty)"
+                    disabled="@_isChangingAnonymity"
+                    @onclick="ToggleSendDelayAsync">
+                <span class="settings-switch-text">
+                    <span class="settings-switch-label">@SendDelayLabel</span>
+                    <span class="settings-switch-hint">@SendDelayHint</span>
+                </span>
+                <span class="settings-switch-track"><span class="settings-switch-knob"></span></span>
+            </button>
+
             <p class="settings-reached-on">@ReachedOnLabel <span class="settings-reached-host">@ReachedHost</span></p>
 
         </CoreCard>

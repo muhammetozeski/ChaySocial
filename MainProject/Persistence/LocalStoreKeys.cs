@@ -39,8 +39,14 @@ namespace ChaySocial.MainProject.Persistence
         /// <summary> The seed the shuffled order deals from, so the same page comes back until it is thrown again. </summary>
         public const string FeedShuffleSeed = "chay.feed-shuffle-seed";
 
+        /// <summary> Whether this device holds a letter for a moment before sending it. </summary>
+        public const string SendDelay = "chay.send-delay";
+
         /// <summary> All of them, for anything that has to act on every trace this application leaves. </summary>
         public static readonly IReadOnlyList<string> All =
-            [MasterSeed, CarriedAccounts, TorOnly, Theme, ContentGuard, HomeServer, DuressMark, FeedRecipe, FeedShuffleSeed];
+        [
+            MasterSeed, CarriedAccounts, TorOnly, Theme, ContentGuard, HomeServer, DuressMark,
+            FeedRecipe, FeedShuffleSeed, SendDelay
+        ];
     }
 }

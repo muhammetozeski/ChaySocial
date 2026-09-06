@@ -149,6 +149,15 @@ namespace ChaySocial.MainProject.UI.Pages
             "Judged from the address this app was served on — a hidden service answers on a .onion host. "
             + "It bites the next time the app opens.";
 
+        /// <summary> Label on the switch that holds a letter before sending it. </summary>
+        const string SendDelayLabel = "Hold my letters for a moment";
+
+        /// <summary> Line under that label, saying what it hides and what it costs. </summary>
+        static readonly string SendDelayHint =
+            $"A letter waits {MessageOutbox.SmallestDispatchDelaySeconds}–{MessageOutbox.LargestDispatchDelaySeconds} "
+            + "seconds before it goes, so a server watching its own inbox cannot read one arrival as an answer to "
+            + "another. You can always send a waiting letter straight away.";
+
         /// <summary> Leads the address the app was actually reached on. </summary>
         const string ReachedOnLabel = "Reached on";
 
@@ -447,6 +456,9 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> True while this device refuses anything that is not Tor. </summary>
         bool _isTorOnly;
+
+        /// <summary> True while this device holds a letter for a moment before sending it. </summary>
+        bool _isSendDelayed = true;
 
         /// <summary> True while an anonymity choice or an account switch is being written. </summary>
         bool _isChangingAnonymity;
@@ -816,6 +828,7 @@ namespace ChaySocial.MainProject.UI.Pages
             _blocked = await ReadBlockedAsync(SessionService.CurrentAddress);
             _reports = await ModerationService.ReadFiledByAsync(SessionService.CurrentAddress);
             _isTorOnly = await AnonymityService.IsTorOnlyAsync();
+            _isSendDelayed = await AnonymityService.IsSendDelayedAsync();
             _carriedAccounts = await AnonymityService.ReadCarriedAsync();
             _carriedProfiles = await ReadCarriedProfilesAsync(_carriedAccounts);
         }
@@ -868,6 +881,25 @@ namespace ChaySocial.MainProject.UI.Pages
             {
                 _isTorOnly = !_isTorOnly;
                 await AnonymityService.SetTorOnlyAsync(_isTorOnly);
+            }
+            finally
+            {
+                _isChangingAnonymity = false;
+            }
+        }
+
+        /// <summary> Turns the sending delay on or off. It applies to the next letter written. </summary>
+        /// <returns> A task that completes once the choice is stored. </returns>
+        async Task ToggleSendDelayAsync()
+        {
+            if (_isChangingAnonymity) return;
+
+            _isChangingAnonymity = true;
+
+            try
+            {
+                _isSendDelayed = !_isSendDelayed;
+                await AnonymityService.SetSendDelayedAsync(_isSendDelayed);
             }
             finally
             {
