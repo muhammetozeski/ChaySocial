@@ -42,11 +42,21 @@ namespace ChaySocial.MainProject.Text
         /// <summary> Largest share one common word can hold before the axis stops telling shares apart. </summary>
         const double LargestShareOfOneWordCounted = 0.2;
 
-        /// <summary> The character that joins a word rather than ending it, so "don't" is one word and not two. </summary>
-        const int WordJoiningApostrophe = '\'';
-
         /// <summary> Sentence-closing marks; a run of them still closes one sentence. </summary>
         static readonly char[] SentenceEndMarks = ['.', '!', '?'];
+
+        /// <summary> The line feed, which closes a sentence the way a full stop does. </summary>
+        const char LineFeed = '\n';
+
+        /// <summary> The carriage return, for writing that arrived from a machine that uses it. </summary>
+        const char CarriageReturn = '\r';
+
+        /// <summary>
+        /// The characters that join a word rather than ending it, so "don't" is one word and not two. Both shapes
+        /// of apostrophe are here: a phone keyboard types the curly one without being asked, and reading only the
+        /// straight one would cut a word in half for everybody writing on a phone — which is most people.
+        /// </summary>
+        static readonly int[] WordJoiningApostrophes = ['\'', '’'];
 
         /// <summary> The fingerprint of nothing, which is what an account with no writing behind it has. </summary>
         public static readonly StyleFingerprint Unwritten = new([], 0);
@@ -61,20 +71,20 @@ namespace ChaySocial.MainProject.Text
         {
             if (string.IsNullOrWhiteSpace(text)) return Unwritten;
 
-            IReadOnlyList<string> words = WordsIn(text);
+            IReadOnlyList<MeasuredWord> words = WordsIn(text);
             if (words.Count == 0) return Unwritten;
 
             int punctuation = 0;
-            int emoji = 0;
             int letters = 0;
 
             foreach (Rune rune in text.EnumerateRunes())
             {
                 if (Rune.IsPunctuation(rune)) punctuation++;
-                if (Rune.GetUnicodeCategory(rune) == UnicodeCategory.OtherSymbol) emoji++;
             }
 
-            foreach (string word in words) letters += word.Length;
+            int emoji = CountEmoji(text);
+
+            foreach (MeasuredWord word in words) letters += word.CharacterCount;
 
             double capitalisedOpenings = ReadOpenings(text, out int sentences);
 
@@ -150,6 +160,12 @@ namespace ChaySocial.MainProject.Text
         /// <param name="text"> The writing. </param>
         /// <param name="sentences"> Set to how many sentences opened, never below one. </param>
         /// <returns> The share of sentences that opened with a capital letter. </returns>
+        /// <remarks>
+        /// A line break closes a sentence as surely as a full stop does. Plenty of people write a whole line and
+        /// never punctuate the end of it, and — more to the point here — a body folded out of forty posts is
+        /// joined by blank lines rather than by full stops. Counting only the marks made that body one enormous
+        /// sentence and pinned its length axis to the ceiling for every account alike.
+        /// </remarks>
         static double ReadOpenings(string text, out int sentences)
         {
             int opened = 0;
@@ -158,7 +174,7 @@ namespace ChaySocial.MainProject.Text
 
             foreach (Rune rune in text.EnumerateRunes())
             {
-                if (waitingForOpening && Rune.IsLetter(rune))
+                if (waitingForOpening && Rune.IsLetterOrDigit(rune))
                 {
                     opened++;
                     if (Rune.IsUpper(rune)) capitalised++;
@@ -166,53 +182,120 @@ namespace ChaySocial.MainProject.Text
                     continue;
                 }
 
-                if (rune.IsBmp && Array.IndexOf(SentenceEndMarks, (char)rune.Value) >= 0) waitingForOpening = true;
+                if (ClosesSentence(rune)) waitingForOpening = true;
             }
 
             sentences = Math.Max(opened, 1);
             return opened == 0 ? 0.0 : capitalised / (double)opened;
         }
 
-        /// <summary> Cuts writing into words: runs of letters and digits, held together by an apostrophe. </summary>
-        /// <param name="text"> The writing. </param>
-        /// <returns> Its words, in order. </returns>
-        static IReadOnlyList<string> WordsIn(string text)
+        /// <summary> True for a character that ends a sentence: one of the closing marks, or a line break. </summary>
+        /// <param name="rune"> The character. </param>
+        /// <returns> Whether the next word starts a new sentence. </returns>
+        static bool ClosesSentence(Rune rune)
         {
-            List<string> words = [];
+            if (!rune.IsBmp) return false;
+
+            char character = (char)rune.Value;
+
+            return Array.IndexOf(SentenceEndMarks, character) >= 0 || character is LineFeed or CarriageReturn;
+        }
+
+        /// <summary>
+        /// Cuts writing into words: runs of letters and digits, held together by an apostrophe. A run with no
+        /// letter or digit in it at all is not a word — an apostrophe standing on its own is punctuation, and
+        /// counted as a word it would drag the average word length down to one.
+        /// </summary>
+        /// <param name="text"> The writing. </param>
+        /// <returns> Its words, in order, each with the number of characters a reader would count in it. </returns>
+        static IReadOnlyList<MeasuredWord> WordsIn(string text)
+        {
+            List<MeasuredWord> words = [];
             StringBuilder current = new();
+            int letters = 0;
+            int characters = 0;
 
             foreach (Rune rune in text.EnumerateRunes())
             {
-                if (Rune.IsLetterOrDigit(rune) || rune.Value == WordJoiningApostrophe)
+                if (Rune.IsLetterOrDigit(rune) || Array.IndexOf(WordJoiningApostrophes, rune.Value) >= 0)
                 {
                     current.Append(rune.ToString());
+                    characters++;
+                    if (Rune.IsLetterOrDigit(rune)) letters++;
                     continue;
                 }
 
-                if (current.Length == 0) continue;
-
-                words.Add(current.ToString());
-                current.Clear();
+                Close(words, current, letters, characters);
+                letters = 0;
+                characters = 0;
             }
 
-            if (current.Length > 0) words.Add(current.ToString());
+            Close(words, current, letters, characters);
 
             return words;
+        }
+
+        /// <summary> Keeps the run being built as a word, when it is one, and empties the builder either way. </summary>
+        /// <param name="words"> The words so far. </param>
+        /// <param name="current"> The run being built. </param>
+        /// <param name="letters"> How many letters or digits it holds. </param>
+        /// <param name="characters"> How many characters a reader would count in it. </param>
+        static void Close(List<MeasuredWord> words, StringBuilder current, int letters, int characters)
+        {
+            if (letters > 0) words.Add(new MeasuredWord(current.ToString(), characters));
+
+            current.Clear();
         }
 
         /// <summary> Counts how often each word was used, ignoring case so "The" and "the" are one habit. </summary>
         /// <param name="words"> The words. </param>
         /// <returns> Each word and how often it appeared. </returns>
-        static Dictionary<string, int> CountWords(IReadOnlyList<string> words)
+        static Dictionary<string, int> CountWords(IReadOnlyList<MeasuredWord> words)
         {
             Dictionary<string, int> counted = new(StringComparer.OrdinalIgnoreCase);
 
-            foreach (string word in words)
+            foreach (MeasuredWord word in words)
             {
-                counted[word] = counted.GetValueOrDefault(word) + 1;
+                counted[word.Text] = counted.GetValueOrDefault(word.Text) + 1;
             }
 
             return counted;
         }
+
+        /// <summary>
+        /// Counts the emoji in a piece of writing — emoji, not the characters they are built out of.
+        /// </summary>
+        /// <param name="text"> The writing. </param>
+        /// <returns> How many emoji a reader would count. </returns>
+        /// <remarks>
+        /// A family emoji is five people joined by four invisible characters, and a flag is two letters that are
+        /// not letters; counting characters made one of each into six and two. Walking the text in the units a
+        /// reader sees — what Unicode calls grapheme clusters — counts each of them once.
+        /// </remarks>
+        static int CountEmoji(string text)
+        {
+            int emoji = 0;
+            TextElementEnumerator elements = StringInfo.GetTextElementEnumerator(text);
+
+            while (elements.MoveNext())
+            {
+                string element = (string)elements.Current;
+                if (element.Length == 0) continue;
+
+                if (Rune.TryGetRuneAt(element, 0, out Rune first)
+                    && Rune.GetUnicodeCategory(first) == UnicodeCategory.OtherSymbol)
+                {
+                    emoji++;
+                }
+            }
+
+            return emoji;
+        }
+
+        /// <summary> One word, and how many characters a reader would count in it. </summary>
+        /// <param name="Text"> The word itself. </param>
+        /// <param name="CharacterCount"> Its length in characters rather than in storage units, so an emoji-free
+        /// word and one written in a script stored as pairs are measured the same way. </param>
+        readonly record struct MeasuredWord(string Text, int CharacterCount);
     }
 }
