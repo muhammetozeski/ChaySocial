@@ -49,6 +49,12 @@
 
                 <a class="archive-download" download="@SealedFileName" href="@_sealedUri">@DownloadLabel</a>
 
+                @* Offered here as well as on an opened file, because this is where somebody can see for themselves
+                   what they have just sealed — before they trust it with the only copy of their history. *@
+                <button type="button" class="archive-action" @onclick="() => ReadWithoutAServer(archive)">@ReadOfflineLabel</button>
+
+                <p class="archive-section-description">@ReadOfflineDescription</p>
+
                 <p class="archive-fallback-label">@CopyFallbackLabel</p>
                 <textarea class="archive-fallback" readonly rows="@FallbackRows">@_sealedText</textarea>
             }
@@ -72,6 +78,17 @@
                 <span class="archive-pick-label">@PickLabel</span>
             </label>
 
+            @* The mirror of "copy it out by hand": a host that refuses uploads should not be able to trap a
+               history any more than one that refuses downloads. *@
+            <p class="archive-fallback-label">@PasteFallbackLabel</p>
+            <textarea class="archive-fallback"
+                      rows="@FallbackRows"
+                      placeholder="@PastePlaceholder"
+                      value="@_pastedText"
+                      @oninput="HandlePastedText"></textarea>
+
+            <button type="button" class="archive-action" disabled="@_isRestoring" @onclick="OpenPasted">@OpenPastedLabel</button>
+
             @if (_openFailure is { } refusal)
             {
                 <p class="archive-refusal">@refusal</p>
@@ -84,6 +101,14 @@
                 <button type="button" class="archive-action" disabled="@_isRestoring" @onclick="RestoreAsync">
                     @(_isRestoring ? RestoringLabel : RestoreLabel)
                 </button>
+
+                @* Only ever drawn for a file that has already proved its seal, because reading it is the same
+                   trust as writing it back: what appears afterwards is presented as this account's own history. *@
+                <button type="button" class="archive-action" disabled="@_isRestoring" @onclick="() => ReadWithoutAServer(opened)">
+                    @ReadOfflineLabel
+                </button>
+
+                <p class="archive-section-description">@ReadOfflineDescription</p>
             }
 
             @if (_restored is { } result)

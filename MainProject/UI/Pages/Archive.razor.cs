@@ -2,6 +2,7 @@ using System.Text;
 using ChaySocial.MainProject.Constants.ThemeConstants;
 using ChaySocial.MainProject.DataModels;
 using ChaySocial.MainProject.Services;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
 namespace ChaySocial.MainProject.UI.Pages
@@ -36,6 +37,15 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> What the file picker says before a file is chosen. </summary>
         const string PickLabel = "Choose an archive file";
+
+        /// <summary> Line above the box an archive can be pasted into. </summary>
+        const string PasteFallbackLabel = "Or paste one in:";
+
+        /// <summary> What the empty paste box invites. </summary>
+        const string PastePlaceholder = "Paste the whole archive here";
+
+        /// <summary> Text on the button that opens what was pasted. </summary>
+        const string OpenPastedLabel = "Open what I pasted";
 
         /// <summary> Emoji on the section that seals an archive. </summary>
         const string TakeSectionEmoji = "📦";
@@ -77,6 +87,15 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> What that button says while it is writing. </summary>
         const string RestoringLabel = "Writing…";
 
+        /// <summary> What the button that reads an archive in place says. </summary>
+        const string ReadOfflineLabel = "Read it without a server";
+
+        /// <summary> Line under it, saying what that does and what it costs. </summary>
+        const string ReadOfflineDescription =
+            "The app reads this file instead of a server: your wall, your profile and both halves of every "
+            + "conversation, with nothing being talked to. Nothing can be written while you are reading, and "
+            + "pictures, sounds and video stayed on the server.";
+
         /// <summary> Shown when a chosen file is not an archive at all. </summary>
         const string NotAnArchiveMessage = "That file is not a ChaySocial archive.";
 
@@ -116,6 +135,9 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> The archive read out of a chosen file, once it has proved to be one. </summary>
         AccountArchive? _opened;
+
+        /// <summary> An archive pasted in as text, for when a file cannot be handed over. </summary>
+        string _pastedText = string.Empty;
 
         /// <summary> True while an opened archive is being written back. </summary>
         bool _isRestoring;
@@ -205,15 +227,43 @@ namespace ChaySocial.MainProject.UI.Pages
             using MemoryStream buffer = new();
             await file.OpenReadStream(LargestArchiveBytes).CopyToAsync(buffer);
 
-            AccountArchive? archive = AccountArchiveService.Deserialise(buffer.ToArray());
+            Open(buffer.ToArray());
+        }
+
+        /// <summary> Keeps the pasted text in step with the box on every keystroke. </summary>
+        /// <param name="args"> The input event carrying the box's new contents. </param>
+        void HandlePastedText(ChangeEventArgs args) => _pastedText = args.Value?.ToString() ?? string.Empty;
+
+        /// <summary>
+        /// Opens an archive somebody pasted rather than picked. Offered because saving is: a host that refuses
+        /// downloads should not be able to trap a history, and neither should one that refuses uploads.
+        /// </summary>
+        void OpenPasted()
+        {
+            if (_pastedText.Trim().Length == 0) return;
+
+            Open(Encoding.UTF8.GetBytes(_pastedText));
+        }
+
+        /// <summary>
+        /// Judges an archive's bytes however they arrived, and accepts them only if this account itself sealed them.
+        /// </summary>
+        /// <param name="content"> The file's contents. </param>
+        void Open(byte[] content)
+        {
+            _opened = null;
+            _restored = null;
+            _openFailure = null;
+
+            AccountArchive? archive = AccountArchiveService.Deserialise(content);
             if (archive is null)
             {
                 _openFailure = NotAnArchiveMessage;
                 return;
             }
 
-            // Checked before anything is offered, so nobody is ever invited to write back a file that was tampered
-            // with or that belongs to somebody else.
+            // Checked before anything is offered, so nobody is ever invited to write back or read a file that was
+            // tampered with or that belongs to somebody else.
             if (!AccountArchiveService.VerifySeal(archive, Account.Public))
             {
                 _openFailure = SealFailedMessage;
@@ -221,6 +271,19 @@ namespace ChaySocial.MainProject.UI.Pages
             }
 
             _opened = archive;
+        }
+
+        /// <summary>
+        /// Points the whole app at one archive and goes to the wall. Nothing is written and no server is asked for
+        /// anything after this — the archive is what is being read.
+        /// </summary>
+        /// <param name="archive"> The archive to read, either one just sealed here or one whose seal was checked. </param>
+        void ReadWithoutAServer(AccountArchive archive)
+        {
+            if (_isRestoring) return;
+
+            OfflineReadingService.Read(archive);
+            NavManager.NavigateTo(NavigationConstants.Wall.Link);
         }
 
         /// <summary> Writes the opened archive back into whichever store this app is pointed at. </summary>
