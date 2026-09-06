@@ -1,0 +1,90 @@
+@*
+    Styling for CountReceiptCard. CountReceiptCard renders this component itself. Every selector is namespaced
+    "count-receipt-*" because *Css.razor styles are global.
+*@
+<style>
+    .count-receipt {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    /* Quiet by design and sitting on nothing: it is an offer to check, not a claim being made. */
+    .count-receipt-toggle {
+        display: inline-flex;
+        align-items: center;
+        align-self: flex-start;
+        gap: @(AppMeasures.Space.Px6)px;
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px12)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: transparent;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        cursor: pointer;
+        font: inherit;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        transition: border-color @(AppMeasures.Duration.Fast)s ease, color @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .count-receipt-toggle:hover {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
+    .count-receipt-emoji {
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .count-receipt-lines {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px6)px;
+        padding: @(AppMeasures.Space.Px12)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+    }
+
+    /* Label and detail on one line while there is room, and stacked when there is not: the detail is a sentence,
+       and a sentence squeezed into a third of a phone screen is a column of single words. */
+    .count-receipt-line {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    .count-receipt-label {
+        flex: none;
+        min-width: @(ReceiptLabelWidthPx)px;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+    }
+
+    /* Fixed-width faces for the numbers, so four rows of counts line up under each other and a reader can compare
+       them down the column rather than across the sentence. */
+    .count-receipt-detail {
+        flex: 1 1 auto;
+        min-width: 0;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        font-family: @ReceiptTypeface;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+    }
+
+    .count-receipt-waiting,
+    .count-receipt-note {
+        margin: 0;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+    }
+</style>
+
+@code {
+    /// <summary> Width the row labels are held to, so the four details start at the same place. </summary>
+    const int ReceiptLabelWidthPx = AppMeasures.Size.Px64;
+
+    /// <summary> Fixed-width faces, so the counts in four rows line up as a column. </summary>
+    const string ReceiptTypeface = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+}

@@ -1,0 +1,125 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.Services
+
+@*
+    Where the numbers under a post came from. Closed until somebody asks, and it reads nothing at all while it is
+    closed — the point is that a reader can check, not that every reader pays for the checking.
+
+    It says the one thing the numbers themselves cannot: that they are not all the same kind of number. An answer
+    is signed by whoever gave it and a chay is signed by nobody, and a reader has no way to tell those apart from
+    two figures printed the same size.
+*@
+
+<div class="count-receipt">
+    <button type="button" class="count-receipt-toggle" @onclick="OnToggle">
+        <span class="count-receipt-emoji">@ToggleEmoji</span>
+        <span>@(IsOpen ? CloseLabel : OpenLabel)</span>
+    </button>
+
+    @if (IsOpen)
+    {
+        @if (Receipt is null)
+        {
+            <p class="count-receipt-waiting">@CountingLabel</p>
+        }
+        else
+        {
+            <div class="count-receipt-lines">
+                @foreach ((string Label, CountedLine Line) row in Rows(Receipt))
+                {
+                    <div class="count-receipt-line">
+                        <span class="count-receipt-label">@row.Label</span>
+                        <span class="count-receipt-detail">@Detail(row.Line)</span>
+                    </div>
+                }
+            </div>
+
+            <p class="count-receipt-note">@FootNote</p>
+        }
+    }
+</div>
+
+<CountReceiptCardCss />
+
+@code {
+    /// <summary> What the numbers were counted from, or null while it has not been read yet. </summary>
+    [Parameter] public PostCountReceipt? Receipt { get; set; }
+
+    /// <summary> True while the receipt is open. </summary>
+    [Parameter] public bool IsOpen { get; set; }
+
+    /// <summary> Raised when the reader opens or closes it; the page owns both the state and the reading. </summary>
+    [Parameter] public EventCallback OnToggle { get; set; }
+
+    /// <summary> True when this post is asking something, so the answers line is worth a row. </summary>
+    [Parameter] public bool IsAsking { get; set; }
+
+    /// <summary> Mark on the control that opens the receipt. </summary>
+    const string ToggleEmoji = "🧾";
+
+    /// <summary> What that control says while the receipt is closed. </summary>
+    const string OpenLabel = "Where these numbers came from";
+
+    /// <summary> And while it is open. </summary>
+    const string CloseLabel = "Put the receipt away";
+
+    /// <summary> Shown between opening the receipt and the counting finishing. </summary>
+    const string CountingLabel = "Counting again…";
+
+    /// <summary> Label on the chays row. </summary>
+    const string ChaysLabel = "Chays";
+
+    /// <summary> Label on the reposts row. </summary>
+    const string PassedOnLabel = "Passed on";
+
+    /// <summary> Label on the replies row. </summary>
+    const string RepliesLabel = "Replies";
+
+    /// <summary> Label on the answers row. </summary>
+    const string AnswersLabel = "Answers";
+
+    /// <summary> What a signed line says; the placeholders take the records read, the ones that held, and the ones that did not. </summary>
+    const string SignedDetailFormat = "{0} read, {1} verified, {2} unverified";
+
+    /// <summary> Added to a line whose failures really are left out of the number the post shows. </summary>
+    const string DroppedSuffix = " — the unverified ones are left out of the number above";
+
+    /// <summary> Added to a line whose failures are counted anyway, which is most of them. </summary>
+    const string CountedAnywaySuffix = " — the unverified ones are counted above all the same";
+
+    /// <summary> What an unsigned line says instead. </summary>
+    const string UnsignedDetailFormat = "{0} read — nobody signs these, so this number is the server's word";
+
+    /// <summary> The line under the rows, saying what the whole receipt is and what it is not. </summary>
+    const string FootNote =
+        "Counted again on this device from the records themselves. Verified means the signature on that record held against the key its account publishes.";
+
+    /// <summary> The rows to draw, in the order they are read. </summary>
+    /// <param name="receipt"> The receipt being drawn. </param>
+    /// <returns> Each row's label and line. </returns>
+    IEnumerable<(string Label, CountedLine Line)> Rows(PostCountReceipt receipt)
+    {
+        yield return (ChaysLabel, receipt.Chays);
+        yield return (PassedOnLabel, receipt.PassedOn);
+        yield return (RepliesLabel, receipt.Replies);
+
+        // A post that is not asking anything has no answers line rather than a line of zeroes.
+        if (IsAsking) yield return (AnswersLabel, receipt.Answers);
+    }
+
+    /// <summary> What one row says about itself. </summary>
+    /// <param name="line"> The line being drawn. </param>
+    /// <returns> Its detail in words. </returns>
+    static string Detail(CountedLine line)
+    {
+        if (!line.CarriesSignatures) return string.Format(UnsignedDetailFormat, line.ReadCount);
+
+        string counts = string.Format(SignedDetailFormat, line.ReadCount, line.VerifiedCount, line.UnverifiedCount);
+
+        // What happens to a failure is only worth saying when there is one. A row of zeroes with a clause about
+        // what would happen to a record that does not exist is noise.
+        if (line.UnverifiedCount == 0) return counts;
+
+        return counts + (line.FailuresLeaveTheCount ? DroppedSuffix : CountedAnywaySuffix);
+    }
+}
