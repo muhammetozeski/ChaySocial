@@ -65,6 +65,27 @@ namespace ChaySocial.MainProject.Cryptography
         {
             text = string.Empty;
 
+            if (!TryUnpad(padded, out byte[] body)) return false;
+
+            text = Encoding.UTF8.GetString(body);
+            return true;
+        }
+
+        /// <summary>
+        /// Reads a body back out as the bytes it was, for a caller whose body is not only text.
+        /// </summary>
+        /// <param name="padded"> The bytes that came out of the envelope. </param>
+        /// <param name="body"> The bytes that were hidden in them; empty when this is not a padded body. </param>
+        /// <returns> True when the bytes were padded by <see cref="Pad"/>. </returns>
+        /// <remarks>
+        /// This is the real reader and the text one is a thin wrapper over it. Decoding first and slicing after
+        /// would destroy anything in a body that is not text — a raw number written ahead of the words, say, whose
+        /// bytes are not valid UTF-8 and would come back as replacement characters.
+        /// </remarks>
+        public static bool TryUnpad(ReadOnlySpan<byte> padded, out byte[] body)
+        {
+            body = [];
+
             if (!IsRung(padded.Length)) return false;
 
             int declaredLength = BinaryPrimitives.ReadInt32BigEndian(padded);
@@ -72,7 +93,7 @@ namespace ChaySocial.MainProject.Cryptography
 
             if (padded[(LengthHeaderBytes + declaredLength)..].IndexOfAnyExcept((byte)0) >= 0) return false;
 
-            text = Encoding.UTF8.GetString(padded.Slice(LengthHeaderBytes, declaredLength));
+            body = padded.Slice(LengthHeaderBytes, declaredLength).ToArray();
             return true;
         }
 
