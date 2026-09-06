@@ -151,33 +151,43 @@ bir emniyet ağı değil.
 Ayna, beste ekranındaki taslağı bu cihazın taşıdığı hesapların yayınlanmış yazılarıyla karşılaştırıyor. İki
 sayısı var ve ikisi de ölçüldü, seçilmedi.
 
-Ölçüm kurulumu: uygulamanın kendi yayınlama yolundan beş hesaba gerçek yazı gövdeleri yazıldı — ikisi aynı
-elden çıkmış ölçülü bir ses, biri kısa ve emojili, biri düz, biri de zaten orada duran uzun yazı. Sonra her
-gövdeden o uzunlukta pencereler kesilip her hesabın altında yazılıyormuş gibi denendi.
+Ölçüm kurulumu: uygulamanın kendi yayınlama yolundan hesaplara gerçek yazı gövdeleri yazıldı — ikisi aynı
+elden çıkmış ölçülü bir ses, biri kısa ve emojili, biri düz. Sonra her gövdeden o uzunlukta pencereler
+kesilip her hesabın altında yazılıyormuş gibi denendi. Aynı ölçüye göre birbirinden ayırt edilemeyen
+hesaplar korpustan düşürülüyor; iki özdeş gövde iki ses değil, tek ses.
 
-Metrenin ayırdığı görülüyor: aynı elden çıkan iki gövde **0,9651**; diğer bütün çiftler **0,78–0,90**.
+Metrenin ayırdığı görülüyor: aynı elden çıkan iki gövde **0,9629**; diğer bütün çiftler **0,77–0,89**.
 
-| Taslak uzunluğu | Eşik | Yanlış alarm | Yakalama | Doğru hesabı adlandırma |
-|---|---|---|---|---|
-| 140 | 0,03 | %4,8 | %66,7 | %75,0 |
-| 180 | 0,00 | %20,0 | %95,0 | — |
-| **180** | **0,03** | **%0,0** (0/15) | **%70,0** | **%88,1** |
-| 240 | 0,03 | %0,0 | %72,7 | %93,8 |
-| 320 | 0,03 | %0,0 | %86,1 | %90,3 |
+Aşağıdaki tablo, ölçümün kendisi düzeltildikten **sonraki** hâl (satır sonu artık cümle bitiriyor, iki
+tarafta da sıfır olan eksen sayılmıyor, emoji emoji başına sayılıyor). Önceki tablo bu düzeltmelerden
+öncesine aitti ve artık geçerli değil.
+
+| Taslak uzunluğu | Eşik | Yanlış alarm | Yakalama | Tam hesabı adlandırma | Aynı sesi adlandırma |
+|---|---|---|---|---|---|
+| 180 | 0,03 | %8,7 | %76,5 | %67,0 | %81,8 |
+| 180 | 0,08 | %0,0 | %40,0 | %69,6 | %80,4 |
+| 240 | 0,00 | %16,7 | %96,7 | %86,2 | %90,8 |
+| 240 | 0,03 | %11,1 | %80,0 | %83,3 | %88,9 |
+| **240** | **0,05** | **%5,6** | **%71,1** | **%82,8** | **%89,1** |
+| 320 | 0,05 | %7,7 | %78,5 | %86,3 | %86,3 |
 
 "Yanlış alarm" = kendi sesiyle kendi hesabında yazan birinde başka bir hesabın öne geçmesi. "Yakalama" =
-başka bir hesabın altında yazarken kendi sesinin bulunması. "Doğru hesabı adlandırma" = tetiklendiğinde
-adlandırdığı hesabın gerçekten o sesin sahibi olması.
+başka bir hesabın altında yazarken kendi sesinin bulunması. "Tam hesabı adlandırma" = adlandırdığı hesabın
+tam olarak o pencerenin kesildiği hesap olması. "Aynı sesi adlandırma" = adlandırdığı hesabın, o pencerenin
+sahibiyle aynı elden çıkmış olması — özelliğin amacı bu olduğu için asıl bakılması gereken sütun bu.
 
-Seçilen değerler: `ShortestJudgeableDraft = 180` karakter, `ClosenessLeadWorthMentioning = 0,03`.
+Seçilen değerler: `ShortestJudgeableDraft = 240` karakter, `ClosenessLeadWorthMentioning = 0,05`.
 
-140 karakter derdi çözmüyordu: satır dört seferde bir yanlış hesabı adlandırıyordu. Eşiksiz çalıştırmak da
-çözmüyordu: kendi hesabında kendi sesiyle yazanların beşte birinde tetikleniyordu. 180'in bedeli 140–179
-arasındaki taslaklarda susmak; bir koruma satırı için yanlış tarafta olmanın doğru tarafı bu, çünkü boşuna
-öten satır öğrenilip atlanan satırdır.
+180 karakter yetmiyor: satır üç seferde bir başka sesten bir hesabı adlandırıyor. Eşiği 0,08'e çıkarmak
+yanlış alarmı sıfırlıyor ama yakalamayı %40'a düşürüyor, yani ayna çoğu zaman hiçbir şey söylemiyor.
+240 ile 0,05 ikisini birden dengeliyor: on kez konuştuğunda dokuzunda doğru sesi adlandırıyor, on sekiz
+kişiden birinde boşuna ötüyor.
 
-Örneklem küçük: 180'de yanlış alarm ölçümü 15 denemeye, 240'ta 11 denemeye dayanıyor. %0 rakamı "hiç olmaz"
-demek değil, "bu on beş denemede olmadı" demek.
+Bedeli 180–239 arasındaki taslaklarda susmak; bir koruma satırı için yanlış tarafta olmanın doğru tarafı
+bu, çünkü boşuna öten satır öğrenilip atlanan satırdır.
+
+Örneklem küçük: 240'ta yanlış alarm ölçümü 18 denemeye, 320'de 13 denemeye dayanıyor. Dört hesaplık bir
+korpus da ince. Buradaki yüzdeler "bu korpusta böyle çıktı" demek, "her zaman böyle" demek değil.
 
 ## Çizilmiş yüz — profil ne kadar şişiyor
 
