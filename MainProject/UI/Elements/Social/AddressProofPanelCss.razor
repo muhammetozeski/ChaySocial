@@ -1,0 +1,107 @@
+@*
+    Styling for AddressProofPanel. The panel renders this component itself. Every selector is namespaced
+    "address-proof-*" because *Css.razor styles are global.
+*@
+<style>
+    .address-proof {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+        width: @(AppMeasures.Percent.Full)%;
+    }
+
+    /* Quiet by design and sitting on nothing: it is an offer to check, not a claim being made. */
+    .address-proof-toggle {
+        display: inline-flex;
+        align-items: center;
+        align-self: flex-start;
+        gap: @(AppMeasures.Space.Px6)px;
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px12)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: transparent;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        cursor: pointer;
+        font: inherit;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        transition: border-color @(AppMeasures.Duration.Fast)s ease, color @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .address-proof-toggle:hover {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
+    .address-proof-emoji {
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    /* The arithmetic itself, numbered down the page rather than run together: each line is one step somebody can
+       stop at and check against what they already know. */
+    .address-proof-steps {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px6)px;
+        padding: @(AppMeasures.Space.Px12)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+    }
+
+    .address-proof-step {
+        margin: 0;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+    }
+
+    .address-proof-label {
+        margin: 0;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+    }
+
+    /* The two addresses, one under the other in fixed-width faces so a single wrong character shows up as a break
+       in the column rather than as a difference somebody has to hunt for. */
+    .address-proof-address {
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px8)px @(AppMeasures.Space.Px12)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        background: @(AppColors.BackgroundDeep.ToRgbaHex(true));
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        font-family: @AddressTypeface;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        letter-spacing: @(AppMeasures.Tracking.Normal)px;
+        outline: none;
+        cursor: text;
+    }
+
+    .address-proof-unreadable {
+        margin: 0;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+    }
+
+    .address-proof-holds {
+        margin: 0;
+        color: @(AppColors.TextSuccess.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+    }
+
+    .address-proof-broken {
+        margin: 0;
+        color: @(AppColors.TextDanger.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+    }
+</style>
+
+@code {
+    /// <summary> Fixed-width faces, so the two addresses line up column by column and one wrong character shows. </summary>
+    const string AddressTypeface = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+}

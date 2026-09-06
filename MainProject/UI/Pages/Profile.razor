@@ -244,6 +244,10 @@
                                     @onclick="ToggleAddressDetail">@AddressToggleEmoji</button>
                         </div>
 
+                        @* Under the address rather than beside the identity card, because this is about the text
+                           right above it: where those forty-one characters come from. *@
+                        <AddressProofPanel Profile="@ShownProfile" />
+
                         @if (IsShownAccountBlocked)
                         {
                             <div class="profile-blocked-row">

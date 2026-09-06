@@ -1,0 +1,148 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Identity
+
+@*
+    The address, worked out again from the two keys this profile publishes, on the reader's own device.
+
+    Every signature check in this app already runs this comparison before it looks at a signature at all. Running
+    it is not the same as showing it: the sentence the whole identity story rests on — that an address is a
+    commitment to a pair of keys — is checked in five places and was visible in none.
+
+    Closed until somebody asks, and nothing is computed while it is closed.
+*@
+
+@if (Profile is not null)
+{
+    <div class="address-proof">
+        <button type="button" class="address-proof-toggle" @onclick="Toggle">
+            <span class="address-proof-emoji">@ToggleEmoji</span>
+            <span>@(isOpen ? CloseLabel : OpenLabel)</span>
+        </button>
+
+        @if (isOpen)
+        {
+            @if (proof is not { } shown)
+            {
+                <p class="address-proof-unreadable">@UnreadableLabel</p>
+            }
+            else
+            {
+                <div class="address-proof-steps">
+                    <p class="address-proof-step">@string.Format(SigningKeyStepFormat, shown.SigningKeyByteCount)</p>
+                    <p class="address-proof-step">@string.Format(EncryptionKeyStepFormat, shown.EncryptionKeyByteCount)</p>
+                    <p class="address-proof-step">@string.Format(FingerprintStepFormat, shown.FingerprintByteCount)</p>
+                    <p class="address-proof-step">
+                        @string.Format(
+                            EncodedStepFormat,
+                            shown.ChecksumByteCount,
+                            shown.VersionByteCount,
+                            shown.AddressVersion,
+                            shown.EncodedByteCount)
+                    </p>
+                </div>
+
+                <p class="address-proof-label">@RebuiltLabel</p>
+                <input class="address-proof-address"
+                       type="text"
+                       value="@shown.RebuiltAddress"
+                       readonly
+                       spellcheck="false"
+                       autocomplete="off"
+                       aria-label="@RebuiltLabel" />
+
+                <p class="address-proof-label">@ClaimedLabel</p>
+                <input class="address-proof-address"
+                       type="text"
+                       value="@shown.ClaimedAddress"
+                       readonly
+                       spellcheck="false"
+                       autocomplete="off"
+                       aria-label="@ClaimedLabel" />
+
+                <p class="@(shown.Holds ? HoldsClass : BrokenClass)">@(shown.Holds ? HoldsVerdict : BrokenVerdict)</p>
+            }
+        }
+    </div>
+}
+
+<AddressProofPanelCss />
+
+@code {
+    /// <summary> The account being shown, or null while none has been read. </summary>
+    [Parameter] public ProfileData? Profile { get; set; }
+
+    /// <summary> Mark on the control that opens the panel. </summary>
+    const string ToggleEmoji = "🧮";
+
+    /// <summary> What that control says while the panel is closed. </summary>
+    const string OpenLabel = "Work this address out yourself";
+
+    /// <summary> And while it is open. </summary>
+    const string CloseLabel = "Put the working away";
+
+    /// <summary> Shown when the profile carries nothing that can be read as a pair of keys. </summary>
+    const string UnreadableLabel =
+        "This profile does not carry two readable keys, so there is nothing here to work out.";
+
+    /// <summary> First step; the placeholder takes the signing key's length. </summary>
+    const string SigningKeyStepFormat = "The signing key this account publishes is {0} bytes.";
+
+    /// <summary> Second step; the placeholder takes the encryption key's length. </summary>
+    const string EncryptionKeyStepFormat = "The encryption key is {0} bytes.";
+
+    /// <summary> Third step; the placeholder takes the fingerprint's length. </summary>
+    const string FingerprintStepFormat =
+        "SHAKE-256 over both of them, plus the version byte, gives a {0}-byte fingerprint.";
+
+    /// <summary> Fourth step; the placeholders take the checksum bytes, the version bytes, the version, and the total. </summary>
+    const string EncodedStepFormat =
+        "Add {0} bytes of checksum and {1} version byte (version {2}) — {3} bytes in all — and write them in Base32.";
+
+    /// <summary> Above the address this device just built. </summary>
+    const string RebuiltLabel = "What those keys give:";
+
+    /// <summary> Above the address the profile is stored under. </summary>
+    const string ClaimedLabel = "What this account is called:";
+
+    /// <summary> What it means when the two are the same. </summary>
+    const string HoldsVerdict =
+        "The same, character for character. These keys name this account and no other, so anything signed with them is this account's.";
+
+    /// <summary> And when they are not. </summary>
+    const string BrokenVerdict =
+        "Not the same. These keys do not name this account, and nothing signed with them is trusted here.";
+
+    /// <summary> Class on the line for a binding that holds. </summary>
+    const string HoldsClass = "address-proof-holds";
+
+    /// <summary> Class on the line for one that does not. </summary>
+    const string BrokenClass = "address-proof-broken";
+
+    /// <summary> True while the working is on screen. </summary>
+    bool isOpen;
+
+    /// <summary> The working, or null while the panel has never been opened for this profile. </summary>
+    AddressBindingProof? proof;
+
+    /// <summary> The address the working was done for, so opening the panel on another account redoes it. </summary>
+    string readAddress = string.Empty;
+
+    /// <summary> Closes the panel when the reader moves to another account, so no working outlives its profile. </summary>
+    protected override void OnParametersSet()
+    {
+        if (readAddress == (Profile?.Address ?? string.Empty)) return;
+
+        readAddress = Profile?.Address ?? string.Empty;
+        proof = null;
+        isOpen = false;
+    }
+
+    /// <summary> Opens or closes the working, computing it the first time it is opened for this profile. </summary>
+    void Toggle()
+    {
+        isOpen = !isOpen;
+
+        if (isOpen && proof is null) proof = AddressBinding.Read(Profile);
+    }
+}
