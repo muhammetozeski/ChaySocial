@@ -167,6 +167,10 @@
                             && !AnonymityService.IsReachedOverTor(NavManager.BaseUri);
 
             if (!_isTorBlocked) await SessionService.RestoreAsync();
+
+            // After the session, not before: an account's own palette is built from its address, and the address
+            // is not known while the stored palette is being read back.
+            await ThemeManager.ReapplyForCurrentAccountAsync();
         }
         catch (Exception error)
         {
@@ -189,7 +193,14 @@
     /// <param name="data"> Payload the event carried; the shell re-reads what it needs and ignores it. </param>
     void HandleAppEvent(string eventName, object? data)
     {
-        if (eventName == MainEvents.Names.SessionChanged) ShowBottomNavigation = SessionService.IsSignedIn;
+        if (eventName == MainEvents.Names.SessionChanged)
+        {
+            ShowBottomNavigation = SessionService.IsSignedIn;
+
+            // Switching between two accounts carried on one device repaints the whole app, so the identity that
+            // is about to write is visible before a word of it is.
+            InvokeAsync(ThemeManager.ReapplyForCurrentAccountAsync);
+        }
         else if (eventName is not (MainEvents.Names.ThemeChanged or MainEvents.Names.OfflineReadingChanged)) return;
 
         InvokeAsync(StateHasChanged);
