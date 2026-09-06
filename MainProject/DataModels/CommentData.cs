@@ -32,6 +32,16 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> True when this comment answers another comment rather than the post. </summary>
         public bool IsReply => ParentCommentId.Length > 0;
 
+        /// <summary>
+        /// Which block of a long piece this note was left beside. Zero — which is what every comment written before
+        /// this field existed carries — means it was said to the whole piece; one and up name the block by its
+        /// place in <c>WrittenProse.Read(post.LongBody)</c>, counting from one.
+        /// </summary>
+        public int AnchorBlockIndex { get; init; }
+
+        /// <summary> True when this comment was left beside one paragraph rather than under the whole piece. </summary>
+        public bool IsAnchored => AnchorBlockIndex > 0;
+
         /// <summary> When the author published it. </summary>
         public required long CreatedAtUnixMs { get; init; }
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using ChaySocial.MainProject.Cryptography;
 using ChaySocial.MainProject.DataModels;
 using ChaySocial.MainProject.Events;
@@ -188,6 +189,33 @@ namespace ChaySocial.MainProject.Services
             return thread;
         }
 
+        /// <summary>
+        /// Counts how many notes were left beside each block of a long piece.
+        /// </summary>
+        /// <param name="comments"> One post's comments, in any order. </param>
+        /// <param name="blockCount"> How many blocks the piece has. </param>
+        /// <returns> One count per block, in the piece's own order; entry i counts the notes anchored to block i + 1. </returns>
+        /// <remarks>
+        /// Thread arithmetic rather than page state, which is why it sits beside <see cref="ArrangeThread"/>. An
+        /// anchor pointing past the end of the piece is dropped here as well as refused when written: the comments
+        /// arrive from a server, and a piece can be shorter than it was when somebody wrote beside it.
+        /// </remarks>
+        public static IReadOnlyList<int> CountNotesPerBlock(IReadOnlyList<CommentData> comments, int blockCount)
+        {
+            if (blockCount <= 0) return [];
+
+            int[] counts = new int[blockCount];
+
+            foreach (CommentData comment in comments)
+            {
+                if (!comment.IsAnchored || comment.AnchorBlockIndex > blockCount) continue;
+
+                counts[comment.AnchorBlockIndex - 1]++;
+            }
+
+            return counts;
+        }
+
         /// <summary> Counts the replies under a post, for the comment badge on a post card. </summary>
         /// <param name="postId"> Post to count. </param>
         /// <returns> How many comments are stored for it, at most <see cref="MaximumCountedComments"/>. </returns>
@@ -233,15 +261,22 @@ namespace ChaySocial.MainProject.Services
         /// <param name="post"> Post being replied to. </param>
         /// <param name="text"> What to publish; trimmed, and refused when empty or over <see cref="CommentData.MaximumTextLength"/>. </param>
         /// <param name="parent"> Comment being answered, or null when the reply is to the post itself. </param>
+        /// <param name="anchorBlockIndex"> Block of the post's long piece to leave the note beside, counting from one, or zero to speak to the whole post. </param>
         /// <returns> The stored comment, or null when the text was not publishable. </returns>
         public static async Task<CommentData?> PublishAsync(
             PrivateIdentity author,
             PostData post,
             string text,
-            CommentData? parent = null)
+            CommentData? parent = null,
+            int anchorBlockIndex = 0)
         {
             string trimmed = text.Trim();
             if (trimmed.Length == 0 || trimmed.Length > CommentData.MaximumTextLength) return null;
+
+            // An anchor past the end of the piece points at nothing, and a negative one points nowhere at all.
+            // Refused rather than clamped: a note quietly moved to another paragraph is worse than one refused.
+            if (anchorBlockIndex < 0) return null;
+            if (anchorBlockIndex > 0 && anchorBlockIndex > WrittenProse.Read(post.LongBody).Count) return null;
 
             // Refused the same way text that is too long is refused. Nothing here depends on this holding: the
             // reading side checks every reply again, because a client that skipped this line is exactly the client
@@ -257,7 +292,7 @@ namespace ChaySocial.MainProject.Services
             string parentCommentId = parent?.CommentId ?? string.Empty;
 
             byte[] transcript = BuildTranscript(
-                commentId, post.PostId, author.Public.Address, trimmed, createdAt, parentCommentId);
+                commentId, post.PostId, author.Public.Address, trimmed, createdAt, parentCommentId, anchorBlockIndex);
 
             CommentData comment = new()
             {
@@ -266,6 +301,7 @@ namespace ChaySocial.MainProject.Services
                 AuthorAddress = author.Public.Address,
                 Text = trimmed,
                 ParentCommentId = parentCommentId,
+                AnchorBlockIndex = anchorBlockIndex,
                 CreatedAtUnixMs = createdAt,
                 Signature = Convert.ToBase64String(author.Sign(transcript))
             };
@@ -331,7 +367,8 @@ namespace ChaySocial.MainProject.Services
                     comment.AuthorAddress,
                     comment.Text,
                     comment.CreatedAtUnixMs,
-                    comment.ParentCommentId);
+                    comment.ParentCommentId,
+                    comment.AnchorBlockIndex);
 
                 return AppCryptography.Identities.Verify(transcript, Convert.FromBase64String(comment.Signature), author);
             }
@@ -361,6 +398,7 @@ namespace ChaySocial.MainProject.Services
         /// <param name="text"> The comment's text. </param>
         /// <param name="createdAtUnixMs"> Publication time. </param>
         /// <param name="parentCommentId"> Comment being answered, empty for a reply to the post; always written, so nobody can strip it and turn an answer into a remark of its own. </param>
+        /// <param name="anchorBlockIndex"> Block of the long piece this note was left beside, or zero for the whole piece. </param>
         /// <returns> The transcript to sign. </returns>
         static byte[] BuildTranscript(
             string commentId,
@@ -368,7 +406,8 @@ namespace ChaySocial.MainProject.Services
             string authorAddress,
             string text,
             long createdAtUnixMs,
-            string parentCommentId)
+            string parentCommentId,
+            int anchorBlockIndex)
         {
             TranscriptWriter transcript = new();
             transcript.WriteBytes(CommentSignatureDomain);
@@ -381,6 +420,14 @@ namespace ChaySocial.MainProject.Services
             // Named rather than positional, so the next field a comment grows leaves every signature written before
             // it untouched. See TranscriptWriter.WriteNamedText.
             transcript.WriteNamedText(nameof(CommentData.ParentCommentId), parentCommentId);
+
+            // Written as text rather than as a number, because WriteInt64 would write its eight bytes even for a
+            // zero and every signature made before this field existed would stop verifying. The anchor is inside
+            // the signature, so a server cannot move somebody's note to a paragraph they never wrote it beside.
+            transcript.WriteNamedText(
+                nameof(CommentData.AnchorBlockIndex),
+                anchorBlockIndex == 0 ? string.Empty : anchorBlockIndex.ToString(CultureInfo.InvariantCulture));
+
             return transcript.ToArray();
         }
 
