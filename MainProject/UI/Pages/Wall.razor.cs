@@ -79,6 +79,9 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Text on the button that switches the reader to the discover tab. </summary>
         const string GoToDiscoverLabel = "Wander over to Discover";
 
+        /// <summary> Text on the button that leads two steps out from the reader's own people. </summary>
+        const string GoToNearbyLabel = "Two steps out";
+
         /// <summary> Emoji for the placeholder shown when the whole app has no posts to read. </summary>
         const string EmptyDiscoverEmoji = "🍃";
 
@@ -587,5 +590,8 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Opens one post's own page, where its comments are read and written. </summary>
         /// <param name="postId"> Id of the post to open. </param>
         void OpenComments(string postId) => NavManager.NavigateTo($"{PostRoutePrefix}{postId}");
+
+        /// <summary> Opens the screen listing accounts the reader's own people already follow. </summary>
+        void OpenNearby() => NavManager.NavigateTo(Nearby.NearbyRoute);
     }
 }

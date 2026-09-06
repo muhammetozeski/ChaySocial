@@ -129,6 +129,17 @@
                                 Shadow="@AppStyles.ShadowPrimaryGlow">
                         @GoToDiscoverLabel
                     </CoreButton>
+
+                    @* Offered exactly where somebody has nobody and needs somebody. *@
+                    <CoreButton OnClick="OpenNearby"
+                                Background="@AppColors.SurfaceSubtle"
+                                TextColor="@AppColors.TextSecondary"
+                                BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                                Padding="@ActionButtonPadding"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Border="@($"{AppMeasures.Border.Thin}px solid {AppColors.GlassBorderDefault.ToRgbaHex(true)}")">
+                        @GoToNearbyLabel
+                    </CoreButton>
                 </Action>
             </EmptyState>
         }

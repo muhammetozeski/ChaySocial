@@ -46,6 +46,12 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Label on that button. </summary>
         const string StrangersLabel = "Meet somebody";
 
+        /// <summary> Emoji on the button that leads two steps out from the reader's own people. </summary>
+        const string NearbyEmoji = "🧭";
+
+        /// <summary> Label on that button. </summary>
+        const string NearbyLabel = "Two steps out";
+
         /// <summary> Label on that button. </summary>
         const string FoundLabel = "Start a group";
 
@@ -293,5 +299,8 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> Opens the screen that pairs the reader with a stranger. </summary>
         void OpenStrangers() => NavManager.NavigateTo(Strangers.StrangersRoute);
+
+        /// <summary> Opens the screen that lists accounts the reader's own people already follow. </summary>
+        void OpenNearby() => NavManager.NavigateTo(Nearby.NearbyRoute);
     }
 }
