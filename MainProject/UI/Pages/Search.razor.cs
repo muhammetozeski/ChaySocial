@@ -330,6 +330,15 @@ namespace ChaySocial.MainProject.UI.Pages
         static bool IsViewersOwnAccount(string address)
             => string.Equals(address, SessionService.CurrentAddress, StringComparison.Ordinal);
 
+        /// <summary> Marks the way to the square. </summary>
+        const string SquareEmoji = "🪧";
+
+        /// <summary> Text on that control. </summary>
+        const string SquareLabel = "See what is being talked about";
+
+        /// <summary> Opens the square, where every subject anybody has named is listed. </summary>
+        void OpenSubjectBoard() => NavManager.NavigateTo(Subjects.SubjectBoardRoute);
+
         /// <summary> Opens one account's profile. </summary>
         /// <param name="address"> Address of the account to open. </param>
         void OpenProfile(string address)

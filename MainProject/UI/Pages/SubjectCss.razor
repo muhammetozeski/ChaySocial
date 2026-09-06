@@ -56,6 +56,23 @@
         color: @(AppColors.TextMuted.ToRgbaHex(true));
     }
 
+    /* The way out of one subject and into all of them. Quiet, because it sits under a heading rather than beside
+       the follow pill that is the header's own action. */
+    .subject-to-square {
+        align-self: flex-start;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: @(AppColors.Primary.ToRgbaHex(true));
+        cursor: pointer;
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.XSmall)px;
+    }
+
+        .subject-to-square:hover {
+            text-decoration: underline;
+        }
+
     .subject-first-load {
         display: flex;
         align-items: center;

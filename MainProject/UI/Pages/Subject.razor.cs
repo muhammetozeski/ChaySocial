@@ -139,6 +139,12 @@ namespace ChaySocial.MainProject.UI.Pages
             }
         }
 
+        /// <summary> Text on the control that leaves one subject for all of them. </summary>
+        const string AllSubjectsLabel = "All subjects";
+
+        /// <summary> Opens the square, where every subject anybody has named is listed. </summary>
+        void OpenSubjectBoard() => NavManager.NavigateTo(Subjects.SubjectBoardRoute);
+
         /// <summary> Header line under the subject: how much is written under it. </summary>
         string CountLabel => posts.Count switch
         {

@@ -24,6 +24,32 @@
         padding: @(HeaderTopPaddingPx)px @(AppMeasures.Space.Px20)px @(AppMeasures.Space.Px16)px;
     }
 
+    /* The way to the square. A quiet row rather than a button, because it is an offer to somebody who has not
+       decided what to look for yet — not a second search. */
+    .search-to-square {
+        display: flex;
+        align-items: center;
+        align-self: flex-start;
+        gap: @(AppMeasures.Space.Px8)px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: @(AppColors.Primary.ToRgbaHex(true));
+        cursor: pointer;
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+    }
+
+        .search-to-square:hover {
+            text-decoration: underline;
+        }
+
+    .search-to-square-emoji {
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
     .search-heading {
         display: flex;
         align-items: center;

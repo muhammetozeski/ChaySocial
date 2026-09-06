@@ -19,6 +19,10 @@
         <div class="subject-heading">
             <span class="subject-name">@SubjectLabel</span>
             <span class="subject-count">@CountLabel</span>
+
+            @* Out of one subject and into all of them: the way back that a page reached from a single mark inside
+               a post would otherwise not have. *@
+            <button type="button" class="subject-to-square" @onclick="OpenSubjectBoard">@AllSubjectsLabel</button>
         </div>
 
         @* Following a subject is the same act as following a person, so it is the same pill. *@

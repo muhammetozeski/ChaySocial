@@ -44,6 +44,13 @@
                         @onclick="ClearTermAsync">@ClearEmoji</button>
             }
         </div>
+
+        @* Inside the header rather than among the results, because the results only exist once something has been
+           typed — and somebody who does not yet know what to look for is exactly who the square is for. *@
+        <button type="button" class="search-to-square" @onclick="OpenSubjectBoard">
+            <span class="search-to-square-emoji">@SquareEmoji</span>
+            <span>@SquareLabel</span>
+        </button>
     </header>
 
     <div class="search-results">
