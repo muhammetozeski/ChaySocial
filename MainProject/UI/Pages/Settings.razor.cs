@@ -800,6 +800,9 @@ namespace ChaySocial.MainProject.UI.Pages
             ? ProfileData.DefaultAvatar
             : SessionService.CurrentProfile!.Avatar;
 
+        /// <summary> The face the owner drew, or null when they wear an emoji. </summary>
+        DrawingSheet? OwnerAvatarSketch => SessionService.CurrentProfile?.AvatarSketch;
+
         /// <summary> True while the two-step reveal has reached the question but not the answer. </summary>
         bool IsAskingToReveal => _secretStage == SecretStage.Confirming;
 

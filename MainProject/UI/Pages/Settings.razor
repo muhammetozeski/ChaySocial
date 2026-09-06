@@ -45,7 +45,13 @@
             <p class="settings-section-description">@AddressSectionDescription</p>
 
             <div class="settings-identity">
-                <AvatarBubble Emoji="@OwnerAvatar" Address="@SessionService.CurrentAddress" DiameterPx="OwnerAvatarDiameterPx" IsHighlighted="true" />
+                @* The carried-account rows below are drawn far smaller than a face can be read at, so only this
+                   one takes the drawing; the bubble itself falls back to the emoji for the rest. *@
+                <AvatarBubble Emoji="@OwnerAvatar"
+                              Address="@SessionService.CurrentAddress"
+                              Sketch="@OwnerAvatarSketch"
+                              DiameterPx="OwnerAvatarDiameterPx"
+                              IsHighlighted="true" />
 
                 <div class="settings-identity-text">
                     <span class="settings-identity-name">@OwnerName</span>
