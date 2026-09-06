@@ -605,6 +605,14 @@
                           AvatarEmoji="@ShownAvatar"
                           CreatedAtUnixMs="@ShownJoinedAtUnixMs" />
 
+            @* Under the card because it belongs to the same question and answers it better: the card is a picture
+               and proves nothing, and these six words are checkable out loud. Only between two accounts — a
+               phrase with yourself would be six words nobody could read to anybody. *@
+            @if (SessionService.IsSignedIn && TargetAddress != SessionService.CurrentAddress)
+            {
+                <PairPhraseRow ViewerAddress="@SessionService.CurrentAddress" OtherAddress="@TargetAddress" />
+            }
+
             <div class="profile-modal-actions">
                 <CoreButton OnClick="CloseCard"
                             Background="@AppColors.SurfaceSubtle"

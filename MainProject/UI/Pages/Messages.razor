@@ -31,8 +31,14 @@
                 <div class="messages-conversation-heading">
                     <AvatarBubble Emoji="@OtherAvatar" DiameterPx="@ConversationAvatarDiameterPx" IsHighlighted="true" />
 
+                    @* The name opens the phrase. This is the screen where knowing who is on the other end matters
+                       most, and it is the one place a name alone has never been able to say it. *@
                     <div class="messages-conversation-heading-text">
-                        <span class="messages-conversation-name">@OtherName</span>
+                        <button type="button"
+                                class="messages-conversation-name"
+                                title="@PairPhraseHint"
+                                @onclick="OpenPairPhrase">@OtherName</button>
+
                         <AddressChip Address="@Address" />
                     </div>
                 </div>
@@ -233,5 +239,20 @@
         </div>
     }
 }
+
+@* Through AppOverlay, because this page draws inside frosted cards and anything fixed inside one is trapped in
+   its rectangle rather than covering the screen. *@
+<AppOverlay>
+    <CoreModal IsVisible="@IsPairPhraseVisible" IsAcrylic="true" OnBackdropClick="ClosePairPhrase">
+        <div class="messages-phrase">
+            <span class="messages-phrase-emoji">@PairPhraseEmoji</span>
+            <h2 class="messages-phrase-title">@PairPhraseTitle</h2>
+
+            <PairPhraseRow ViewerAddress="@SessionService.CurrentAddress" OtherAddress="@Address" />
+
+            <button type="button" class="messages-phrase-close" @onclick="ClosePairPhrase">@PairPhraseCloseLabel</button>
+        </div>
+    </CoreModal>
+</AppOverlay>
 
 <MessagesCss />

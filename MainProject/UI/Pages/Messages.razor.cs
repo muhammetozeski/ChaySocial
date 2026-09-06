@@ -106,6 +106,27 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Emoji beside that heading. </summary>
         const string InboxEmoji = "💌";
 
+        /// <summary> Marks the sheet that shows the phrase two accounts share. </summary>
+        const string PairPhraseEmoji = "🗣️";
+
+        /// <summary> Heading of that sheet. </summary>
+        const string PairPhraseTitle = "Read this to each other";
+
+        /// <summary> Hover text on the name that opens it. </summary>
+        const string PairPhraseHint = "Check you are talking to who you think";
+
+        /// <summary> Label on the control that puts the sheet away. </summary>
+        const string PairPhraseCloseLabel = "Close";
+
+        /// <summary> True while that sheet is on screen. </summary>
+        bool IsPairPhraseVisible;
+
+        /// <summary> Shows the phrase this conversation's two accounts share. </summary>
+        void OpenPairPhrase() => IsPairPhraseVisible = true;
+
+        /// <summary> Puts it away. </summary>
+        void ClosePairPhrase() => IsPairPhraseVisible = false;
+
         /// <summary> Line under the heading when this account has never exchanged a letter. </summary>
         const string NoConversationsSubtitle = "Nothing in the postbox yet";
 

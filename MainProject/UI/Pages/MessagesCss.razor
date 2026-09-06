@@ -190,7 +190,15 @@
     }
 
     /* Clipped rather than wrapped: the header is a bar, and a long name must not push it into two rows. */
+    /* A button now rather than a span, so the styles that make a button look like a button are stripped back:
+       it reads as the name it always was, and pressing it opens the phrase. */
     .messages-conversation-name {
+        padding: 0;
+        border: none;
+        background: transparent;
+        font-family: inherit;
+        text-align: left;
+        cursor: pointer;
         max-width: @(AppMeasures.Percent.Full)%;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -399,6 +407,43 @@
             transition: none;
         }
     }
+
+    /* The sheet the phrase is read from. Centred, because both people are looking at the same six words. */
+    .messages-phrase {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Size.Px320)px;
+        max-width: @(AppMeasures.Percent.Full)%;
+    }
+
+    .messages-phrase-emoji {
+        font-size: @(AppMeasures.Font.Hero)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .messages-phrase-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Large)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .messages-phrase-close {
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px20)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        cursor: pointer;
+        font: inherit;
+        font-size: @(AppMeasures.Font.Normal)px;
+    }
+
+        .messages-phrase-close:hover {
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
 </style>
 
 @code {
