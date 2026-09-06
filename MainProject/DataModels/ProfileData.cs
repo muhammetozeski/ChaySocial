@@ -20,6 +20,14 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> One emoji standing in for a picture. </summary>
         public string Avatar { get; init; } = DefaultAvatar;
 
+        /// <summary>
+        /// A face its owner drew on the board, or null when they wear an emoji. Kept inside the profile rather than
+        /// uploaded as a blob: a profile is already read once per author on a screen, and a fetch per face would be
+        /// paid a second time on every one of them. That is what the two caps below are for — a face has to stay
+        /// small enough that carrying it inline is cheaper than fetching it.
+        /// </summary>
+        public DrawingSheet? AvatarSketch { get; init; }
+
         /// <summary> Short self-description. </summary>
         public string Bio { get; init; } = string.Empty;
 
@@ -58,11 +66,51 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> Emoji a profile starts with before its owner picks one. </summary>
         public const string DefaultAvatar = "🫖";
 
+        /// <summary>
+        /// Strokes a drawn face may hold, well under what the board itself allows a drawing.
+        /// </summary>
+        /// <remarks>
+        /// A face is not a picture: five strokes make one, and thirty is already a laboured one. The cap exists
+        /// because this drawing travels inside a document that is read once per author on a screen.
+        /// </remarks>
+        public const int MaximumAvatarSketchStrokes = 30;
+
+        /// <summary>
+        /// Points a drawn face may hold across all of its strokes together, which is the number that actually
+        /// decides what the profile weighs.
+        /// </summary>
+        /// <remarks>
+        /// A stroke cap alone would not bind: thirty strokes of five hundred points each is a fat document however
+        /// few strokes it has. Measured against the board's own three-pixel sampling, an outline with two eyes, a
+        /// nose and a mouth comes to about 230 points, so this leaves room for a face with some detail in it and
+        /// refuses one that has become a picture. See docs/Measurements.md for what each cap weighs.
+        /// </remarks>
+        public const int MaximumAvatarSketchPointsAltogether = 400;
+
         /// <summary> Longest display name accepted, so one account cannot flood a wall with a name. </summary>
         public const int MaximumDisplayNameLength = 40;
 
         /// <summary> Longest bio accepted. </summary>
         public const int MaximumBioLength = 200;
+
+        /// <summary> True when this profile carries a drawn face that may be worn as it stands. </summary>
+        public bool HasWearableFace => IsWearableFace(AvatarSketch);
+
+        /// <summary>
+        /// True when a drawn face is small enough and shaped right to be worn.
+        /// </summary>
+        /// <param name="sketch"> The face to judge, or null for a profile that carries none. </param>
+        /// <returns> True when it may be drawn as it stands. </returns>
+        /// <remarks>
+        /// Asked of every face that arrives from the store as well as of one just drawn, because that document was
+        /// written by somebody else's device: the caps only bind the editor on this one. A face that fails is not
+        /// an error to report — the emoji underneath it is what gets drawn instead.
+        /// </remarks>
+        public static bool IsWearableFace(DrawingSheet? sketch) =>
+            sketch is not null
+            && sketch.IsDrawable
+            && sketch.Strokes.Count is > 0 and <= MaximumAvatarSketchStrokes
+            && sketch.Strokes.Sum(stroke => stroke.Points.Count) <= MaximumAvatarSketchPointsAltogether;
 
         /// <summary> Id this profile is stored under. </summary>
         public DocumentId<ProfileData> Id => new(Address);
