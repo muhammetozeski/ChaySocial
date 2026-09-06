@@ -35,8 +35,9 @@
     <!-- Display name -->
     <ApplicationTitle>ChaySocial</ApplicationTitle>
 
-    <!-- App Identifier -->
-    <ApplicationId>com.companyname.chaysocial</ApplicationId>
+    <!-- App Identifier. Reverse domain of the account this is published from: "com.companyname" is the
+         template's placeholder and is a reserved prefix no store accepts. -->
+    <ApplicationId>com.muhammetozeski.chaysocial</ApplicationId>
 
     <!-- Versions -->
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
