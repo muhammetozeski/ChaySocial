@@ -79,6 +79,15 @@ namespace ChaySocial.MainProject.DataModels
         /// </summary>
         public string LongBody { get; init; } = string.Empty;
 
+        /// <summary>
+        /// Who its writer left the door open to. Inside the signature, so a server that widened it would break
+        /// the post rather than quietly change what its writer agreed to.
+        /// </summary>
+        public ReplyCircle ReplyCircle { get; init; } = ReplyCircle.Anyone;
+
+        /// <summary> True when its writer narrowed who may answer. </summary>
+        public bool HasReplyLimit => ReplyCircle != ReplyCircle.Anyone;
+
         /// <summary> True when this post carries a long piece. </summary>
         /// <remarks> Worked out from the body rather than stored, so no flag can ever disagree with the words. </remarks>
         public bool IsLongForm => LongBody.Length > 0;
