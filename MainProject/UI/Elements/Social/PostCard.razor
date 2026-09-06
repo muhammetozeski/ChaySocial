@@ -129,6 +129,18 @@
                 </button>
             }
 
+            @* No count beside it, unlike the chays and the replies. Who else kept a post is nobody's business:
+               a shelf is sealed, and a number would be the one thing it leaked. *@
+            @if (OnKeep.HasDelegate)
+            {
+                <button type="button"
+                        class="post-card-action post-card-action--keep @(IsKept ? KeptModifierClass : string.Empty)"
+                        title="@(IsKept ? AlreadyKeptHint : KeepHint)"
+                        @onclick="HandleKeep">
+                    <span class="post-card-action-icon">@(IsKept ? KeptEmoji : KeepEmoji)</span>
+                </button>
+            }
+
             @if (ShowDeleteAction)
             {
                 <button type="button"
@@ -274,6 +286,21 @@
     /// <summary> Hover text on that action. </summary>
     const string QuoteHint = "Say something about this post";
 
+    /// <summary> Marks the action that puts this post on the reader's own shelf. </summary>
+    const string KeepEmoji = "🔖";
+
+    /// <summary> And the same action once it is already there. </summary>
+    const string KeptEmoji = "📗";
+
+    /// <summary> Hover text before it is kept. </summary>
+    const string KeepHint = "Keep this on your shelf";
+
+    /// <summary> And after, which says the one thing worth saying about a shelf. </summary>
+    const string AlreadyKeptHint = "On your shelf. Only you can see that.";
+
+    /// <summary> Class appended to the keep action while this post is on the shelf; it carries the lit colours. </summary>
+    const string KeptModifierClass = "is-kept";
+
     /// <summary> Marks the button that removes one of the reader's own posts. </summary>
     const string DeleteEmoji = "🗑️";
 
@@ -349,6 +376,12 @@
     /// <summary> Raised when the reader wants to quote this post. The action only appears when a caller wires this up. </summary>
     [Parameter] public EventCallback OnQuote { get; set; }
 
+    /// <summary> Raised when the reader wants this post on their shelf. The action only appears when a caller wires this up. </summary>
+    [Parameter] public EventCallback OnKeep { get; set; }
+
+    /// <summary> True when this post is already on the signed-in account's shelf. </summary>
+    [Parameter] public bool IsKept { get; set; }
+
     /// <summary> True when the signed-in account has already carried this post onto its own wall. </summary>
     [Parameter] public bool IsReposted { get; set; }
 
@@ -376,6 +409,10 @@
     /// <summary> Hands the quote request to the page, which owns the composer it lands in. </summary>
     /// <returns> A task that completes once the page has handled it. </returns>
     Task HandleQuote() => OnQuote.InvokeAsync();
+
+    /// <summary> Hands the keeping to whoever wired it up. </summary>
+    /// <returns> A task that completes once the page has handled it. </returns>
+    Task HandleKeep() => OnKeep.InvokeAsync();
 
     /// <summary> Result of the last signature check, kept between renders so verifying does not run on every repaint. </summary>
     bool IsSignatureTrusted;

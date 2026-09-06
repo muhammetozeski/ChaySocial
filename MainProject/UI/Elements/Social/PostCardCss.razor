@@ -288,6 +288,14 @@
         animation: post-card-repost-turn @(AppMeasures.Duration.Medium)s @PlayfulOvershootEasing;
     }
 
+    /* Lit in the same way a carried post is, because both say "this one is mine now" — except that this one is
+       said to nobody else. */
+    .post-card-action--keep.is-kept {
+        background: @(AppColors.SurfaceTintAccent.ToRgbaHex(true));
+        border-color: @(AppColors.Primary.ToRgbaHex(true));
+        color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+    }
+
     /* A quiet line above the post, stripped back from a button to plain text: it names the wall this post came
        through without competing with the author underneath it. */
     .post-card-carried {
