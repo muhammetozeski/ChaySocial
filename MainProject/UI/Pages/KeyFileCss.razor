@@ -1,0 +1,202 @@
+@*
+    Styling for the KeyFile page. The page renders this itself, so it always arrives with its own CSS attached.
+    Every selector is namespaced "key-file-*" because *Css.razor styles are global.
+*@
+<style>
+    .key-file-page {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(PageMaximumWidthPx)px;
+        margin: 0 auto;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(AppMeasures.Space.Px24)px;
+    }
+
+    .key-file-header {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    .key-file-header-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .key-file-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Title)px;
+        font-weight: @(AppMeasures.Weight.Bold);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .key-file-subtitle {
+        margin: @(AppMeasures.Space.Px4)px 0 0 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .key-file-header-emoji {
+        font-size: @(AppMeasures.Font.Hero)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .key-file-card {
+        width: @(AppMeasures.Percent.Full)%;
+        box-sizing: border-box;
+    }
+
+    .key-file-section-heading {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    .key-file-section-emoji {
+        font-size: @(AppMeasures.Font.Large)px;
+    }
+
+    .key-file-section-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .key-file-section-description {
+        margin: @(AppMeasures.Space.Px8)px 0 @(AppMeasures.Space.Px16)px 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .key-file-input {
+        width: @(AppMeasures.Percent.Full)%;
+        box-sizing: border-box;
+        margin-bottom: @(AppMeasures.Space.Px8)px;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font: inherit;
+        font-size: @(AppMeasures.Font.Normal)px;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+        .key-file-input::placeholder {
+            color: @(AppColors.TextMuted.ToRgbaHex(true));
+        }
+
+        .key-file-input:focus {
+            outline: none;
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+    /* The one thing on this page nobody can recover from getting wrong, said quietly and said anyway. */
+    .key-file-note {
+        margin: 0 0 @(AppMeasures.Space.Px16)px 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    /* Both real actions, styled alike because locking and opening are the same weight of thing. */
+    .key-file-action {
+        width: @(AppMeasures.Percent.Full)%;
+        box-sizing: border-box;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px20)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font: inherit;
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        cursor: pointer;
+    }
+
+        .key-file-action:hover:not(:disabled) {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+        .key-file-action:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: default;
+        }
+
+    .key-file-download {
+        display: block;
+        margin-top: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px20)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextOnAccent.ToRgbaHex(true));
+        text-align: center;
+        text-decoration: none;
+    }
+
+    .key-file-fallback-label {
+        margin: @(AppMeasures.Space.Px16)px 0 @(AppMeasures.Space.Px6)px 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    /* The same file as text. A host that will not hand over a download must not be able to trap a backup. */
+    .key-file-fallback {
+        width: @(AppMeasures.Percent.Full)%;
+        box-sizing: border-box;
+        padding: @(AppMeasures.Space.Px10)px;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.BackgroundDeep.ToRgbaHex(true));
+        font-family: @KeyFileTypeface;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        resize: vertical;
+    }
+
+    /* The real input is hidden behind its own label, because a bare file input cannot be styled and looks foreign. */
+    .key-file-pick {
+        display: block;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .key-file-pick-input {
+        position: absolute;
+        inset: 0;
+        width: @(AppMeasures.Percent.Full)%;
+        height: @(AppMeasures.Percent.Full)%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .key-file-pick-label {
+        display: block;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px20)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px dashed @(AppColors.BorderSoft.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        text-align: center;
+    }
+
+    .key-file-failure {
+        margin: @(AppMeasures.Space.Px12)px 0 0 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.Warning.ToRgbaHex(true));
+    }
+</style>
+
+@code {
+    /// <summary> Widest the page's column grows, so a locked file's text does not stretch into an unreadable line. </summary>
+    const int PageMaximumWidthPx = 640;
+
+    /// <summary> Typeface for the locked file's text: fixed-width, so it reads as data rather than as prose. </summary>
+    const string KeyFileTypeface = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+}

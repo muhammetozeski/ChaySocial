@@ -1,0 +1,127 @@
+@attribute [Route(KeyFileRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.PageBase
+@using ChaySocial.MainProject.Identity
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    Locking a secret into a file, and opening one again.
+
+    Deliberately not a signed-in page. The whole point of the second half is a machine that has never seen this
+    account, and a page that sent a visitor without a session back to the welcome screen would make opening a file
+    on a second device impossible. The locking half is what asks for a session, not the page.
+
+    Saving is offered twice, the way the archive offers it: a link that hands the file over, and the same file as
+    text to copy out by hand. A host that refuses downloads should not be able to trap somebody's only backup.
+*@
+
+<PageTitle>@PageHeadline</PageTitle>
+
+<div class="key-file-page">
+
+    <header class="key-file-header">
+        <BackButton OnClick="GoBack" />
+
+        <div class="key-file-header-text">
+            <h1 class="key-file-title">@PageHeadline</h1>
+            <p class="key-file-subtitle">@PageSubtitle</p>
+        </div>
+
+        <span class="key-file-header-emoji" role="img" aria-label="@PageHeadline">@PageEmoji</span>
+    </header>
+
+    @if (SessionService.IsSignedIn)
+    {
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="key-file-card">
+
+            <div class="key-file-section-heading">
+                <span class="key-file-section-emoji">@LockSectionEmoji</span>
+                <h2 class="key-file-section-title">@LockSectionHeadline</h2>
+            </div>
+            <p class="key-file-section-description">@LockSectionDescription</p>
+
+            <input class="key-file-input"
+                   type="password"
+                   autocomplete="new-password"
+                   placeholder="@LockPassphrasePlaceholder"
+                   value="@_lockPassphrase"
+                   @oninput="HandleLockPassphraseInput" />
+
+            <p class="key-file-note">@PassphraseRule</p>
+
+            <button type="button" class="key-file-action" disabled="@(!CanLock)" @onclick="LockAsync">
+                @(_isLocking ? LockingLabel : LockLabel)
+            </button>
+
+            @if (_lockedText.Length > 0)
+            {
+                <p class="key-file-section-description">@LockedDescription</p>
+
+                <a class="key-file-download" download="@LockedFileName" href="@_lockedUri">@DownloadLabel</a>
+
+                <p class="key-file-fallback-label">@CopyFallbackLabel</p>
+                <textarea class="key-file-fallback" readonly rows="@FallbackRows">@_lockedText</textarea>
+            }
+
+        </CoreCard>
+    }
+
+    <CoreCard Acrylic="AcrylicLevel.Normal"
+              AcrylicBlur="AppMeasures.Blur.Strong"
+              BorderRadius="@CardRadius"
+              Padding="@CardPadding"
+              CustomClass="key-file-card">
+
+        <div class="key-file-section-heading">
+            <span class="key-file-section-emoji">@OpenSectionEmoji</span>
+            <h2 class="key-file-section-title">@OpenSectionHeadline</h2>
+        </div>
+        <p class="key-file-section-description">@OpenSectionDescription</p>
+
+        <label class="key-file-pick">
+            <InputFile OnChange="HandleFileChosen" accept="@AcceptList" class="key-file-pick-input" />
+            <span class="key-file-pick-label">@PickLabel</span>
+        </label>
+
+        <p class="key-file-fallback-label">@PasteFallbackLabel</p>
+        <textarea class="key-file-fallback"
+                  rows="@FallbackRows"
+                  placeholder="@PastePlaceholder"
+                  value="@_pastedText"
+                  @oninput="HandlePastedInput"></textarea>
+
+        <button type="button" class="key-file-action" @onclick="OpenPasted">@OpenPastedLabel</button>
+
+        @if (_openFailure is not null)
+        {
+            <p class="key-file-failure">@_openFailure</p>
+        }
+
+        @if (_chosen is { } file)
+        {
+            @* The address is in the clear inside the file, and showing it first is the point: somebody with two
+               locked files can tell which is which before typing anything into either. *@
+            <p class="key-file-section-description">@WhoseFileLabel</p>
+            <AddressChip Address="@file.Address" />
+
+            <input class="key-file-input"
+                   type="password"
+                   autocomplete="current-password"
+                   placeholder="@OpenPassphrasePlaceholder"
+                   value="@_openPassphrase"
+                   @oninput="HandleOpenPassphraseInput" />
+
+            <button type="button" class="key-file-action" disabled="@_isOpening" @onclick="UnlockAsync">
+                @(_isOpening ? OpeningLabel : UnlockLabel)
+            </button>
+        }
+
+    </CoreCard>
+
+</div>
+
+<KeyFileCss />
