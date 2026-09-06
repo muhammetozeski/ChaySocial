@@ -634,6 +634,10 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="address"> Address of the account whose profile to open. </param>
         void OpenAuthor(string address) => NavManager.NavigateTo($"{NavigationConstants.Profile.Link}/{address}");
 
+        /// <summary> Opens one post's own page, where its replies live and where a long piece is read whole. </summary>
+        /// <param name="postId"> Id of the post to open. </param>
+        void OpenPost(string postId) => NavManager.NavigateTo(PostThread.LinkTo(postId));
+
         /// <summary> Follows the shown account, or lets it go when the reader already followed it. </summary>
         /// <returns> A task that completes once the change has been written; the follow event then reloads the counts. </returns>
         async Task ToggleFollowAsync()

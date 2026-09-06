@@ -394,7 +394,8 @@
                               OnRepost="() => ToggleRepostAsync(post)"
                               OnDelete="() => DeletePostAsync(post)"
                               OnReport="() => OpenPostReport(post)"
-                              OnOpenAuthor="() => OpenAuthor(post.AuthorAddress)" />
+                              OnOpenAuthor="() => OpenAuthor(post.AuthorAddress)"
+                              OnOpenComments="() => OpenPost(post.PostId)" />
                 }
             }
         </section>
