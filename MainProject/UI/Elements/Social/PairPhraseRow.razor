@@ -1,0 +1,41 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.Identity
+
+@*
+    Six words two people can read to each other. If both sides see the same six, both sides are holding the same
+    two addresses — which is the one thing a name cannot tell anybody.
+
+    Named PairPhraseRow rather than PairPhrase: _Imports pulls in both the identity namespace and this one, and two
+    types with one name make every .razor in the app ambiguous.
+*@
+
+@if (Words.Count > 0)
+{
+    <div class="pair-phrase">
+        <div class="pair-phrase-words">
+            @foreach (string word in Words)
+            {
+                <span class="pair-phrase-word">@word</span>
+            }
+        </div>
+
+        <p class="pair-phrase-note">@Note</p>
+    </div>
+}
+
+<PairPhraseRowCss />
+
+@code {
+    /// <summary> The reader's own address. </summary>
+    [Parameter, EditorRequired] public string ViewerAddress { get; set; } = string.Empty;
+
+    /// <summary> The account they are checking. </summary>
+    [Parameter, EditorRequired] public string OtherAddress { get; set; } = string.Empty;
+
+    /// <summary> What the phrase is for, said where it is read rather than in a help page somewhere. </summary>
+    const string Note =
+        "Read these to each other. The same six words on both sides means you are both holding the same two addresses.";
+
+    /// <summary> The words, worked out fresh from the two addresses; empty when either is not an address. </summary>
+    IReadOnlyList<string> Words => PairPhrase.For(ViewerAddress, OtherAddress);
+}

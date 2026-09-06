@@ -1,0 +1,47 @@
+@*
+    Styling for PairPhraseRow. PairPhraseRow renders this component itself. Every selector is namespaced
+    "pair-phrase-*" because *Css.razor styles are global.
+*@
+<style>
+    .pair-phrase {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+        width: @(AppMeasures.Percent.Full)%;
+    }
+
+    /* Wraps rather than scrolls: every word has to be readable at once, because the whole point is reading them
+       out in order. */
+    .pair-phrase-words {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: @(AppMeasures.Space.Px6)px;
+    }
+
+    /* Fixed-width faces, the same ones an address is drawn in: these are something to read out character by
+       character rather than prose to skim. */
+    .pair-phrase-word {
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px10)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        font-family: @PhraseTypeface;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .pair-phrase-note {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        text-align: center;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+</style>
+
+@code {
+    /// <summary> Fixed-width faces, matching the ones an address is drawn in. </summary>
+    const string PhraseTypeface = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+}
