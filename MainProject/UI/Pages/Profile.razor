@@ -279,6 +279,18 @@
                         <span class="profile-action-emoji">@SettingsEmoji</span>
                         <span>@SettingsLabel</span>
                     </CoreButton>
+
+                    <CoreButton OnClick="OpenCard"
+                                Background="@AppColors.SurfaceSubtle"
+                                TextColor="@AppColors.TextSecondary"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Border="@QuietButtonBorder"
+                                CustomClass="profile-action-button">
+                        <span class="profile-action-emoji">@CardEmoji</span>
+                        <span>@CardLabel</span>
+                    </CoreButton>
                 }
                 else
                 {
@@ -309,6 +321,20 @@
                                 CustomClass="profile-action-button">
                         <span class="profile-action-emoji">@ReportEmoji</span>
                         <span>@ReportLabel</span>
+                    </CoreButton>
+
+                    @* Offered on somebody else's profile too: a card is how one person hands another account on
+                       to a third, which is the only way anybody here is ever found. *@
+                    <CoreButton OnClick="OpenCard"
+                                Background="@AppColors.SurfaceSubtle"
+                                TextColor="@AppColors.TextSecondary"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Border="@QuietButtonBorder"
+                                CustomClass="profile-action-button">
+                        <span class="profile-action-emoji">@CardEmoji</span>
+                        <span>@CardLabel</span>
                     </CoreButton>
 
                     @if (IsShownAccountBlocked)
@@ -503,5 +529,32 @@
         </div>
     </div>
 </CoreModal>
+
+@* Wrapped, because this page is drawn inside frosted cards and a panel meant to cover the screen would
+   otherwise be trapped inside one of them. *@
+<AppOverlay>
+    <CoreModal IsVisible="@IsCardVisible" IsAcrylic="true" OnBackdropClick="CloseCard">
+        <div class="profile-modal">
+            <h2 class="profile-modal-title">@CardModalTitle</h2>
+
+            <IdentityCard Address="@TargetAddress"
+                          DisplayName="@ShownName"
+                          AvatarEmoji="@ShownAvatar"
+                          CreatedAtUnixMs="@ShownJoinedAtUnixMs" />
+
+            <div class="profile-modal-actions">
+                <CoreButton OnClick="CloseCard"
+                            Background="@AppColors.SurfaceSubtle"
+                            TextColor="@AppColors.TextSecondary"
+                            BorderRadius="@PillRadiusCss"
+                            Padding="@ActionPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Border="@QuietButtonBorder">
+                    @CardCloseLabel
+                </CoreButton>
+            </div>
+        </div>
+    </CoreModal>
+</AppOverlay>
 
 <ProfileCss />

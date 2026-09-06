@@ -129,6 +129,18 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Label on the link to the owner's settings. </summary>
         const string SettingsLabel = "Settings";
 
+        /// <summary> Marks the control that shows an account as a card. </summary>
+        const string CardEmoji = "🪪";
+
+        /// <summary> Label on that control. </summary>
+        const string CardLabel = "Card";
+
+        /// <summary> Heading over the card. </summary>
+        const string CardModalTitle = "This account, as a picture";
+
+        /// <summary> Label on the control that puts the card away. </summary>
+        const string CardCloseLabel = "Close";
+
         /// <summary> Label on the button that opens a private conversation with the shown account. </summary>
         const string MessageLabel = "Message";
 
@@ -368,6 +380,9 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> True while the block confirmation is on screen. </summary>
         bool IsBlockConfirmVisible;
+
+        /// <summary> True while the account's card is on screen. </summary>
+        bool IsCardVisible;
 
         /// <summary> True while the report form is on screen. </summary>
         bool IsReportVisible;
@@ -776,6 +791,15 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> Closes the block confirmation without blocking anyone. </summary>
         void CloseBlockConfirm() => IsBlockConfirmVisible = false;
+
+        /// <summary> Shows this account as a card that can be carried out of the app. </summary>
+        void OpenCard() => IsCardVisible = true;
+
+        /// <summary> Puts the card away. </summary>
+        void CloseCard() => IsCardVisible = false;
+
+        /// <summary> When this account first published a profile, or zero when it never did. </summary>
+        long ShownJoinedAtUnixMs => ShownProfile?.CreatedAtUnixMs ?? 0;
 
         /// <summary> Places the block the reader just confirmed. </summary>
         /// <returns> A task that completes once the block has been written; the moderation event then reloads the page. </returns>
