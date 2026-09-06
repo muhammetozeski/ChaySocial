@@ -27,8 +27,18 @@
     <PackageReference Include="Microsoft.Maui.Graphics" Version="10.0.90" />
     <PackageReference Include="Plugin.Firebase" Version="4.2.1" />
   </ItemGroup>
+	<!-- The generator is always taken from its Debug build, whatever configuration this library is built in.
+	     Windows Smart App Control refuses to load a freshly produced unsigned assembly it has no reputation for,
+	     and a Release build of the generator is exactly that: the compiler reports CS8034 ("Unable to load
+	     Generators ... blocked by Application Control policy"), skips the generator, and every page then fails
+	     with "NavigationConstants does not exist" — a compile error that looks nothing like its cause. Which
+	     configuration a source generator itself was compiled in cannot change the code it emits, so pinning it
+	     costs nothing and keeps one binary in play instead of two. -->
 	<ItemGroup>
-		<ProjectReference Include="..\Generators\Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\Generators\Generators.csproj"
+		                  OutputItemType="Analyzer"
+		                  ReferenceOutputAssembly="false"
+		                  SetConfiguration="Configuration=Debug" />
 	</ItemGroup>
 </Project>
 
