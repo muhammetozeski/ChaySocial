@@ -10,6 +10,16 @@ namespace ChaySocial.MainProject.Persistence
     {
         /// <summary> Collection this type is stored in. </summary>
         static abstract string CollectionName { get; }
+
+        /// <summary>
+        /// Where this document is stored, worked out from its own contents rather than handed to it.
+        /// </summary>
+        /// <remarks>
+        /// Every stored type already had this; it is named here so a store can ask any document where it belongs
+        /// without knowing which type it is holding. That is what lets a store hold documents in memory and still
+        /// answer a read by id, with no table of per-type casts to keep in step with the types themselves.
+        /// </remarks>
+        DocumentId<TSelf> Id { get; }
     }
 
     /// <summary>
