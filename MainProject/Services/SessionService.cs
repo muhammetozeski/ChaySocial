@@ -82,6 +82,10 @@ namespace ChaySocial.MainProject.Services
             CurrentProfile = null;
             AppServices.ProofOfWork?.Forget();
 
+            // A held letter belongs to the account that wrote it. Leaving one in the queue would have the next
+            // account to open here send somebody else's post under its own name.
+            MessageOutbox.Forget();
+
             await AppServices.LocalStore.DeleteAsync(LocalStoreKeys.MasterSeed);
             MainEvents.Trigger(MainEvents.Names.SessionChanged, null);
         }
@@ -111,6 +115,10 @@ namespace ChaySocial.MainProject.Services
         static async Task<bool> AdoptAsync(byte[] masterSeed, bool remember)
         {
             PrivateIdentity identity = AppCryptography.Identities.Open(masterSeed);
+
+            // Whatever the account being closed had not sent yet goes with it, for the same reason it goes on the
+            // way out: an unsent letter belongs to whoever wrote it.
+            if (Current is not null && Current.Public.Address != identity.Public.Address) MessageOutbox.Forget();
 
             Current = identity;
 

@@ -51,6 +51,9 @@ namespace ChaySocial.MainProject.Events
 
             /// <summary> The app started or stopped reading a sealed archive instead of a server. Payload is null. </summary>
             public const string OfflineReadingChanged = nameof(OfflineReadingChanged);
+
+            /// <summary> A letter was held, released or given up on. Payload is the address it is addressed to, or null. </summary>
+            public const string OutboxChanged = nameof(OutboxChanged);
         }
 
         /// <summary> Registers a handler that receives every triggered event. </summary>
