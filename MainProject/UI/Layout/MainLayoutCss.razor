@@ -7,6 +7,13 @@
     // Fixed-width faces for the address the app was reached on, where every character is the point.
     const string BlockedMonospaceStack = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 
+    // How solid the amber wash behind the offline strip is — enough to be noticed above the page, not enough
+    // to read as an error.
+    const float OfflineStripTintOpacity = 0.14f;
+
+    // How solid the amber hairline under that strip and around its button is.
+    const float OfflineStripEdgeOpacity = 0.35f;
+
     string cssVars = AppStyles.BuildCssVariables();
     string aurora = AppStyles.BuildAuroraBackground();
     string textColor = AppColors.TextPrimary.ToRgbaHex(true);
@@ -43,6 +50,58 @@
         gap: @(AppMeasures.Space.Medium)px;
         min-height: @(AppMeasures.Viewport.Most)vh;
     }
+
+    /* The strip that says what is on screen came out of a file. Amber rather than red: this is not a failure,
+       it is somebody reading what they own with nothing listening anywhere. */
+    .app-offline {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px16)px;
+        border-bottom: @(AppMeasures.Border.Thin)px solid @(AppColors.Warning.WithAlpha(OfflineStripEdgeOpacity).ToRgbaHex(true));
+        background: @(AppColors.Warning.WithAlpha(OfflineStripTintOpacity).ToRgbaHex(true));
+    }
+
+    .app-offline-mark {
+        font-size: @(AppMeasures.Font.Large)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .app-offline-text {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .app-offline-title {
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextWarning.ToRgbaHex(true));
+    }
+
+    .app-offline-detail {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .app-offline-action {
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px12)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.Warning.WithAlpha(OfflineStripEdgeOpacity).ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: transparent;
+        color: @(AppColors.TextWarning.ToRgbaHex(true));
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        cursor: pointer;
+    }
+
+        .app-offline-action:hover {
+            background: @(AppColors.Warning.WithAlpha(OfflineStripEdgeOpacity).ToRgbaHex(true));
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
 
     /* Shown instead of the app when Tor was insisted on and this is not Tor. It fills the screen on purpose:
        a refusal that shares the page with the thing it is refusing is not a refusal. */

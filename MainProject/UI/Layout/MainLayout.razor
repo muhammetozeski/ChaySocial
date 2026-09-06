@@ -16,6 +16,23 @@
    into its own <style> block at render time, and those blocks only change if that component renders again — a
    redraw of the layout alone repaints nothing below it. *@
 <div class="app-page @(ShowBottomNavigation ? HasBottomNavClass : string.Empty)" @key="ThemeManager.Current.Name">
+
+    @* Above everything, because it changes what every screen below it means: what is on them came out of a file
+       and nothing is being talked to. *@
+    @if (OfflineReadingService.IsReading)
+    {
+        <div class="app-offline">
+            <span class="app-offline-mark">@OfflineEmoji</span>
+
+            <div class="app-offline-text">
+                <span class="app-offline-title">@OfflineHeadline</span>
+                <span class="app-offline-detail">@OfflineDetail</span>
+            </div>
+
+            <button type="button" class="app-offline-action" @onclick="TalkToAServerAgainAsync">@OfflineActionLabel</button>
+        </div>
+    }
+
     <main>
         <article class="content">
             @if (_isSessionReady && _isTorBlocked)
@@ -86,6 +103,29 @@
     /// <summary> Label on the control that lifts the requirement. </summary>
     const string TorBlockedReleaseLabel = "Lift the requirement on this device";
 
+    /// <summary> Mark on the strip shown while a sealed file is being read. </summary>
+    const string OfflineEmoji = "📦";
+
+    /// <summary> What that strip says is happening. </summary>
+    const string OfflineHeadline = "Reading your archive. Nothing is being talked to.";
+
+    /// <summary> Wording of the line under it; the placeholder takes the day the archive was sealed. </summary>
+    const string OfflineDetailFormat = "Sealed {0}. Pictures, sounds and video stayed on the server, so they are not here.";
+
+    /// <summary> Label on the control that points the app back at a server. </summary>
+    const string OfflineActionLabel = "Talk to a server again";
+
+    /// <summary> The line under the strip's headline, naming the day the file was sealed. </summary>
+    string OfflineDetail => string.Format(OfflineDetailFormat, RelativeTimeFormatter.FormatDate(OfflineReadingService.SealedAtUnixMs));
+
+    /// <summary> Points the app back at the server it was talking to, and redraws the shell without the strip. </summary>
+    /// <returns> A task that completes once the stores are wired to that server again. </returns>
+    async Task TalkToAServerAgainAsync()
+    {
+        await OfflineReadingService.TalkToAServerAgainAsync();
+        NavManager.NavigateTo(NavigationConstants.Wall.Link, forceLoad: false);
+    }
+
     /// <summary> True while the app must refuse to run because it was not reached over Tor. </summary>
     bool _isTorBlocked;
 
@@ -150,7 +190,7 @@
     void HandleAppEvent(string eventName, object? data)
     {
         if (eventName == MainEvents.Names.SessionChanged) ShowBottomNavigation = SessionService.IsSignedIn;
-        else if (eventName != MainEvents.Names.ThemeChanged) return;
+        else if (eventName is not (MainEvents.Names.ThemeChanged or MainEvents.Names.OfflineReadingChanged)) return;
 
         InvokeAsync(StateHasChanged);
     }
