@@ -5,7 +5,18 @@
    them cannot. Callers that pass no address get exactly what they got before. *@
 <span class="avatar-bubble @VariantClass" style="@SizeStyle" role="img" aria-label="@AccessibleLabel">
     <IdentitySigil Address="@Address" />
-    <span class="avatar-bubble-face">@ShownEmoji</span>
+
+    @if (IsWearingDrawnFace)
+    {
+        <span class="avatar-bubble-drawn">
+            @* Parenthesised because Razor reads a bare "@Sketch!" as an expression followed by markup. *@
+            <DrawingView Sheet="@(Sketch!)" Description="@DrawnFaceDescription" />
+        </span>
+    }
+    else
+    {
+        <span class="avatar-bubble-face">@ShownEmoji</span>
+    }
 </span>
 
 <AvatarBubbleCss />
@@ -19,6 +30,16 @@
 
     /// <summary> Smallest circle that still shows an emoji; a caller passing zero or a negative size is pulled up to this. </summary>
     const int MinimumDiameterPx = AppMeasures.Size.Px20;
+
+    /// <summary>
+    /// Smallest circle a drawn face is shown in. Below this the face is drawn but not read: the board is 280 px
+    /// across, so a 2 px nib lands on less than a third of a pixel in a feed-sized bubble and the whole face
+    /// collapses into a grey smudge. A circle narrower than this keeps the emoji, which stays legible at any size.
+    /// </summary>
+    const int LeastDrawnFaceDiameterPx = AppMeasures.Size.Px64;
+
+    /// <summary> Screen-reader name of a drawn face, so it is announced as something its owner made. </summary>
+    const string DrawnFaceDescription = "A face this account drew";
 
     /// <summary>
     /// Share of the circle's diameter the emoji glyph occupies, as a percentage. Deriving the glyph size from the
@@ -47,6 +68,12 @@
     /// </summary>
     [Parameter] public string Address { get; set; } = string.Empty;
 
+    /// <summary>
+    /// A face this account's owner drew, or null when they wear an emoji. Drawn only where the circle is wide
+    /// enough for it to be a face rather than a smudge.
+    /// </summary>
+    [Parameter] public DrawingSheet? Sketch { get; set; }
+
     /// <summary> Width and height of the circle in CSS pixels. </summary>
     [Parameter] public int DiameterPx { get; set; } = DefaultDiameterPx;
 
@@ -55,6 +82,12 @@
 
     /// <summary> The emoji actually drawn: the caller's, or the default teapot when the caller passed nothing. </summary>
     string ShownEmoji => string.IsNullOrWhiteSpace(Emoji) ? ProfileData.DefaultAvatar : Emoji;
+
+    /// <summary>
+    /// True when this bubble draws the face rather than the emoji: there is one, it is small enough and shaped
+    /// right to wear, and this circle is wide enough to read it in.
+    /// </summary>
+    bool IsWearingDrawnFace => ProfileData.IsWearableFace(Sketch) && EffectiveDiameterPx >= LeastDrawnFaceDiameterPx;
 
     /// <summary> The modifier class matching <see cref="IsHighlighted"/>. </summary>
     string VariantClass => IsHighlighted ? HighlightedClass : RestingClass;

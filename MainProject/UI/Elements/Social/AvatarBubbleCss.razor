@@ -27,6 +27,23 @@
         z-index: @(AppMeasures.ZLayer.Raised);
     }
 
+    /* A drawn face takes the same lift the emoji has, for the same reason: the mark is positioned and would
+       otherwise paint straight over it.
+
+       The drawing keeps the shape it was drawn in, so a 280x210 sheet leaves a band above and below it inside a
+       round bubble. This box carries the same ground the drawing carries, so the two read as one disc instead of
+       a dark stripe across frosted glass — and the disc is clipped to the circle by the bubble's own overflow. */
+    .avatar-bubble-drawn {
+        position: relative;
+        z-index: @(AppMeasures.ZLayer.Raised);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: @(AppMeasures.Percent.Full)%;
+        height: @(AppMeasures.Percent.Full)%;
+        background: @(AppColors.BackgroundDeep.ToRgbaHex(true));
+    }
+
     /* Quiet everyday bubble: the faintest frosted disc, so a wall of avatars never turns into a wall of colour. */
     .avatar-bubble--resting {
         @(AppStyles.BuildAcrylicStyle(AcrylicLevel.Subtle, AppMeasures.Blur.Subtle))
