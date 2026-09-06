@@ -1,0 +1,100 @@
+@attribute [Route(SubjectBoardRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    The public square: which subjects exist, and how each one stands. Following a subject shipped long before
+    anything told a reader which subjects there were, so this is the door that was missing.
+
+    Every row carries the arithmetic that put it where it is, and the heading says out loud which window the
+    counting was done over — that window is what keeps the numbers on the rows true.
+*@
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<div class="subjects-screen">
+
+    <header class="subjects-header" style="@HeaderSurfaceStyle">
+        <BackButton OnClick="GoBackToWall" />
+
+        <div class="subjects-heading">
+            <h1 class="subjects-title">@PageHeadline</h1>
+            <p class="subjects-window">@WindowLine</p>
+        </div>
+
+        @if (IsRefreshing)
+        {
+            <CoreSpinner SizePx="@RefreshSpinnerDiameterPx"
+                         BorderWidthPx="@RefreshSpinnerBorderPx"
+                         Color="@AppColors.Primary" />
+        }
+    </header>
+
+    <div class="subjects-orders">
+        @foreach (SubjectBoardOrder order in SelectableOrders)
+        {
+            <button type="button"
+                    class="subjects-order @(order == ChosenOrder ? ActiveOrderClass : string.Empty)"
+                    @onclick="() => SelectOrderAsync(order)">
+                @DescribeOrder(order)
+            </button>
+        }
+    </div>
+
+    @if (IsFirstLoad)
+    {
+        <CoreSkeleton Shape="SkeletonShape.Card" />
+    }
+    else if (LoadFailureMessage is not null)
+    {
+        <EmptyState Emoji="@LoadFailedEmoji" Headline="@LoadFailedHeadline" Description="@LoadFailureMessage">
+            <Action>
+                <CoreButton Background="@AppColors.Primary"
+                            TextColor="@AppColors.TextOnFilledSurface"
+                            BorderRadius="@ActionButtonRadiusCss"
+                            Padding="@ActionButtonPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow"
+                            OnClick="ReloadAsync">
+                    @TryAgainLabel
+                </CoreButton>
+            </Action>
+        </EmptyState>
+    }
+    else if (standings.Count == 0)
+    {
+        <EmptyState Emoji="@EmptyEmoji" Headline="@EmptyHeadline" Description="@EmptyDescription" />
+    }
+    else
+    {
+        <div class="subjects-list">
+            @foreach (SubjectStanding standing in standings)
+            {
+                @* Declared inside the loop body, so each row's handlers carry their own subject. *@
+                SubjectStanding row = standing;
+
+                <CoreCard @key="row.Subject"
+                          Acrylic="AcrylicLevel.Normal"
+                          AcrylicBlur="@AppMeasures.Blur.Normal"
+                          BorderRadius="@(AppMeasures.Radius.Large + "px")"
+                          Padding="@(AppMeasures.Space.Px16 + "px")"
+                          CustomClass="subjects-row">
+
+                    <button type="button" class="subjects-row-open" @onclick="() => OpenSubject(row.Subject)">
+                        <span class="subjects-row-name">@LabelFor(row)</span>
+                        <span class="subjects-row-standing">@StandingLineFor(row)</span>
+                    </button>
+
+                    <FollowButton TargetLabel="@LabelFor(row)"
+                                  IsFollowing="@IsFollowing(row.Subject)"
+                                  IsBusy="@IsBusy(row.Subject)"
+                                  OnToggle="() => ToggleFollowAsync(row.Subject)" />
+                </CoreCard>
+            }
+        </div>
+    }
+
+</div>
+
+<SubjectsCss />

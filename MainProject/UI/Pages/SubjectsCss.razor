@@ -1,0 +1,137 @@
+@*
+    Styling for the square. Every value comes from C# — the shared theme tokens where one exists, a named constant
+    in this file where the measurement belongs to this screen alone.
+*@
+<style>
+    .subjects-screen {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReadingColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px40)px;
+    }
+
+    .subjects-header {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.XLarge)px;
+    }
+
+    .subjects-heading {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-width: 0;
+        gap: @(AppMeasures.Space.Px4)px;
+    }
+
+    .subjects-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Title)px;
+        font-weight: @(AppMeasures.Weight.Black);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    /* The window the counting was done over. Quiet, but never hidden: a count whose window is unstated is a count
+       nobody can check. */
+    .subjects-window {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .subjects-orders {
+        display: flex;
+        flex-wrap: wrap;
+        gap: @(AppMeasures.Space.Px6)px;
+    }
+
+    .subjects-order {
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px12)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        cursor: pointer;
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        transition: background @(AppMeasures.Duration.Fast)s, color @(AppMeasures.Duration.Fast)s, border-color @(AppMeasures.Duration.Fast)s;
+    }
+
+        .subjects-order:hover {
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+        }
+
+        .subjects-order.is-active {
+            background: linear-gradient(@(OrderGradientAngleDegrees)deg, @(AppColors.Primary.ToRgbaHex(true)), @(AppColors.Secondary.ToRgbaHex(true)));
+            border-color: transparent;
+            color: @(AppColors.TextOnAccent.ToRgbaHex(true));
+            font-weight: @(AppMeasures.Weight.Medium);
+        }
+
+    .subjects-list {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    /* The direction is written out rather than left to inherit: a card lays its children out in a column, and a
+       row that says only "flex" gets that column instead of the row it meant. */
+    .subjects-row {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    /* The whole left side of a row is the way in, so reaching a subject is one press anywhere along its name. */
+    .subjects-row-open {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        flex: 1 1 auto;
+        min-width: 0;
+        gap: @(AppMeasures.Space.Px4)px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .subjects-row-name {
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        overflow-wrap: anywhere;
+    }
+
+        .subjects-row-open:hover .subjects-row-name {
+            color: @(AppColors.Primary.ToRgbaHex(true));
+        }
+
+    /* The arithmetic that put this row where it is. Shown on every row rather than explained once, because a
+       number a reader has to go looking for is a number they are being asked to take on trust. */
+    .subjects-row-standing {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+</style>
+
+@code {
+    /// <summary> Caps the column so the square reads as one narrow list on a desktop window instead of a stretched band. </summary>
+    const int ReadingColumnMaximumWidthPx = 640;
+
+    /// <summary> Direction the chosen ordering's fill runs in, matching every other gradient in the app. </summary>
+    const int OrderGradientAngleDegrees = 135;
+}
