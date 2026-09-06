@@ -1,6 +1,16 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true"></application>
+    <!--
+        usesCleartextTraffic is on so that a phone can reach a server on its own network over plain http.
+        Android 9 and up refuse cleartext by default, which makes "http://192.168.1.20:5000" — the ordinary way
+        somebody runs this for the people in their house — fail with nothing but a connection error.
+
+        It is not a hole in what this app protects: posts and messages are signed and sealed before they leave the
+        device, so the transport carries ciphertext either way. What plain http does give away is who is talking to
+        which server and when, so an address published on the internet should be https or .onion. See
+        ServerAddress.cs.
+    -->
+    <application android:allowBackup="true" android:icon="@mipmap/appicon" android:roundIcon="@mipmap/appicon_round" android:supportsRtl="true" android:usesCleartextTraffic="true"></application>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
 </manifest>
