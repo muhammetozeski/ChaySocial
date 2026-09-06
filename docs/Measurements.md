@@ -203,7 +203,7 @@ Tavan adaylarının izin verdiği en kötü durum:
 | 40 darbe / 600 nokta | 12.552 | 17.135 (16,7 KiB) |
 
 Seçilen: `MaximumAvatarSketchStrokes = 30`, `MaximumAvatarSketchPointsAltogether = 400`. 300 nokta fazla
-darydı — tahtanın kendi 3 piksellik örneklemesiyle çizilen sıradan bir yüz zaten 228 nokta, yani biraz
+dardı — tahtanın kendi 3 piksellik örneklemesiyle çizilen sıradan bir yüz zaten 228 nokta, yani biraz
 daha ayrıntılı bir yüz reddedilirdi. 400, o yüzü ve üstüne biraz ayrıntıyı alıyor, resme dönüşeni almıyor.
 
 Profilin çizimsiz hâlinin zaten 4,5 KiB olduğunu not etmek gerekiyor: bunun neredeyse tamamı ML-DSA-65 ve
