@@ -1,7 +1,9 @@
 @{
     string textSecondary = AppColors.TextSecondary.ToRgbaHex(true);
     string primary = AppColors.Primary.ToRgbaHex(true);
-    string primaryTint = AppColors.Primary.ToRgbaHex(true);
+    // A wash behind the active icon rather than the full brand colour: the icon is an emoji, and a solid primary
+    // fill behind it turns the one tab somebody is on into the hardest one to read.
+    string primaryTint = AppColors.SurfaceTintPrimary.ToRgbaHex(true);
 }
 
 <style>
