@@ -42,11 +42,14 @@ namespace ChaySocial.MainProject.Persistence
         /// <summary> Whether this device holds a letter for a moment before sending it. </summary>
         public const string SendDelay = "chay.send-delay";
 
+        /// <summary> How much of the following feed this device lets in from accounts the reader does not follow. </summary>
+        public const string StrangerShare = "chay.stranger-share";
+
         /// <summary> All of them, for anything that has to act on every trace this application leaves. </summary>
         public static readonly IReadOnlyList<string> All =
         [
             MasterSeed, CarriedAccounts, TorOnly, Theme, ContentGuard, HomeServer, DuressMark,
-            FeedRecipe, FeedShuffleSeed, SendDelay
+            FeedRecipe, FeedShuffleSeed, SendDelay, StrangerShare
         ];
     }
 }
