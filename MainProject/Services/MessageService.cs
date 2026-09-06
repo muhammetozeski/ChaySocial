@@ -118,7 +118,13 @@ namespace ChaySocial.MainProject.Services
                 ? conversationIdOverride
                 : MessageData.ConversationIdFor(senderAddress, recipientAddress);
             string messageId = Base32.Encode(RandomSource.Next(MessageIdBytes));
-            long createdAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            // The moment the letter is really written stays inside the seal; what the server gets is that moment
+            // rounded down to a bucket. An exact millisecond in the clear is a clock nobody encrypted: it says the
+            // hour somebody is awake, how fast they type, and that this address answered that one 1.4 seconds
+            // later — which ties two accounts together without opening a single letter.
+            long exactSentAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            long createdAt = exactSentAt - (exactSentAt % PublicSendTimeBucketMs);
 
             EncapsulationResult secret = AppCryptography.Identities.EncapsulateTo(recipient);
             byte[] nonce = RandomSource.Next(AppCryptography.Cipher.NonceSize);
@@ -127,7 +133,7 @@ namespace ChaySocial.MainProject.Services
             // Padded before it is sealed, so what lands on disk is one of a handful of sizes. A sealed body is
             // otherwise exactly as long as its contents, which makes length the one thing a stored letter tells
             // perfectly to whoever holds the collection.
-            byte[] paddedBody = EnvelopePadding.Pad(Encoding.UTF8.GetBytes(trimmed));
+            byte[] paddedBody = EnvelopePadding.Pad(SealedBody.Write(exactSentAt, trimmed));
 
             byte[] ciphertext = AppCryptography.Cipher.Encrypt(
                 paddedBody,
@@ -233,8 +239,23 @@ namespace ChaySocial.MainProject.Services
         /// <param name="text"> Receives the message body, or an empty string when it could not be opened. </param>
         /// <returns> True when the envelope was addressed to <paramref name="reader"/> and its tag verified. </returns>
         public static bool TryDecrypt(PrivateIdentity reader, MessageData message, out string text)
+            => TryDecrypt(reader, message, out text, out _);
+
+        /// <summary>
+        /// Opens an envelope and hands back the moment it was really written as well as the words.
+        /// </summary>
+        /// <param name="reader"> The unlocked account trying to read it. </param>
+        /// <param name="message"> Envelope to open. </param>
+        /// <param name="text"> Receives the message body, or an empty string when it could not be opened. </param>
+        /// <param name="exactSentAtUnixMs">
+        /// Receives the moment inside the seal, or the stored coarse one for a letter written before letters
+        /// carried their own clock.
+        /// </param>
+        /// <returns> True when the envelope was addressed to <paramref name="reader"/> and its tag verified. </returns>
+        public static bool TryDecrypt(PrivateIdentity reader, MessageData message, out string text, out long exactSentAtUnixMs)
         {
             text = string.Empty;
+            exactSentAtUnixMs = message.CreatedAtUnixMs;
 
             // Two copies of the same words are stored: one sealed to the recipient, one to the sender. Which one
             // this reader can open depends on which side of the envelope they are.
@@ -272,7 +293,11 @@ namespace ChaySocial.MainProject.Services
 
             // Letters written before envelopes were padded are still out there, so an unpadded body is read the way
             // it always was rather than refused.
-            text = EnvelopePadding.TryUnpad(plaintext, out string unpadded) ? unpadded : Encoding.UTF8.GetString(plaintext);
+            byte[] body = EnvelopePadding.TryUnpad(plaintext, out byte[] unpadded) ? unpadded : plaintext;
+
+            if (SealedBody.Read(body, out string written, out long exact)) exactSentAtUnixMs = exact;
+
+            text = written;
             return true;
         }
 
@@ -333,9 +358,10 @@ namespace ChaySocial.MainProject.Services
 
             if (!AppCryptography.Cipher.TryDecrypt(ciphertext, reader.Decapsulate(encapsulation), nonce, associatedData, out byte[] plaintext)) return null;
 
-            return new RevealedMessage(
-                EnvelopePadding.TryUnpad(plaintext, out string unpadded) ? unpadded : Encoding.UTF8.GetString(plaintext),
-                revealedMedia);
+            byte[] body = EnvelopePadding.TryUnpad(plaintext, out byte[] unpadded) ? unpadded : plaintext;
+            SealedBody.Read(body, out string written, out _);
+
+            return new RevealedMessage(written, revealedMedia);
         }
 
         /// <summary>
@@ -480,6 +506,13 @@ namespace ChaySocial.MainProject.Services
 
         /// <summary> Random bytes behind a message id — enough that two messages never collide. </summary>
         const int MessageIdBytes = 12;
+
+        /// <summary>
+        /// How coarse the moment a stored letter carries in the clear is. A minute: wide enough that the gap
+        /// between two letters no longer says who answered whom, narrow enough that a conversation read by anybody
+        /// who cannot open it still appears on the right day and around the right hour.
+        /// </summary>
+        const long PublicSendTimeBucketMs = 60_000;
 
         /// <summary>
         /// How many of an account's newest messages each side of the inbox reads before they are grouped into
