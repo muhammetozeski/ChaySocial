@@ -61,6 +61,10 @@ namespace ChaySocial.MainProject.Services
             // post to everybody has not shut themselves out of it.
             if (writerAddress == post.AuthorAddress) return true;
 
+            // A block promises one thing — that there is nothing left between these two — and a reply box left
+            // open under the blocker's post breaks that promise however clean the feed looks.
+            if (await ModerationService.IsShutOutAsync(post.AuthorAddress, writerAddress)) return false;
+
             return post.ReplyCircle switch
             {
                 ReplyCircle.Anyone => true,
@@ -82,7 +86,8 @@ namespace ChaySocial.MainProject.Services
         /// </summary>
         /// <param name="post"> The post the replies answer. </param>
         /// <param name="comments"> The replies as the store handed them back. </param>
-        /// <returns> Only the ones that were allowed to be written. </returns>
+        /// <param name="shutOut"> Accounts the reader has blocked or been blocked by, read once by the caller. </param>
+        /// <returns> Only the ones that were allowed to be written, and that this reader should see. </returns>
         /// <remarks>
         /// The reading side of the same rule, and the side that actually holds it: a client that ignored the limit
         /// while writing still gets nothing onto anybody's screen. Each distinct writer is judged once however
@@ -90,9 +95,21 @@ namespace ChaySocial.MainProject.Services
         /// </remarks>
         public static async Task<IReadOnlyList<CommentData>> KeepAllowedAsync(
             PostData post,
-            IReadOnlyList<CommentData> comments)
+            IReadOnlyList<CommentData> comments,
+            IReadOnlySet<string>? shutOut = null)
         {
-            if (!post.HasReplyLimit || comments.Count == 0) return comments;
+            if (comments.Count == 0) return comments;
+
+            // The two halves are separate because either can apply without the other: a reader with somebody
+            // blocked needs filtering under a post that has no circle at all.
+            IReadOnlyList<CommentData> visible = shutOut is null || shutOut.Count == 0
+                ? comments
+                : [.. comments.Where(comment => !shutOut.Contains(comment.AuthorAddress))];
+
+            if (!post.HasReplyLimit) return visible;
+
+            comments = visible;
+            if (comments.Count == 0) return comments;
 
             string[] writers = [.. comments.Select(comment => comment.AuthorAddress).Distinct(StringComparer.Ordinal)];
             bool[] allowed = await Task.WhenAll(writers.Select(writer => MayReplyAsync(post, writer)));
@@ -187,15 +204,17 @@ namespace ChaySocial.MainProject.Services
         /// Counts the replies under a post that a reader would actually be shown.
         /// </summary>
         /// <param name="post"> The post to count. </param>
-        /// <returns> How many replies survive the circle its writer signed into it. </returns>
+        /// <param name="shutOut"> Accounts the reader has blocked or been blocked by, read once by the caller. </param>
+        /// <returns> How many replies survive the circle its writer signed into it and this reader's own blocks. </returns>
         /// <remarks>
         /// The badge on a card has to agree with the thread it opens. Counting every stored reply would put a "1"
         /// on a post shut to replies and then show nobody anything when the reader tapped it. A post with no limit
-        /// pays nothing for this: it takes the same count it always did.
+        /// and a reader with nobody blocked pay nothing for this: they take the same count they always did.
         /// </remarks>
-        public static async Task<int> CountForPostAsync(PostData post)
+        public static async Task<int> CountForPostAsync(PostData post, IReadOnlySet<string>? shutOut = null)
         {
-            if (!post.HasReplyLimit) return await CountForPostAsync(post.PostId);
+            bool filtersReplies = post.HasReplyLimit || shutOut is { Count: > 0 };
+            if (!filtersReplies) return await CountForPostAsync(post.PostId);
 
             DocumentQuery<CommentData> query = new DocumentQuery<CommentData>()
                 .WithMatch(CommentData.PostField, post.PostId)
@@ -203,7 +222,7 @@ namespace ChaySocial.MainProject.Services
 
             IReadOnlyList<CommentData> stored = (await AppServices.Documents.QueryAsync(query)).Documents;
 
-            return (await KeepAllowedAsync(post, stored)).Count;
+            return (await KeepAllowedAsync(post, stored, shutOut)).Count;
         }
 
         /// <summary>

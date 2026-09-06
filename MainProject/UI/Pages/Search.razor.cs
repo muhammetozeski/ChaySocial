@@ -287,9 +287,12 @@ namespace ChaySocial.MainProject.UI.Pages
 
             string[] authorAddresses = [.. posts.Select(post => post.AuthorAddress).Distinct()];
 
+            // Read once for the whole page of results rather than once per card.
+            HashSet<string> shutOut = await ModerationService.ReadShutOutAddressesAsync(viewerAddress);
+
             Task<ProfileData?[]> profiles = Task.WhenAll(authorAddresses.Select(ProfileService.ReadAsync));
             Task<IReadOnlyList<string>[]> likers = Task.WhenAll(posts.Select(post => WallService.ReadLikersAsync(post.PostId)));
-            Task<int[]> replyCounts = Task.WhenAll(posts.Select(CommentService.CountForPostAsync));
+            Task<int[]> replyCounts = Task.WhenAll(posts.Select(post => CommentService.CountForPostAsync(post, shutOut)));
 
             await Task.WhenAll(profiles, likers, replyCounts);
 
