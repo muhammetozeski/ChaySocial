@@ -289,7 +289,7 @@ namespace ChaySocial.MainProject.UI.Pages
 
             Task<ProfileData?[]> profiles = Task.WhenAll(authorAddresses.Select(ProfileService.ReadAsync));
             Task<IReadOnlyList<string>[]> likers = Task.WhenAll(posts.Select(post => WallService.ReadLikersAsync(post.PostId)));
-            Task<int[]> replyCounts = Task.WhenAll(posts.Select(post => CommentService.CountForPostAsync(post.PostId)));
+            Task<int[]> replyCounts = Task.WhenAll(posts.Select(CommentService.CountForPostAsync));
 
             await Task.WhenAll(profiles, likers, replyCounts);
 

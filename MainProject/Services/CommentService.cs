@@ -44,6 +44,69 @@ namespace ChaySocial.MainProject.Services
         }
 
         /// <summary>
+        /// Whether one account may write under one post, by the limit its writer signed into it.
+        /// </summary>
+        /// <param name="post"> The post being answered. </param>
+        /// <param name="writerAddress"> The account that would answer. </param>
+        /// <returns> True when that account is inside the circle the post's writer left open. </returns>
+        /// <remarks>
+        /// Worked out on this device from the post itself, so no server is trusted to enforce it and none can
+        /// widen it — the circle is inside the signature, and a widened one no longer verifies.
+        /// </remarks>
+        public static async Task<bool> MayReplyAsync(PostData post, string writerAddress)
+        {
+            if (writerAddress.Length == 0) return false;
+
+            // A writer can always speak under their own post, whatever they closed it to. Somebody who shuts a
+            // post to everybody has not shut themselves out of it.
+            if (writerAddress == post.AuthorAddress) return true;
+
+            return post.ReplyCircle switch
+            {
+                ReplyCircle.Anyone => true,
+                ReplyCircle.NoOne => false,
+                ReplyCircle.FollowedByAuthor => await FollowService.IsFollowingAsync(post.AuthorAddress, writerAddress),
+
+                // Named in the line or named inside the piece: naming somebody in a long body is still naming
+                // them, and reading only the line would shut out the person the post was written about.
+                ReplyCircle.NamedOnly =>
+                    WrittenText.AccountsIn(post.Text).Contains(writerAddress, StringComparer.Ordinal)
+                    || WrittenText.AccountsIn(post.LongBody).Contains(writerAddress, StringComparer.Ordinal),
+
+                _ => true
+            };
+        }
+
+        /// <summary>
+        /// Drops the replies that were written from outside the circle the post's writer left open.
+        /// </summary>
+        /// <param name="post"> The post the replies answer. </param>
+        /// <param name="comments"> The replies as the store handed them back. </param>
+        /// <returns> Only the ones that were allowed to be written. </returns>
+        /// <remarks>
+        /// The reading side of the same rule, and the side that actually holds it: a client that ignored the limit
+        /// while writing still gets nothing onto anybody's screen. Each distinct writer is judged once however
+        /// many replies they left, so five replies from one account cost one read rather than five.
+        /// </remarks>
+        public static async Task<IReadOnlyList<CommentData>> KeepAllowedAsync(
+            PostData post,
+            IReadOnlyList<CommentData> comments)
+        {
+            if (!post.HasReplyLimit || comments.Count == 0) return comments;
+
+            string[] writers = [.. comments.Select(comment => comment.AuthorAddress).Distinct(StringComparer.Ordinal)];
+            bool[] allowed = await Task.WhenAll(writers.Select(writer => MayReplyAsync(post, writer)));
+
+            HashSet<string> welcome = new(StringComparer.Ordinal);
+            for (int index = 0; index < writers.Length; index++)
+            {
+                if (allowed[index]) welcome.Add(writers[index]);
+            }
+
+            return [.. comments.Where(comment => welcome.Contains(comment.AuthorAddress))];
+        }
+
+        /// <summary>
         /// Lays a flat list of comments out as a thread: each remark on the post, followed by everything written in
         /// answer to it, oldest first. It stays one level deep on screen even when an answer answers an answer —
         /// the line saying who was spoken to carries that, and a conversation indented six times is unreadable.
@@ -121,6 +184,29 @@ namespace ChaySocial.MainProject.Services
         }
 
         /// <summary>
+        /// Counts the replies under a post that a reader would actually be shown.
+        /// </summary>
+        /// <param name="post"> The post to count. </param>
+        /// <returns> How many replies survive the circle its writer signed into it. </returns>
+        /// <remarks>
+        /// The badge on a card has to agree with the thread it opens. Counting every stored reply would put a "1"
+        /// on a post shut to replies and then show nobody anything when the reader tapped it. A post with no limit
+        /// pays nothing for this: it takes the same count it always did.
+        /// </remarks>
+        public static async Task<int> CountForPostAsync(PostData post)
+        {
+            if (!post.HasReplyLimit) return await CountForPostAsync(post.PostId);
+
+            DocumentQuery<CommentData> query = new DocumentQuery<CommentData>()
+                .WithMatch(CommentData.PostField, post.PostId)
+                .WithLimit(MaximumCountedComments);
+
+            IReadOnlyList<CommentData> stored = (await AppServices.Documents.QueryAsync(query)).Documents;
+
+            return (await KeepAllowedAsync(post, stored)).Count;
+        }
+
+        /// <summary>
         /// Signs a reply as the given account, stores it, and alerts the post's author unless the author is the one
         /// replying — nobody needs to be told about their own comment.
         /// </summary>
@@ -137,6 +223,11 @@ namespace ChaySocial.MainProject.Services
         {
             string trimmed = text.Trim();
             if (trimmed.Length == 0 || trimmed.Length > CommentData.MaximumTextLength) return null;
+
+            // Refused the same way text that is too long is refused. Nothing here depends on this holding: the
+            // reading side checks every reply again, because a client that skipped this line is exactly the client
+            // a limit is for.
+            if (!await MayReplyAsync(post, author.Public.Address)) return null;
 
             // A reply belongs to the thread it answers. Letting one point at a comment under another post would put
             // an answer somewhere its question is not, and no reader could make sense of it.

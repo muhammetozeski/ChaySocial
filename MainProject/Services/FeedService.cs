@@ -267,7 +267,7 @@ namespace ChaySocial.MainProject.Services
         {
             Task<IReadOnlyList<string>> likersRead = WallService.ReadLikersAsync(post.PostId);
             Task<IReadOnlyList<string>> repostersRead = WallService.ReadRepostersAsync(post.PostId);
-            Task<int> commentCountRead = CommentService.CountForPostAsync(post.PostId);
+            Task<int> commentCountRead = CommentService.CountForPostAsync(post);
             await Task.WhenAll(likersRead, repostersRead, commentCountRead);
 
             IReadOnlyList<string> likers = await likersRead;
