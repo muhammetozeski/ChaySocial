@@ -77,10 +77,12 @@
                     <div class="messages-thread">
                         @foreach (OpenedMessage letter in NewestFirst)
                         {
+                            @* The time drawn is the one from inside the seal: the two people who can read a letter
+                               see when it was really written, and nobody else does. *@
                             <MessageBubble @key="letter.Envelope.MessageId"
                                            Text="@TextFor(letter)"
                                            IsMine="@letter.IsMine"
-                                           CreatedAtUnixMs="@letter.Envelope.CreatedAtUnixMs"
+                                           CreatedAtUnixMs="@letter.SentAtUnixMs"
                                            IsSenderVerified="@letter.IsSenderVerified"
                                            CouldDecrypt="@CanDrawText(letter)"
                                            IsVanishing="@letter.Envelope.IsVanishing"

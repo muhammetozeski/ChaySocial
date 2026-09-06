@@ -84,6 +84,17 @@ namespace ChaySocial.MainProject.UI.Pages
             bool IsMine)
         {
             public IReadOnlyList<RevealedMedia> RevealedMedia { get; init; } = [];
+
+            /// <summary>
+            /// When the letter was really written, which only somebody who can open it knows.
+            /// </summary>
+            /// <remarks>
+            /// The stored moment is rounded to a minute so a server cannot read the gap between two letters as an
+            /// answer. That coarse moment would put a quick exchange in an arbitrary order for the two people who
+            /// can read it, so the conversation is arranged by this one instead. A letter this device cannot open
+            /// keeps the coarse moment, which is all anybody knows about it anyway.
+            /// </remarks>
+            public long SentAtUnixMs { get; init; }
         }
 
         /// <summary> Text on the browser tab while the postbox is showing. </summary>
@@ -366,7 +377,10 @@ namespace ChaySocial.MainProject.UI.Pages
             letters.AddRange(openedVanishing.Values.Where(opened =>
                 letters.All(letter => letter.Envelope.MessageId != opened.Envelope.MessageId)));
 
-            conversation = [.. letters.OrderBy(letter => letter.Envelope.CreatedAtUnixMs)];
+            // Ordered by the moment inside the seal rather than the coarse one on the document: the stored time is
+            // rounded to a minute so a server cannot read a reply as a reply, and a whole quick exchange would
+            // otherwise share one value and come back in whatever order the store happened to hand it over.
+            conversation = [.. letters.OrderBy(letter => letter.SentAtUnixMs)];
         }
 
         /// <summary>
@@ -387,15 +401,19 @@ namespace ChaySocial.MainProject.UI.Pages
             // whole conversation.
             try
             {
-                bool couldDecrypt = MessageService.TryDecrypt(Account, envelope, out string text);
+                bool couldDecrypt = MessageService.TryDecrypt(Account, envelope, out string text, out long sentAt);
                 bool isSenderVerified = MessageService.VerifySender(envelope, senderProfile);
 
-                return new OpenedMessage(envelope, text, couldDecrypt, isSenderVerified, isMine);
+                return new OpenedMessage(envelope, text, couldDecrypt, isSenderVerified, isMine) { SentAtUnixMs = sentAt };
             }
             catch (Exception error)
             {
                 Log($"Letter '{envelope.MessageId}' could not be opened and is drawn sealed.\n{error}", LogLevel.Warning);
-                return new OpenedMessage(envelope, string.Empty, false, false, isMine);
+
+                return new OpenedMessage(envelope, string.Empty, false, false, isMine)
+                {
+                    SentAtUnixMs = envelope.CreatedAtUnixMs
+                };
             }
         }
 
