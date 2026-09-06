@@ -112,10 +112,14 @@
         StyleFingerprint drafted = StyleFingerprint.Of(draft);
         if (!drafted.IsWritten) return;
 
+        // Without writing to compare the draft against, there is no "more like them than like you" to claim: the
+        // closeness to an account that has published nothing is zero, and every other account would clear the gap
+        // on every draft. An account with no posts behind it therefore gets silence rather than a line that would
+        // fire every time and mean nothing.
         string writingAs = WritingAs;
-        double ownCloseness = carried.TryGetValue(writingAs, out StyleFingerprint own)
-            ? StyleFingerprint.Closeness(drafted, own)
-            : 0.0;
+        if (!carried.TryGetValue(writingAs, out StyleFingerprint own) || !own.IsWritten) return;
+
+        double ownCloseness = StyleFingerprint.Closeness(drafted, own);
 
         string closestAddress = string.Empty;
         double closest = 0.0;
