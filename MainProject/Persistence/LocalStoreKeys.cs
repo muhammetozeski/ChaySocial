@@ -33,8 +33,14 @@ namespace ChaySocial.MainProject.Persistence
         /// <summary> Digest of the secret that empties this device instead of opening it. </summary>
         public const string DuressMark = "chay.duress";
 
+        /// <summary> The order this device puts its feed in. </summary>
+        public const string FeedRecipe = "chay.feed-recipe";
+
+        /// <summary> The seed the shuffled order deals from, so the same page comes back until it is thrown again. </summary>
+        public const string FeedShuffleSeed = "chay.feed-shuffle-seed";
+
         /// <summary> All of them, for anything that has to act on every trace this application leaves. </summary>
         public static readonly IReadOnlyList<string> All =
-            [MasterSeed, CarriedAccounts, TorOnly, Theme, ContentGuard, HomeServer, DuressMark];
+            [MasterSeed, CarriedAccounts, TorOnly, Theme, ContentGuard, HomeServer, DuressMark, FeedRecipe, FeedShuffleSeed];
     }
 }
