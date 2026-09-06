@@ -180,6 +180,9 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Answers typed into the composer for a question not published yet, blanks included. </summary>
         IReadOnlyList<string> ComposerPollChoices = [];
 
+        /// <summary> Who the post being written will be open to; the door is wide until its writer narrows it. </summary>
+        ReplyCircle ComposerReplyCircle = ReplyCircle.Anyone;
+
         /// <summary> Title typed for a long piece not published yet. </summary>
         string ComposerTitle = string.Empty;
 
@@ -469,6 +472,10 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="choices"> The answers currently in the composer, blanks included. </param>
         void HandleComposerPollChoicesChanged(IReadOnlyList<string> choices) => ComposerPollChoices = choices;
 
+        /// <summary> Takes the writer's choice of who may answer the post being written. </summary>
+        /// <param name="circle"> The circle they picked. </param>
+        void HandleComposerReplyCircleChanged(ReplyCircle circle) => ComposerReplyCircle = circle;
+
         /// <summary> Takes the title of a long piece as it is typed. </summary>
         /// <param name="title"> The title box's new contents. </param>
         void HandleComposerTitleChanged(string title) => ComposerTitle = title;
@@ -540,7 +547,8 @@ namespace ChaySocial.MainProject.UI.Pages
             {
                 PostData? published = await WallService.PublishAsync(
                     WritingAs.Signer, ComposerText, ComposerAttachments, ComposerQuotedPost?.PostId ?? string.Empty,
-                    pollChoices: ComposerPollChoices, title: ComposerTitle, longBody: ComposerLongBody);
+                    pollChoices: ComposerPollChoices, title: ComposerTitle, longBody: ComposerLongBody,
+                    replyCircle: ComposerReplyCircle);
 
                 if (published is null) return;
 
@@ -549,6 +557,10 @@ namespace ChaySocial.MainProject.UI.Pages
                 ComposerPollChoices = [];
                 ComposerTitle = string.Empty;
                 ComposerLongBody = string.Empty;
+
+                // Back to a wide door for the next post: narrowing one is a decision about that post, and carrying
+                // it forward would quietly shut a conversation somebody meant to leave open.
+                ComposerReplyCircle = ReplyCircle.Anyone;
                 StopQuoting();
             }
             finally

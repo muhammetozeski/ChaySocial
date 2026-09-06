@@ -58,6 +58,35 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Supporting line of that placeholder, naming both ways a thread ends up empty. </summary>
         const string MissingPostDescription = "Whoever wrote it may have taken it down, or the link lost a character on its way here.";
 
+        /// <summary> Emoji over the placeholder shown where the composer would be when the reader is outside the circle. </summary>
+        const string ReplyLimitedEmoji = "🚪";
+
+        /// <summary> Headline of that placeholder, said about the conversation rather than about the reader. </summary>
+        const string ReplyLimitedHeadline = "This conversation is narrower";
+
+        /// <summary> What the reader is told when only the writer's own people may answer. </summary>
+        const string ReplyLimitedToFollowedDescription =
+            "Whoever wrote this left it open to the people they follow. You can still read every word of it.";
+
+        /// <summary> What they are told when only the accounts named in the post may answer. </summary>
+        const string ReplyLimitedToNamedDescription =
+            "Whoever wrote this left it open to the people they named in it. You can still read every word of it.";
+
+        /// <summary> What they are told when nobody may answer. </summary>
+        const string ReplyLimitedToNobodyDescription =
+            "Whoever wrote this said it rather than asked it, and left it closed to replies. You can still read every word of it.";
+
+        /// <summary> True when the reader may write under this post; false while the writer's circle shuts them out. </summary>
+        bool mayReply = true;
+
+        /// <summary> What to tell the reader about the door they are outside of. </summary>
+        string ReplyLimitedDescription => post?.ReplyCircle switch
+        {
+            ReplyCircle.FollowedByAuthor => ReplyLimitedToFollowedDescription,
+            ReplyCircle.NamedOnly => ReplyLimitedToNamedDescription,
+            _ => ReplyLimitedToNobodyDescription
+        };
+
         /// <summary> Emoji for the placeholder shown while a post has no replies. </summary>
         const string NoRepliesEmoji = "🌱";
 
@@ -280,8 +309,12 @@ namespace ChaySocial.MainProject.UI.Pages
                 return;
             }
 
-            replies = await CommentService.ReadForPostAsync(post.PostId);
+            // Filtered on the way in rather than trusted: a reply written by a client that ignored the limit is
+            // still in the store, and this is what keeps it off every screen.
+            replies = await CommentService.KeepAllowedAsync(post, await CommentService.ReadForPostAsync(post.PostId));
             thread = CommentService.ArrangeThread(replies);
+
+            mayReply = await CommentService.MayReplyAsync(post, Account.Public.Address);
 
             // A reply that was deleted while the reader was writing an answer to it has nothing left to answer.
             if (answeringReply is not null && replies.All(reply => reply.CommentId != answeringReply.CommentId))

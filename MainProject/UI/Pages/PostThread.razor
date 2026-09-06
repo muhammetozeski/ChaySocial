@@ -118,6 +118,14 @@
             {
                 <WritingLocked />
             }
+            else if (!mayReply)
+            {
+                @* Said about the conversation rather than about the reader: they have not been refused anything,
+                   the writer left a narrower door and reading is untouched either way. *@
+                <EmptyState Emoji="@ReplyLimitedEmoji"
+                            Headline="@ReplyLimitedHeadline"
+                            Description="@ReplyLimitedDescription" />
+            }
             else
             {
                 <CommentComposer Text="@draftText"
