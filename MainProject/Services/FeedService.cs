@@ -121,7 +121,7 @@ namespace ChaySocial.MainProject.Services
             bool lettingStrangersIn = StrangerShare.IsOn;
             if (following.Count == 0 && subjects.Count == 0 && !lettingStrangersIn) return [];
 
-            HashSet<string> hidden = await ReadHiddenAddressesAsync(viewerAddress);
+            HashSet<string> hidden = await ModerationService.ReadShutOutAddressesAsync(viewerAddress);
             string[] authors = [.. following.Distinct().Where(address => !hidden.Contains(address))];
             if (authors.Length == 0 && subjects.Count == 0 && !lettingStrangersIn) return [];
 
@@ -201,7 +201,7 @@ namespace ChaySocial.MainProject.Services
         {
             if (limit <= 0) return [];
 
-            HashSet<string> hidden = await ReadHiddenAddressesAsync(viewerAddress);
+            HashSet<string> hidden = await ModerationService.ReadShutOutAddressesAsync(viewerAddress);
             int readSize = hidden.Count == 0 ? limit : limit * DiscoverReadMultiplier;
 
             Task<IReadOnlyList<PostData>> wallRead = WallService.ReadWallAsync(readSize);
@@ -248,7 +248,12 @@ namespace ChaySocial.MainProject.Services
             IReadOnlyList<PostData> posts,
             string viewerAddress)
         {
-            PostEngagement[] measured = await Task.WhenAll(posts.Select(post => ReadEngagementAsync(post, viewerAddress)));
+            // Read once for the page rather than once per card: a page of thirty pays two extra queries for this
+            // instead of sixty.
+            HashSet<string> shutOut = await ModerationService.ReadShutOutAddressesAsync(viewerAddress);
+
+            PostEngagement[] measured = await Task.WhenAll(
+                posts.Select(post => ReadEngagementAsync(post, viewerAddress, shutOut)));
 
             Dictionary<string, PostEngagement> byPostId = new(posts.Count);
             for (int index = 0; index < posts.Count; index++)
@@ -262,12 +267,18 @@ namespace ChaySocial.MainProject.Services
         /// <summary> Reads one post's likers, reposters and comment count, all at once because none needs the others. </summary>
         /// <param name="post"> The post to measure. </param>
         /// <param name="viewerAddress"> Address of the reader, looked for among the likers and the reposters. </param>
+        /// <param name="shutOut"> Accounts the reader has blocked or been blocked by; read here when a caller has none to hand. </param>
         /// <returns> The numbers that post's card draws. </returns>
-        public static async Task<PostEngagement> ReadEngagementAsync(PostData post, string viewerAddress)
+        public static async Task<PostEngagement> ReadEngagementAsync(
+            PostData post,
+            string viewerAddress,
+            IReadOnlySet<string>? shutOut = null)
         {
+            shutOut ??= await ModerationService.ReadShutOutAddressesAsync(viewerAddress);
+
             Task<IReadOnlyList<string>> likersRead = WallService.ReadLikersAsync(post.PostId);
             Task<IReadOnlyList<string>> repostersRead = WallService.ReadRepostersAsync(post.PostId);
-            Task<int> commentCountRead = CommentService.CountForPostAsync(post);
+            Task<int> commentCountRead = CommentService.CountForPostAsync(post, shutOut);
             await Task.WhenAll(likersRead, repostersRead, commentCountRead);
 
             IReadOnlyList<string> likers = await likersRead;
@@ -279,24 +290,6 @@ namespace ChaySocial.MainProject.Services
                 await commentCountRead,
                 reposters.Count,
                 reposters.Contains(viewerAddress));
-        }
-
-        /// <summary>
-        /// Collects the addresses whose posts this reader must not see: the accounts they blocked, and the accounts
-        /// that blocked them. Both directions are read together because either one alone hides only half of a
-        /// falling-out.
-        /// </summary>
-        /// <param name="viewerAddress"> Address of the reader, or empty when nobody is signed in. </param>
-        /// <returns> The addresses to filter out, empty when nobody is signed in. </returns>
-        static async Task<HashSet<string>> ReadHiddenAddressesAsync(string viewerAddress)
-        {
-            if (string.IsNullOrEmpty(viewerAddress)) return [];
-
-            Task<IReadOnlyList<string>> blocked = ModerationService.ReadBlockedAddressesAsync(viewerAddress);
-            Task<IReadOnlyList<string>> blockedBy = ModerationService.ReadBlockedByAddressesAsync(viewerAddress);
-            await Task.WhenAll(blocked, blockedBy);
-
-            return [.. await blocked, .. await blockedBy];
         }
 
         /// <summary>

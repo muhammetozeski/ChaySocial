@@ -70,6 +70,47 @@ namespace ChaySocial.MainProject.Services
         public static async Task<bool> IsBlockedAsync(string blockerAddress, string blockedAddress)
             => await AppServices.Documents.ReadAsync(BlockData.IdFor(blockerAddress, blockedAddress)) is not null;
 
+        /// <summary>
+        /// Every account one reader should see nothing of and hear nothing from: the ones they blocked, and the
+        /// ones that blocked them.
+        /// </summary>
+        /// <param name="ownerAddress"> The reader, or empty when nobody is signed in. </param>
+        /// <returns> The addresses to shut out, empty when nobody is signed in. </returns>
+        /// <remarks>
+        /// A block is one promise — that there is nothing left between these two — and it only holds if both
+        /// directions are read. Kept here rather than in each screen that needs it, so the rule has one definition
+        /// and a screen written later cannot quietly implement half of it.
+        /// </remarks>
+        public static async Task<HashSet<string>> ReadShutOutAddressesAsync(string ownerAddress)
+        {
+            if (string.IsNullOrEmpty(ownerAddress)) return [];
+
+            Task<IReadOnlyList<string>> blocked = ReadBlockedAddressesAsync(ownerAddress);
+            Task<IReadOnlyList<string>> blockedBy = ReadBlockedByAddressesAsync(ownerAddress);
+            await Task.WhenAll(blocked, blockedBy);
+
+            return [.. await blocked, .. await blockedBy];
+        }
+
+        /// <summary> True when a block stands between two accounts, whichever of them made it. </summary>
+        /// <param name="ownerAddress"> One account. </param>
+        /// <param name="otherAddress"> The other. </param>
+        /// <returns> True when either has blocked the other. </returns>
+        /// <remarks>
+        /// Two single reads rather than the two listings, because this answers about one pair. Somewhere judging
+        /// a page of accounts should read the set once instead.
+        /// </remarks>
+        public static async Task<bool> IsShutOutAsync(string ownerAddress, string otherAddress)
+        {
+            if (ownerAddress.Length == 0 || otherAddress.Length == 0) return false;
+
+            Task<bool> blocked = IsBlockedAsync(ownerAddress, otherAddress);
+            Task<bool> blockedBy = IsBlockedAsync(otherAddress, ownerAddress);
+            await Task.WhenAll(blocked, blockedBy);
+
+            return await blocked || await blockedBy;
+        }
+
         /// <summary> Reads every account one account has blocked, for hiding them from its own feeds. </summary>
         /// <param name="blockerAddress"> Account whose blocks are wanted. </param>
         /// <returns> Addresses that account has blocked, at most <see cref="MaximumBlocksPerAccount"/> of them. </returns>
