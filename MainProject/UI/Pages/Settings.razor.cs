@@ -66,6 +66,9 @@ namespace ChaySocial.MainProject.UI.Pages
         const string AddressSectionDescription =
             "This is who you are here. Hand it to anybody you would like to be found by — it is public by design, and it gives away nothing about your secret.";
 
+        /// <summary> What the link into the signed statement screen says, offered under the address it speaks for. </summary>
+        const string StatementLinkLabel = "Sign a sentence with this address";
+
         /// <summary> Emoji on the section that changes how the app looks. </summary>
         const string AppearanceSectionEmoji = "🎨";
 
