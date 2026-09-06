@@ -1,0 +1,89 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+
+@*
+    Who has put their own name behind this account.
+
+    Every row here was checked against the profile its voucher publishes, so a vouch the server invented never
+    reaches the screen. That is the whole difference between this and a display name: a name is a label anybody
+    could have typed, and this is a sentence somebody signed.
+*@
+
+<CoreCard Acrylic="AcrylicLevel.Normal"
+          AcrylicBlur="AppMeasures.Blur.Strong"
+          BorderRadius="@CardRadius"
+          Padding="@CardPadding"
+          CustomClass="vouch-panel">
+
+    <div class="vouch-panel-heading">
+        <span class="vouch-panel-emoji">@PanelEmoji</span>
+        <h2 class="vouch-panel-title">@PanelTitle</h2>
+    </div>
+
+    @if (Vouches.Count == 0)
+    {
+        <p class="vouch-panel-empty">@EmptyDescription</p>
+    }
+    else
+    {
+        <ul class="vouch-panel-list">
+            @foreach ((VouchData Vouch, ProfileData Voucher) row in Vouches)
+            {
+                @* Declared inside the loop body, so each row's handler carries its own voucher. *@
+                (VouchData Vouch, ProfileData Voucher) entry = row;
+
+                <PersonRow @key="entry.Vouch.VoucherAddress"
+                           Profile="entry.Voucher"
+                           OnOpen="() => OnOpenVoucher.InvokeAsync(entry.Vouch.VoucherAddress)">
+                    <Action>
+                        <span class="vouch-panel-known-as">@KnownAsFor(entry.Vouch)</span>
+                    </Action>
+                </PersonRow>
+            }
+        </ul>
+    }
+
+    <p class="vouch-panel-note">@PanelNote</p>
+
+</CoreCard>
+
+<VouchPanelCss />
+
+@code {
+    /// <summary> The vouches worth drawing, each with the profile behind it. </summary>
+    [Parameter] public IReadOnlyList<(VouchData Vouch, ProfileData Voucher)> Vouches { get; set; } = [];
+
+    /// <summary> Raised with a voucher's address when the reader opens them. </summary>
+    [Parameter] public EventCallback<string> OnOpenVoucher { get; set; }
+
+    /// <summary> Emoji beside the panel's heading. </summary>
+    const string PanelEmoji = "✍️";
+
+    /// <summary> The panel's heading. </summary>
+    const string PanelTitle = "Vouched for by";
+
+    /// <summary> What the panel says when nobody has vouched, or nobody whose vouch holds. </summary>
+    const string EmptyDescription = "Nobody has put their name behind this account yet.";
+
+    /// <summary>
+    /// The line under the panel. It says the two things a reader needs: that these are checked, and that they are
+    /// as public as a follow already is.
+    /// </summary>
+    const string PanelNote =
+        "Each of these was signed by the account that left it and checked on your device. Who vouches for whom is public, the way following somebody already is.";
+
+    /// <summary> How one row reads; the placeholder takes the name the voucher chose. </summary>
+    const string KnownAsFormat = "calls them {0}";
+
+    /// <summary> Corner radius of the panel, written the way the card component wants it. </summary>
+    static readonly string CardRadius = $"{AppMeasures.Radius.XLarge}px";
+
+    /// <summary> Inner spacing of the panel. </summary>
+    static readonly string CardPadding = $"{AppMeasures.Space.Px20}px";
+
+    /// <summary> What one voucher calls this account, in words. </summary>
+    /// <param name="vouch"> The vouch being drawn. </param>
+    /// <returns> The line for its action slot. </returns>
+    static string KnownAsFor(VouchData vouch) => string.Format(KnownAsFormat, vouch.KnownAsName);
+}

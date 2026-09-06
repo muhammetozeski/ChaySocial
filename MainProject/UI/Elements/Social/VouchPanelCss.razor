@@ -1,0 +1,58 @@
+@*
+    Styling for VouchPanel. VouchPanel renders this component itself. Every selector is namespaced "vouch-panel-*"
+    because *Css.razor styles are global.
+*@
+<style>
+    .vouch-panel {
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+    }
+
+    .vouch-panel-heading {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    .vouch-panel-emoji {
+        font-size: @(AppMeasures.Font.Large)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .vouch-panel-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .vouch-panel-list {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+        margin: @(AppMeasures.Space.Px12)px 0 0 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    /* What the voucher calls this account, in their words rather than the app's. Kept quiet so it reads as a
+       remark beside a name and not as a title the account holds. */
+    .vouch-panel-known-as {
+        font-size: @(AppMeasures.Font.Small)px;
+        font-style: italic;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    .vouch-panel-empty {
+        margin: @(AppMeasures.Space.Px12)px 0 0 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .vouch-panel-note {
+        margin: @(AppMeasures.Space.Px12)px 0 0 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+</style>
