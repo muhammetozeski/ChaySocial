@@ -70,6 +70,14 @@
     /// <summary> The draft this reading was worked out from, so typing does not redo it on unrelated renders. </summary>
     string readDraft = string.Empty;
 
+    /// <summary>
+    /// The account it was worked out under. Remembered alongside the draft because the answer depends on both:
+    /// the account being written as picks the baseline, is left out of the candidates, and sets the gap the
+    /// threshold is measured against. Keyed on the draft alone, picking a different name left the old reading on
+    /// screen until the next keystroke.
+    /// </summary>
+    string readWritingAs = string.Empty;
+
     /// <summary> The carried account the draft reads most like, or empty when there is nothing worth saying. </summary>
     string soundsLikeAddress = string.Empty;
 
@@ -95,9 +103,10 @@
 
     protected override void OnParametersSet()
     {
-        if (readDraft == Draft) return;
+        if (readDraft == Draft && readWritingAs == WritingAs) return;
 
         readDraft = Draft;
+        readWritingAs = WritingAs;
         Judge();
     }
 
