@@ -8,7 +8,7 @@
 *@
 @if (Comment is not null)
 {
-    <div class="comment-row @(IsAnswer ? AnswerModifierClass : string.Empty)">
+    <div class="comment-row @(IsAnswer ? AnswerModifierClass : string.Empty)" id="@AnchorId">
         <span class="comment-row-avatar">@AuthorAvatar</span>
 
         <div class="comment-row-body">
@@ -73,6 +73,12 @@
 
     /// <summary> Name of the account this reply was written to, or null when it speaks to the post itself. </summary>
     [Parameter] public string? RepliedToName { get; set; }
+
+    /// <summary>
+    /// Id to put on the row so a link can point straight at it, or null for no id at all. Blazor writes no
+    /// attribute for a null, so a caller that has no use for anchors gets the row it always got.
+    /// </summary>
+    [Parameter] public string? AnchorId { get; set; }
 
     /// <summary> Raised when the reader wants to answer this reply. The control only appears when a caller wires this up. </summary>
     [Parameter] public EventCallback OnReply { get; set; }
