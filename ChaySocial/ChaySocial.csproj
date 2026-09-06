@@ -44,13 +44,23 @@
     <!--<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>-->
     <!--<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>-->
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
-    <RuntimeIdentifiers Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">android-arm64</RuntimeIdentifiers>
+
+    <!-- Which Android architectures a build produces. Set from the command line as
+         -p:AndroidRuntimeIdentifiers=android-x64 to publish one ABI at a time, or as a semicolon-separated list
+         for a package carrying several. Passing -r or -p:RuntimeIdentifiers on the command line instead would make
+         that a global property, which reaches MainProject and marks the library RID-specific; the Android SDK's
+         per-RID inner build then runs with SkipCompilerExecution=true, the source generator never runs, and the
+         build fails with "NavigationConstants does not exist". A property of our own does not travel that way. -->
+    <AndroidRuntimeIdentifiers Condition="'$(AndroidRuntimeIdentifiers)' == ''">android-arm64</AndroidRuntimeIdentifiers>
+    <RuntimeIdentifiers Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">$(AndroidRuntimeIdentifiers)</RuntimeIdentifiers>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
     <RuntimeIdentifier Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">win-x64</RuntimeIdentifier>
-    <!-- .NET 10 SDK doesn't ship a Microsoft.NETCore.App.Runtime.Mono NuGet package
-         for any RID.  Use the regular .NET runtime for MAUI Hybrid instead. -->
-    <UseMonoRuntime>false</UseMonoRuntime>
+    <!-- .NET 10 SDK doesn't ship a Microsoft.NETCore.App.Runtime.Mono NuGet package for any RID, so the Windows
+         head uses the regular .NET runtime. Android is left out of this: it resolves its own runtime pack, and its
+         32-bit ABIs (android-arm, android-x86) exist only as Mono packs — setting this there asks for a
+         Microsoft.NETCore.App.Runtime.Mono that does not exist. -->
+    <UseMonoRuntime Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'android'">false</UseMonoRuntime>
   </PropertyGroup>
 
   <ItemGroup>
