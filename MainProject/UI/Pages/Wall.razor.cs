@@ -133,6 +133,13 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> The orders offered, in the order they are drawn. </summary>
         static readonly IReadOnlyList<FeedOrder> SelectableOrders = FeedRecipe.Choices;
 
+        /// <summary> The stranger levels offered, in the order they are drawn. </summary>
+        static readonly IReadOnlyList<StrangerShareLevel> SelectableStrangerShares = StrangerShare.Choices;
+
+        /// <summary> Line above the stranger dial, saying what it decides and that nobody else decides it. </summary>
+        const string StrangerStripLabel =
+            "You choose how much of this comes from people you don't follow. Every line one of them puts here says so.";
+
         /// <summary> The tabs offered, in the order they are drawn. </summary>
         static readonly WallFeed[] SelectableFeeds = Enum.GetValues<WallFeed>();
 
@@ -295,6 +302,22 @@ namespace ChaySocial.MainProject.UI.Pages
 
             await FeedRecipe.ApplyAndRememberAsync(order);
             Entries = FeedOrdering.Apply(Entries, Engagements, FeedRecipe.Order, FeedRecipe.ShuffleSeed);
+        }
+
+        /// <summary>
+        /// Takes the reader's choice of how much comes from outside their own people, and reads the feed again.
+        /// </summary>
+        /// <param name="level"> The level they picked. </param>
+        /// <returns> A task that completes once the choice is stored and the feed has been read again. </returns>
+        /// <remarks>
+        /// A reload rather than a reordering: this changes what is read, not the order what was read is drawn in.
+        /// </remarks>
+        async Task SelectStrangerShareAsync(StrangerShareLevel level)
+        {
+            if (level == StrangerShare.Level) return;
+
+            await StrangerShare.ApplyAndRememberAsync(level);
+            await ReloadAsync();
         }
 
         /// <summary> Throws the shuffle again, which is the only thing that changes a shuffled page. </summary>

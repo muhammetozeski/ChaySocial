@@ -131,6 +131,13 @@
         color: @(AppColors.TextMuted.ToRgbaHex(true));
     }
 
+    /* The strip asks two separate questions - what order, and how much from outside - and with only the strip's
+       own gap between them the eight buttons read as one row of eight choices rather than as two of four and
+       five. This is the air that keeps them two questions. */
+    .wall-order-note--second {
+        margin-top: @(OrderStripQuestionGapPx)px;
+    }
+
     .wall-order-choices {
         display: flex;
         flex-wrap: wrap;
@@ -378,6 +385,9 @@
 
     /// <summary> Space between the ordering buttons, and between a receipt and the card it belongs to. </summary>
     const int OrderStripGapPx = AppMeasures.Space.Px6;
+
+    /// <summary> Space between the strip's two questions, so eight buttons read as two rows rather than as one. </summary>
+    const int OrderStripQuestionGapPx = AppMeasures.Space.Px10;
 
     /// <summary> How far the teapot rises at the top of its idle float. </summary>
     const int HeaderEmojiFloatLiftPx = AppMeasures.Space.Px6;

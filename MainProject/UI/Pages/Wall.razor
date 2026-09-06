@@ -89,6 +89,24 @@
                     </button>
                 }
             </div>
+
+            @* Only on the reader's own feed. On Discover everybody is somebody they do not follow, so a dial
+               deciding how many of them to let in would be deciding nothing. *@
+            @if (SelectedFeed == WallFeed.Following)
+            {
+                <p class="wall-order-note wall-order-note--second">@StrangerStripLabel</p>
+
+                <div class="wall-order-choices">
+                    @foreach (StrangerShareLevel level in SelectableStrangerShares)
+                    {
+                        <button type="button"
+                                class="wall-order @(level == StrangerShare.Level ? ActiveOrderClass : string.Empty)"
+                                @onclick="() => SelectStrangerShareAsync(level)">
+                            @StrangerShare.Describe(level)
+                        </button>
+                    }
+                </div>
+            }
         </div>
 
         @if (LoadFailureMessage is not null)

@@ -156,6 +156,10 @@
             // Same reason: the wall would otherwise draw newest-first and rearrange itself a moment later.
             await FeedRecipe.RestoreAsync();
 
+            // And the same again: the following feed would otherwise be read without the strangers and read a
+            // second time with them, which is a page that visibly changes under the reader.
+            await StrangerShare.RestoreAsync();
+
             // Before the session is opened and before anything is read: a device pointed at another server must
             // reach that server for its very first request, not for its second.
             string chosenServer = await HomeServerService.ReadAsync();
