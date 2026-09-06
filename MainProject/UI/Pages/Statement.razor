@@ -1,0 +1,119 @@
+@attribute [Route(StatementRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.PageBase
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    Signing a sentence about yourself, and checking one somebody else signed.
+
+    Deliberately not a signed-in page. The whole point of the second half is somebody who has never opened an
+    account here checking a block that was handed to them, and a page that sent them to the welcome screen would
+    make that impossible. The signing half asks for a session, not the page.
+
+    Saving is offered twice, the way the archive offers it: a link that hands the file over, and the same block as
+    text to copy out. The block runs to a few kilobytes because two post-quantum public keys and a hybrid
+    signature travel inside it, so nothing here promises a short token.
+*@
+
+<PageTitle>@PageHeadline</PageTitle>
+
+<div class="statement-page">
+
+    <header class="statement-header">
+        <BackButton OnClick="GoBack" />
+
+        <div class="statement-header-text">
+            <h1 class="statement-title">@PageHeadline</h1>
+            <p class="statement-subtitle">@PageSubtitle</p>
+        </div>
+
+        <span class="statement-header-emoji" role="img" aria-label="@PageHeadline">@PageEmoji</span>
+    </header>
+
+    @if (SessionService.IsSignedIn)
+    {
+        <CoreCard Acrylic="AcrylicLevel.Normal"
+                  AcrylicBlur="AppMeasures.Blur.Strong"
+                  BorderRadius="@CardRadius"
+                  Padding="@CardPadding"
+                  CustomClass="statement-card">
+
+            <div class="statement-section-heading">
+                <span class="statement-section-emoji">@WriteSectionEmoji</span>
+                <h2 class="statement-section-title">@WriteSectionHeadline</h2>
+            </div>
+            <p class="statement-section-description">@WriteSectionDescription</p>
+
+            <textarea class="statement-claim"
+                      rows="@ClaimRows"
+                      maxlength="@SignedStatementService.MaximumClaimLength"
+                      placeholder="@ClaimPlaceholder"
+                      value="@_claim"
+                      @oninput="HandleClaimInput"></textarea>
+
+            <p class="statement-counter">@RemainingClaimCharacters</p>
+
+            <button type="button" class="statement-action" disabled="@(!CanSign)" @onclick="SignAsync">
+                @SignLabel
+            </button>
+
+            @if (_signedText.Length > 0)
+            {
+                <p class="statement-section-description">@SignedDescription</p>
+
+                <a class="statement-download" download="@StatementFileName" href="@_signedUri">@DownloadLabel</a>
+
+                <p class="statement-fallback-label">@CopyFallbackLabel</p>
+                <textarea class="statement-fallback" readonly rows="@FallbackRows">@_signedText</textarea>
+            }
+
+        </CoreCard>
+    }
+
+    <CoreCard Acrylic="AcrylicLevel.Normal"
+              AcrylicBlur="AppMeasures.Blur.Strong"
+              BorderRadius="@CardRadius"
+              Padding="@CardPadding"
+              CustomClass="statement-card">
+
+        <div class="statement-section-heading">
+            <span class="statement-section-emoji">@CheckSectionEmoji</span>
+            <h2 class="statement-section-title">@CheckSectionHeadline</h2>
+        </div>
+        <p class="statement-section-description">@CheckSectionDescription</p>
+
+        <label class="statement-pick">
+            <InputFile OnChange="HandleFileChosen" accept="@AcceptList" class="statement-pick-input" />
+            <span class="statement-pick-label">@PickLabel</span>
+        </label>
+
+        <p class="statement-fallback-label">@PasteFallbackLabel</p>
+        <textarea class="statement-fallback"
+                  rows="@FallbackRows"
+                  placeholder="@PastePlaceholder"
+                  value="@_pastedText"
+                  @oninput="HandlePastedInput"></textarea>
+
+        <button type="button" class="statement-action" @onclick="CheckPasted">@CheckLabel</button>
+
+        @if (_checkFailure is not null)
+        {
+            <p class="statement-failure">@_checkFailure</p>
+        }
+
+        @if (_checked is { } statement)
+        {
+            <div class="statement-verdict">
+                <AvatarBubble Address="@statement.Address" DiameterPx="@VerdictAvatarDiameterPx" IsHighlighted="@_isChecked" />
+                <AddressChip Address="@statement.Address" ShowFull="true" />
+                <p class="statement-claim-shown">@statement.Claim</p>
+                <p class="statement-signed-at">@SignedAtFor(statement)</p>
+                <p class="@(_isChecked ? HeldClass : BrokenClass)">@(_isChecked ? HeldVerdict : BrokenVerdict)</p>
+            </div>
+        }
+
+    </CoreCard>
+
+</div>
+
+<StatementCss />
