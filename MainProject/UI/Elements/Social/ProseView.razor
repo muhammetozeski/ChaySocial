@@ -34,6 +34,12 @@ else
                     <blockquote class="prose-view-quote"><WrittenLine Text="@block.Text" MayBeCovered="false" /></blockquote>
                     break;
 
+                @* The one block that does not go through WrittenLine: inside code an @@ is not somebody being
+                   named and a # is not a subject, and drawing either as a link would rewrite what was meant. *@
+                case ProseBlockKind.Code:
+                    <CodeView Text="@block.Text" Language="@block.Language" />
+                    break;
+
                 case ProseBlockKind.Bullet:
                     <p class="prose-view-bullet">
                         <span class="prose-view-bullet-mark">@BulletGlyph</span>
