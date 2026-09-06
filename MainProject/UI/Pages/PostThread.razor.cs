@@ -79,6 +79,16 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> True when the reader may write under this post; false while the writer's circle shuts them out. </summary>
         bool mayReply = true;
 
+        /// <summary> True when a block stands between this reader and the post's writer, whichever of them made it. </summary>
+        bool isShutOut;
+
+        /// <summary>
+        /// What the reader is told when a block is why the box is gone. It names neither direction: telling
+        /// somebody they were blocked is a message from the person who wanted no more messages.
+        /// </summary>
+        const string ReplyBlockedDescription =
+            "There is a block between you and whoever wrote this. You can still read every word of it.";
+
         /// <summary> True while the count receipt is open. </summary>
         bool isReceiptOpen;
 
@@ -103,12 +113,19 @@ namespace ChaySocial.MainProject.UI.Pages
         }
 
         /// <summary> What to tell the reader about the door they are outside of. </summary>
-        string ReplyLimitedDescription => post?.ReplyCircle switch
-        {
-            ReplyCircle.FollowedByAuthor => ReplyLimitedToFollowedDescription,
-            ReplyCircle.NamedOnly => ReplyLimitedToNamedDescription,
-            _ => ReplyLimitedToNobodyDescription
-        };
+        /// <remarks>
+        /// A block is checked first because it is the reason that overrides the others: a reader who is blocked
+        /// would be shut out whatever circle the post carried, and telling them about the circle instead would be
+        /// naming the wrong reason.
+        /// </remarks>
+        string ReplyLimitedDescription => isShutOut
+            ? ReplyBlockedDescription
+            : post?.ReplyCircle switch
+            {
+                ReplyCircle.FollowedByAuthor => ReplyLimitedToFollowedDescription,
+                ReplyCircle.NamedOnly => ReplyLimitedToNamedDescription,
+                _ => ReplyLimitedToNobodyDescription
+            };
 
         /// <summary> Emoji for the placeholder shown while a post has no replies. </summary>
         const string NoRepliesEmoji = "🌱";
@@ -337,11 +354,17 @@ namespace ChaySocial.MainProject.UI.Pages
                 return;
             }
 
+            // Read once for the whole thread rather than once per writer, and used for both halves of the page:
+            // which replies are drawn, and whether this reader gets a box to write in.
+            IReadOnlySet<string> shutOut = await ModerationService.ReadShutOutAddressesAsync(Account.Public.Address);
+
             // Filtered on the way in rather than trusted: a reply written by a client that ignored the limit is
             // still in the store, and this is what keeps it off every screen.
-            replies = await CommentService.KeepAllowedAsync(post, await CommentService.ReadForPostAsync(post.PostId));
+            replies = await CommentService.KeepAllowedAsync(
+                post, await CommentService.ReadForPostAsync(post.PostId), shutOut);
             thread = CommentService.ArrangeThread(replies);
 
+            isShutOut = shutOut.Contains(post.AuthorAddress);
             mayReply = await CommentService.MayReplyAsync(post, Account.Public.Address);
 
             // A reply that was deleted while the reader was writing an answer to it has nothing left to answer.
