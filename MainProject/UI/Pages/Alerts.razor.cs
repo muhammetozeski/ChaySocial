@@ -108,6 +108,21 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Modifier class on a row nobody has opened yet. </summary>
         const string UnreadRowClass = "alert-row--unread";
 
+        /// <summary> Route the whole postbox lives at, for a letter alert whose seal will not open. </summary>
+        const string MessagesRoute = "/messages";
+
+        /// <summary> Drawn in place of an avatar when an alert's seal will not open — the same padlock a letter that cannot be read gets. </summary>
+        const string UnreadableEmoji = "🔏";
+
+        /// <summary> Name drawn for that alert. It is the truth: somebody wrote, and this device cannot say who. </summary>
+        const string UnreadableName = "Someone";
+
+        /// <summary>
+        /// What each sealed alert was carrying, keyed by its id. Opened once per load rather than per render,
+        /// because opening one is a decapsulation and a row redraws far more often than it is fetched.
+        /// </summary>
+        IReadOnlyDictionary<string, SealedAlertDetail> _openedDetails = new Dictionary<string, SealedAlertDetail>();
+
         /// <summary> Fully rounded corners on the header action, so it reads as a soft pill beside the heading rather than a second panel. </summary>
         static string MarkAllButtonRadius => $"{AppMeasures.Radius.Pill}px";
 
@@ -153,24 +168,45 @@ namespace ChaySocial.MainProject.UI.Pages
             _ => string.Format(ManyUnreadSubtitleFormat, UnreadCount)
         };
 
-        /// <summary> Reads this account's alerts and the profiles of everyone who appears in them. </summary>
+        /// <summary> Reads this account's alerts, opens whatever they kept sealed, and fetches the actors' profiles. </summary>
         protected override async Task LoadAsync()
         {
             _alerts = await NotificationService.ReadForAsync(SessionService.CurrentAddress);
-            _actorProfiles = await ReadActorProfilesAsync(_alerts);
+            _openedDetails = OpenSealedDetails(_alerts);
+            _actorProfiles = await ReadActorProfilesAsync(_alerts.Select(ActorAddressOf));
+        }
+
+        /// <summary> Opens every sealed alert this account can open, and quietly leaves the rest closed. </summary>
+        /// <param name="alerts"> The alerts about to be drawn. </param>
+        /// <returns> What each one was carrying, keyed by its id. </returns>
+        IReadOnlyDictionary<string, SealedAlertDetail> OpenSealedDetails(IReadOnlyList<NotificationData> alerts)
+        {
+            Dictionary<string, SealedAlertDetail> opened = [];
+
+            foreach (NotificationData alert in alerts)
+            {
+                if (alert.IsSealed && NotificationService.TryOpenSealed(Account, alert, out SealedAlertDetail detail))
+                {
+                    opened[alert.NotificationId] = detail;
+                }
+            }
+
+            return opened;
         }
 
         /// <summary>
         /// Fetches one profile per distinct actor in a page of alerts, so a row can draw a name and an avatar
         /// without re-reading the same account for every alert it caused.
         /// </summary>
-        /// <param name="alerts"> The alerts about to be drawn. </param>
+        /// <param name="addresses"> Addresses of everyone who acted, sealed alerts already opened. </param>
         /// <returns> The profiles that exist, keyed by address; actors who never published one are simply absent. </returns>
-        static async Task<IReadOnlyDictionary<string, ProfileData>> ReadActorProfilesAsync(IReadOnlyList<NotificationData> alerts)
+        static async Task<IReadOnlyDictionary<string, ProfileData>> ReadActorProfilesAsync(IEnumerable<string> addresses)
         {
             Dictionary<string, ProfileData> profiles = [];
 
-            foreach (string address in alerts.Select(alert => alert.ActorAddress).Distinct())
+            // An alert whose seal would not open leaves no address at all, and asking the store for the profile of
+            // nobody is a read that can only come back empty.
+            foreach (string address in addresses.Where(address => address.Length > 0).Distinct())
             {
                 ProfileData? profile = await ProfileService.ReadAsync(address);
                 if (profile is not null) profiles[address] = profile;
@@ -178,6 +214,22 @@ namespace ChaySocial.MainProject.UI.Pages
 
             return profiles;
         }
+
+        /// <summary> Who caused an alert: the address it names, or the one its seal was hiding. </summary>
+        /// <param name="alert"> The alert being drawn. </param>
+        /// <returns> The actor's address, or empty when the alert is sealed and this device could not open it. </returns>
+        string ActorAddressOf(NotificationData alert)
+            => alert.IsSealed
+                ? (_openedDetails.TryGetValue(alert.NotificationId, out SealedAlertDetail detail) ? detail.ActorAddress : string.Empty)
+                : alert.ActorAddress;
+
+        /// <summary> What an alert points at: the id it names, or the one its seal was hiding. </summary>
+        /// <param name="alert"> The alert being drawn. </param>
+        /// <returns> The target id, or empty when the alert is sealed and this device could not open it. </returns>
+        string TargetIdOf(NotificationData alert)
+            => alert.IsSealed
+                ? (_openedDetails.TryGetValue(alert.NotificationId, out SealedAlertDetail detail) ? detail.TargetId : string.Empty)
+                : alert.TargetId;
 
         /// <summary>
         /// Opens an alert: marks it read, then sends the reader to whatever it points at. Marking read first means
@@ -221,15 +273,22 @@ namespace ChaySocial.MainProject.UI.Pages
         /// </summary>
         /// <param name="alert"> The alert that was opened. </param>
         /// <returns> The route to navigate to. </returns>
-        static string BuildDestination(NotificationData alert)
+        string BuildDestination(NotificationData alert)
         {
-            string actorRoute = ProfileRoutePrefix + alert.ActorAddress;
+            string actorAddress = ActorAddressOf(alert);
+            string targetId = TargetIdOf(alert);
+
+            // An alert this device cannot open names nobody, so there is no conversation and no profile to jump to.
+            // The postbox is the honest destination: the letter is in there somewhere.
+            if (actorAddress.Length == 0) return MessagesRoute;
+
+            string actorRoute = ProfileRoutePrefix + actorAddress;
 
             return alert.Kind switch
             {
                 NotificationKind.Like or NotificationKind.Comment or NotificationKind.Mention =>
-                    alert.TargetId.Length == 0 ? actorRoute : PostRoutePrefix + alert.TargetId,
-                NotificationKind.Message => MessagesRoutePrefix + alert.ActorAddress,
+                    targetId.Length == 0 ? actorRoute : PostRoutePrefix + targetId,
+                NotificationKind.Message => MessagesRoutePrefix + actorAddress,
                 _ => actorRoute
             };
         }
@@ -264,9 +323,14 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="alert"> The alert being drawn. </param>
         /// <returns> The actor's display name, or the fallback name built from their address. </returns>
         string ActorNameFor(NotificationData alert)
-            => _actorProfiles.TryGetValue(alert.ActorAddress, out ProfileData? profile) && !string.IsNullOrWhiteSpace(profile.DisplayName)
+        {
+            string address = ActorAddressOf(alert);
+            if (address.Length == 0) return UnreadableName;
+
+            return _actorProfiles.TryGetValue(address, out ProfileData? profile) && !string.IsNullOrWhiteSpace(profile.DisplayName)
                 ? profile.DisplayName
-                : ProfileService.FallbackDisplayName(alert.ActorAddress);
+                : ProfileService.FallbackDisplayName(address);
+        }
 
         /// <summary>
         /// The emoji drawn for an alert's actor. An actor with no stored profile still gets the same emoji their
@@ -275,9 +339,14 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="alert"> The alert being drawn. </param>
         /// <returns> The actor's avatar emoji. </returns>
         string ActorAvatarFor(NotificationData alert)
-            => _actorProfiles.TryGetValue(alert.ActorAddress, out ProfileData? profile) && !string.IsNullOrWhiteSpace(profile.Avatar)
+        {
+            string address = ActorAddressOf(alert);
+            if (address.Length == 0) return UnreadableEmoji;
+
+            return _actorProfiles.TryGetValue(address, out ProfileData? profile) && !string.IsNullOrWhiteSpace(profile.Avatar)
                 ? profile.Avatar
-                : ProfileService.PickAvatar(alert.ActorAddress);
+                : ProfileService.PickAvatar(address);
+        }
 
         /// <summary> The row's share of the staggered entrance, as an inline style the CSS animation reads. </summary>
         /// <param name="rowIndex"> Position of the row in the list, counted from zero. </param>

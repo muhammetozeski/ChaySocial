@@ -206,12 +206,17 @@ namespace ChaySocial.MainProject.Services
             await AppServices.Documents.WriteAsync(message.Id, message);
 
             // The alert points at the conversation and says nothing about it. An excerpt here would hand the server
-            // the one thing the encryption exists to keep from it.
+            // the one thing the encryption exists to keep from it — and so, less obviously, would the sender's
+            // address and the conversation id, which is why they are sealed to the recipient rather than stored.
+            // Only a letter's alert is sealed: a like, a comment, a follow and a mention are public acts already,
+            // and hiding their actor would only make the bell useless to everybody including its owner.
             await NotificationService.NotifyAsync(
                 recipientAddress,
                 senderAddress,
                 NotificationKind.Message,
-                conversationId);
+                conversationId,
+                sealTo: recipient,
+                sealedDetailId: messageId);
 
             MainEvents.Trigger(MainEvents.Names.MessagesChanged, conversationId);
             return message;
