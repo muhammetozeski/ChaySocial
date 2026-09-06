@@ -145,3 +145,36 @@ Aracın kendi belgesi iki şey söylüyor: *"Jobs only fire while the REPL is id
 parametresi için *"Has no effect — durable persistence is not available."* Yani zamanlayıcı
 oturumun belleğinde yaşıyor; oturum askıya alınırsa duruyor, ölürse ölüyor. Bu kurulumla cron
 bir emniyet ağı değil.
+
+## Üslup aynası — hangi eşik, neden
+
+Ayna, beste ekranındaki taslağı bu cihazın taşıdığı hesapların yayınlanmış yazılarıyla karşılaştırıyor. İki
+sayısı var ve ikisi de ölçüldü, seçilmedi.
+
+Ölçüm kurulumu: uygulamanın kendi yayınlama yolundan beş hesaba gerçek yazı gövdeleri yazıldı — ikisi aynı
+elden çıkmış ölçülü bir ses, biri kısa ve emojili, biri düz, biri de zaten orada duran uzun yazı. Sonra her
+gövdeden o uzunlukta pencereler kesilip her hesabın altında yazılıyormuş gibi denendi.
+
+Metrenin ayırdığı görülüyor: aynı elden çıkan iki gövde **0,9651**; diğer bütün çiftler **0,78–0,90**.
+
+| Taslak uzunluğu | Eşik | Yanlış alarm | Yakalama | Doğru hesabı adlandırma |
+|---|---|---|---|---|
+| 140 | 0,03 | %4,8 | %66,7 | %75,0 |
+| 180 | 0,00 | %20,0 | %95,0 | — |
+| **180** | **0,03** | **%0,0** (0/15) | **%70,0** | **%88,1** |
+| 240 | 0,03 | %0,0 | %72,7 | %93,8 |
+| 320 | 0,03 | %0,0 | %86,1 | %90,3 |
+
+"Yanlış alarm" = kendi sesiyle kendi hesabında yazan birinde başka bir hesabın öne geçmesi. "Yakalama" =
+başka bir hesabın altında yazarken kendi sesinin bulunması. "Doğru hesabı adlandırma" = tetiklendiğinde
+adlandırdığı hesabın gerçekten o sesin sahibi olması.
+
+Seçilen değerler: `ShortestJudgeableDraft = 180` karakter, `ClosenessLeadWorthMentioning = 0,03`.
+
+140 karakter derdi çözmüyordu: satır dört seferde bir yanlış hesabı adlandırıyordu. Eşiksiz çalıştırmak da
+çözmüyordu: kendi hesabında kendi sesiyle yazanların beşte birinde tetikleniyordu. 180'in bedeli 140–179
+arasındaki taslaklarda susmak; bir koruma satırı için yanlış tarafta olmanın doğru tarafı bu, çünkü boşuna
+öten satır öğrenilip atlanan satırdır.
+
+Örneklem küçük: 180'de yanlış alarm ölçümü 15 denemeye, 240'ta 11 denemeye dayanıyor. %0 rakamı "hiç olmaz"
+demek değil, "bu on beş denemede olmadı" demek.
