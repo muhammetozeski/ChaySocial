@@ -13,13 +13,17 @@ namespace ChaySocial.MainProject.Text
         Quote,
 
         /// <summary> One item of a list. </summary>
-        Bullet
+        Bullet,
+
+        /// <summary> A run of lines the writer fenced off as code, kept exactly as typed. </summary>
+        Code
     }
 
     /// <summary> One block of a long piece: what it is, and the line to draw. </summary>
     /// <param name="Kind"> What this block is. </param>
-    /// <param name="Text"> The line without the characters that named its kind. </param>
-    public readonly record struct ProseBlock(ProseBlockKind Kind, string Text);
+    /// <param name="Text"> The line without the characters that named its kind, or a fenced run joined by newlines. </param>
+    /// <param name="Language"> What a fenced run was labelled, empty for every other kind and for an unlabelled fence. </param>
+    public readonly record struct ProseBlock(ProseBlockKind Kind, string Text, string Language = "");
 
     /// <summary>
     /// Reads the shape of a long piece of writing: headings, quotes, lists and the paragraphs between them.
@@ -54,6 +58,15 @@ namespace ChaySocial.MainProject.Text
         /// <summary> A second way to open a list item, for anybody who writes lists with stars. </summary>
         public const string StarBulletMark = "* ";
 
+        /// <summary>
+        /// Opens and closes a run of lines that are code rather than prose. What follows it on the opening line is
+        /// the language, which is a label the writer chose and nothing this app checks.
+        /// </summary>
+        public const string FenceMark = "```";
+
+        /// <summary> What joins the lines of a fenced run back together, whatever the writer's machine typed. </summary>
+        public const string CodeLineEnding = "\n";
+
         /// <summary> The line endings a body may arrive with, whichever machine it was typed on. </summary>
         static readonly string[] LineEndings = ["\r\n", "\n", "\r"];
 
@@ -63,22 +76,61 @@ namespace ChaySocial.MainProject.Text
         /// </summary>
         /// <param name="body"> The long body as it was written. </param>
         /// <returns> Its blocks in order; an empty body comes back with none. </returns>
+        /// <remarks>
+        /// Inside a fence the two habits that make prose read evenly — trimming each line and dropping the blank
+        /// ones — are exactly what would ruin code, so both are suspended there and the lines are kept as typed.
+        /// </remarks>
         public static IReadOnlyList<ProseBlock> Read(string body)
         {
             if (string.IsNullOrWhiteSpace(body)) return [];
 
             List<ProseBlock> blocks = [];
+            List<string>? fenced = null;
+            string language = string.Empty;
 
             foreach (string line in body.Split(LineEndings, StringSplitOptions.None))
             {
                 string trimmed = line.Trim();
+
+                if (fenced is not null)
+                {
+                    if (trimmed.StartsWith(FenceMark, StringComparison.Ordinal))
+                    {
+                        blocks.Add(Fenced(fenced, language));
+                        fenced = null;
+                        language = string.Empty;
+                        continue;
+                    }
+
+                    fenced.Add(line);
+                    continue;
+                }
+
+                if (trimmed.StartsWith(FenceMark, StringComparison.Ordinal))
+                {
+                    fenced = [];
+                    language = trimmed[FenceMark.Length..].Trim();
+                    continue;
+                }
+
                 if (trimmed.Length == 0) continue;
 
                 blocks.Add(ReadOne(trimmed));
             }
 
+            // A fence somebody opened and never closed still holds writing they meant to be read as code. Dropping
+            // it would lose the end of a piece over one missing line.
+            if (fenced is not null) blocks.Add(Fenced(fenced, language));
+
             return blocks;
         }
+
+        /// <summary> Makes one code block out of the lines collected inside a fence. </summary>
+        /// <param name="lines"> The lines, exactly as they were typed. </param>
+        /// <param name="language"> What the fence was labelled, empty when it carried no label. </param>
+        /// <returns> The block. </returns>
+        static ProseBlock Fenced(List<string> lines, string language)
+            => new(ProseBlockKind.Code, string.Join(CodeLineEnding, lines), language);
 
         /// <summary> Decides what one line is, from the characters it opens with. </summary>
         /// <param name="line"> The line, already trimmed. </param>
