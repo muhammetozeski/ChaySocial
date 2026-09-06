@@ -1,0 +1,81 @@
+@attribute [Route(ClippingsRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    Somebody's own shelf. Every line was sealed to the account reading it, so this page is the only place any of
+    it can be read — including by whoever holds the documents.
+
+    A clipping whose post is gone stays, with the note still on it. The note is the reader's own sentence about
+    something, and it outlives the thing it was written about.
+*@
+
+<PageTitle>@PageHeadline</PageTitle>
+
+<div class="clippings-page">
+
+    <header class="clippings-header" style="@HeaderSurfaceStyle">
+        <BackButton OnClick="GoBack" />
+
+        <div class="clippings-heading">
+            <h1 class="clippings-title">@PageHeadline</h1>
+            <p class="clippings-subtitle">@PageSubtitle</p>
+        </div>
+
+        <span class="clippings-header-emoji" role="img" aria-label="@PageHeadline">@PageEmoji</span>
+    </header>
+
+    @if (IsFirstLoad)
+    {
+        <CoreSkeleton Shape="SkeletonShape.Card" />
+    }
+    else if (LoadFailureMessage is not null)
+    {
+        <EmptyState Emoji="@LoadFailedEmoji" Headline="@LoadFailedHeadline" Description="@LoadFailureMessage" />
+    }
+    else if (shelf.Count == 0)
+    {
+        <EmptyState Emoji="@EmptyEmoji" Headline="@EmptyHeadline" Description="@EmptyDescription" />
+    }
+    else
+    {
+        <div class="clippings-list">
+            @foreach (KeptClipping clipping in shelf)
+            {
+                @* Declared inside the loop body, so each row's handlers carry their own clipping. *@
+                KeptClipping row = clipping;
+
+                <div class="clippings-row" @key="row.ClippingId">
+
+                    @if (row.Note.Length > 0)
+                    {
+                        <p class="clippings-note">@row.Note</p>
+                    }
+
+                    @if (PostFor(row.PostId) is PostData post)
+                    {
+                        <PostCard Post="post"
+                                  AuthorProfile="@ProfileFor(post.AuthorAddress)"
+                                  IsKept="true"
+                                  OnOpenComments="() => OpenPost(row.PostId)"
+                                  OnOpenAuthor="() => OpenAuthor(post.AuthorAddress)" />
+                    }
+                    else
+                    {
+                        <p class="clippings-gone">@PostGoneLabel</p>
+                    }
+
+                    <button type="button" class="clippings-forget" @onclick="() => ForgetAsync(row.ClippingId)">
+                        @ForgetLabel
+                    </button>
+
+                </div>
+            }
+        </div>
+    }
+
+</div>
+
+<ClippingsCss />

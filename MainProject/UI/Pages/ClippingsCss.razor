@@ -1,0 +1,111 @@
+@*
+    Styling for the shelf. The page renders this itself, so it always arrives with its own CSS attached. Every
+    selector is namespaced "clippings-*" because *Css.razor styles are global.
+*@
+<style>
+    .clippings-page {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReadingColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px40)px;
+    }
+
+    .clippings-header {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.XLarge)px;
+    }
+
+    .clippings-heading {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-width: 0;
+        gap: @(AppMeasures.Space.Px4)px;
+    }
+
+    .clippings-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Title)px;
+        font-weight: @(AppMeasures.Weight.Black);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .clippings-subtitle {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .clippings-header-emoji {
+        font-size: @(AppMeasures.Font.Hero)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .clippings-list {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px20)px;
+    }
+
+    .clippings-row {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    /* Above the post rather than under it: the note is why this is on the shelf, and the post is what the note is
+       about. It is set in the reader's own voice, so it is drawn like something written rather than something
+       reported — a bar down the side, the way a quoted line is. */
+    .clippings-note {
+        margin: 0;
+        padding-left: @(AppMeasures.Space.Px12)px;
+        border-left: @(NoteBarWidthPx)px solid @(AppColors.Primary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .clippings-gone {
+        margin: 0;
+        padding: @(AppMeasures.Space.Px12)px;
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .clippings-forget {
+        align-self: flex-start;
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px12)px;
+        border: none;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: transparent;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        cursor: pointer;
+        font: inherit;
+        font-size: @(AppMeasures.Font.XSmall)px;
+    }
+
+        .clippings-forget:hover {
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+</style>
+
+@code {
+    /// <summary> Caps the column so the shelf reads as one narrow list on a desktop window instead of a stretched band. </summary>
+    const int ReadingColumnMaximumWidthPx = 640;
+
+    /// <summary> Thickness of the bar down the side of a note, matching the one a quoted line carries. </summary>
+    const int NoteBarWidthPx = AppMeasures.Border.Medium;
+}
