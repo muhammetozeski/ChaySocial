@@ -316,6 +316,8 @@ namespace ChaySocial.MainProject.Services
             // would pull the message out from under the reader before they had read it.
             await AppServices.Documents.DeleteAsync(message.Id, cancellationToken);
 
+            await ForgetAlertForAsync(reader, message.MessageId);
+
             if (!TryDecodeBase64(message.Encapsulation, nameof(message.Encapsulation), message.MessageId, out byte[] encapsulation)
                 || !TryDecodeBase64(message.Nonce, nameof(message.Nonce), message.MessageId, out byte[] nonce)
                 || encapsulation.Length != AppCryptography.KeyExchange.EncapsulationSize)
@@ -334,6 +336,38 @@ namespace ChaySocial.MainProject.Services
             return new RevealedMessage(
                 EnvelopePadding.TryUnpad(plaintext, out string unpadded) ? unpadded : Encoding.UTF8.GetString(plaintext),
                 revealedMedia);
+        }
+
+        /// <summary>
+        /// Removes the alert that announced one letter, so a message meant to be read once leaves nothing behind.
+        /// </summary>
+        /// <param name="reader"> The unlocked account whose alerts these are. </param>
+        /// <param name="messageId"> Id of the message that has just been destroyed. </param>
+        /// <returns> A task that completes once the alert is gone or was not there. </returns>
+        /// <remarks>
+        /// Without this, deleting the message left the line that announced it standing forever. The alert is found
+        /// by opening its own seal, which only this account can do — the id it was written against is not readable
+        /// by anybody else, including whoever holds the collection.
+        /// </remarks>
+        static async Task ForgetAlertForAsync(PrivateIdentity reader, string messageId)
+        {
+            try
+            {
+                foreach (NotificationData alert in await NotificationService.ReadForAsync(reader.Public.Address))
+                {
+                    if (!NotificationService.TryOpenSealed(reader, alert, out SealedAlertDetail detail)) continue;
+                    if (detail.DetailId != messageId) continue;
+
+                    await NotificationService.DeleteAsync(alert);
+                    return;
+                }
+            }
+            catch (Exception error)
+            {
+                // A letter that has already been destroyed is not worth failing the read over: the reader is
+                // holding the only copy of those words, and this is the tidying that comes after.
+                Log($"The alert for message '{messageId}' could not be removed.\n{error}", LogLevel.Warning);
+            }
         }
 
         /// <summary>
