@@ -178,3 +178,34 @@ arasındaki taslaklarda susmak; bir koruma satırı için yanlış tarafta olman
 
 Örneklem küçük: 180'de yanlış alarm ölçümü 15 denemeye, 240'ta 11 denemeye dayanıyor. %0 rakamı "hiç olmaz"
 demek değil, "bu on beş denemede olmadı" demek.
+
+## Çizilmiş yüz — profil ne kadar şişiyor
+
+Yüz, bir blob olarak değil, profilin **içinde** duruyor. Sebep: bir profil zaten bir ekranda yazar başına
+bir kez okunuyor; yüz başına ikinci bir çekim aynı ekranda ikinci kez ödenirdi. Bunun bedeli, profil
+belgesinin büyümesi — ve o yüzden iki tavan var.
+
+Ölçümler (`JsonSerializerDefaults.Web`, deponun kullandığı bicim):
+
+| | bayt |
+|---|---|
+| Çizimsiz profil (iki post-kuantum açık anahtar dahil) | **4.583** |
+| Tarayıcıda gerçekten çizilen bir yüz (8 darbe, 24 nokta) | +1.216 → **5.799** |
+| Tahtanın 3 px örneklemesiyle çizilmiş dolgun bir yüz (5 darbe, 228 nokta) | +4.219 → **8.802** |
+
+Tavan adaylarının izin verdiği en kötü durum:
+
+| Tavan | Sayfa | Profil |
+|---|---|---|
+| 20 darbe / 300 nokta | 6.312 | 10.895 (10,6 KiB) |
+| **30 darbe / 400 nokta** | **8.352** | **12.935 (12,6 KiB)** |
+| 30 darbe / 500 nokta | 9.972 | 14.555 (14,2 KiB) |
+| 40 darbe / 600 nokta | 12.552 | 17.135 (16,7 KiB) |
+
+Seçilen: `MaximumAvatarSketchStrokes = 30`, `MaximumAvatarSketchPointsAltogether = 400`. 300 nokta fazla
+darydı — tahtanın kendi 3 piksellik örneklemesiyle çizilen sıradan bir yüz zaten 228 nokta, yani biraz
+daha ayrıntılı bir yüz reddedilirdi. 400, o yüzü ve üstüne biraz ayrıntıyı alıyor, resme dönüşeni almıyor.
+
+Profilin çizimsiz hâlinin zaten 4,5 KiB olduğunu not etmek gerekiyor: bunun neredeyse tamamı ML-DSA-65 ve
+ML-KEM-768 açık anahtarları. Yüz, küçük olan bir belgeyi büyütmüyor; zaten büyük olanı en kötü ihtimalle
+üçe katlıyor.
