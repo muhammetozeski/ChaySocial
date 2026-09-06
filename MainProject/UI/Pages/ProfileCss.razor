@@ -517,6 +517,152 @@
                 transform: none;
             }
     }
+
+    /* The row under the emoji grid: the control that opens the board, and — once there is a face — the face
+       itself, a line saying what it is, and the way back to the emoji. It wraps, because on a narrow screen
+       those four together are wider than the card. */
+    .profile-face-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        margin-top: @(AppMeasures.Space.Px12)px;
+    }
+
+    .profile-face-open {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px8)px;
+        padding: @(AppMeasures.Space.Px8)px @(AppMeasures.Space.Px16)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        cursor: pointer;
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.Normal)px;
+        transition: background @(AppMeasures.Duration.Fast)s, border-color @(AppMeasures.Duration.Fast)s;
+    }
+
+        .profile-face-open:hover:not(:disabled) {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            background: @(AppColors.SurfaceStrong.ToRgbaHex(true));
+        }
+
+        .profile-face-open:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: not-allowed;
+        }
+
+    .profile-face-emoji {
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    /* Takes the leftover width so the way back to the emoji is pushed to the end of the row. */
+    .profile-face-note {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .profile-face-drop {
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px12)px;
+        border: none;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: transparent;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        cursor: pointer;
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.XSmall)px;
+    }
+
+        .profile-face-drop:hover:not(:disabled) {
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
+        .profile-face-drop:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: not-allowed;
+        }
+
+    .profile-face-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        @AppStyles.BuildBackdropFrost()
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        padding: @(FaceBackdropInsetPx)px;
+        overscroll-behavior: contain;
+        z-index: @(AppMeasures.ZLayer.Modal);
+    }
+
+    /* Exactly as wide as the board, its hairline and this panel's own padding — the board is a fixed size and a
+       panel a couple of pixels short of it puts a scrollbar under the drawing. */
+    .profile-face-panel {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(DrawingSheet.DrawingCanvasWidthPx + FaceBoardFrameWidthPx + FacePanelInsetPx + FacePanelInsetPx)px;
+        max-height: @(AppMeasures.Viewport.Most)vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: @(FacePanelInsetPx)px;
+        border-radius: @(AppMeasures.Radius.XLarge)px;
+        box-shadow: @AppStyles.ShadowHeavy;
+    }
+
+    .profile-face-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .profile-face-subtitle {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .profile-face-full {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextDanger.ToRgbaHex(true));
+    }
+
+    .profile-face-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+    }
+
+    .profile-face-quiet {
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px16)px;
+        border: none;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: transparent;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        cursor: pointer;
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.Normal)px;
+    }
+
+        .profile-face-quiet:hover {
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
 </style>
 
 @code {
@@ -546,4 +692,20 @@
 
     /// <summary> Widest viewport still treated as a phone, below which the header stacks and the page tightens its side padding. </summary>
     const int NarrowScreenBreakpointPx = AppMeasures.Size.Px420;
+
+    /// <summary>
+    /// Room left between the board's panel and the edge of the screen. Small on purpose: the board is a fixed size
+    /// and cannot shrink to make room, so every pixel spent here is a pixel the narrowest screen has to spare.
+    /// </summary>
+    const int FaceBackdropInsetPx = AppMeasures.Space.Px8;
+
+    /// <summary> Room inside that panel, around the board and the controls under it. </summary>
+    const int FacePanelInsetPx = AppMeasures.Space.Px16;
+
+    /// <summary>
+    /// How much wider the board is than its own drawing area: the hairline down each side. Added to the panel
+    /// rather than taken out of the board, because border-box sizing there would shrink the area the strokes are
+    /// drawn against and pull every point away from where the pointer reported it.
+    /// </summary>
+    const int FaceBoardFrameWidthPx = AppMeasures.Border.Thin * 2;
 }

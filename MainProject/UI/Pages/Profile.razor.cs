@@ -168,6 +168,35 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Tooltip on one emoji in the picker. </summary>
         const string AvatarChoiceHint = "Use this as your avatar";
 
+        /// <summary> Mark on the control that opens the board to draw a face on. </summary>
+        const string DrawFaceEmoji = "🖌️";
+
+        /// <summary> Label on that control. </summary>
+        const string DrawFaceLabel = "Draw your face";
+
+        /// <summary> Label on the control that takes a drawn face off and goes back to the emoji. </summary>
+        const string DropFaceLabel = "Back to the emoji";
+
+        /// <summary> Heading over the board while a face is being drawn. </summary>
+        const string FaceBoardTitle = "Draw your face";
+
+        /// <summary> Line under that heading, saying where the drawing will and will not be shown. </summary>
+        const string FaceBoardSubtitle =
+            "It is worn wherever this account is drawn large. In a feed the circle is too small to read a drawing in, so the emoji you picked is shown there instead.";
+
+        /// <summary> Label on the control that puts the drawn face on the draft. </summary>
+        const string KeepFaceLabel = "Wear this";
+
+        /// <summary> Label on the control that closes the board and keeps nothing. </summary>
+        const string DiscardFaceLabel = "Never mind";
+
+        /// <summary> Line shown when the board holds more than a profile can carry; the placeholders take the counts. </summary>
+        const string FaceTooFullFormat =
+            "That is {0} points across {1} strokes, and a face has to fit in {2} points across {3} strokes to travel inside a profile. Take a stroke back, or start again simpler.";
+
+        /// <summary> Line under the drawn face in the editor, so the owner knows what they are looking at. </summary>
+        const string WearingDrawnFaceLabel = "You are wearing a face you drew.";
+
         /// <summary> Label of the display name field. </summary>
         const string DisplayNameFieldLabel = "Display name";
 
@@ -329,6 +358,21 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> Avatar the owner has selected in the editor. </summary>
         string DraftAvatar = ProfileData.DefaultAvatar;
+
+        /// <summary> Face the owner has drawn in the editor, or null while they are wearing the emoji. </summary>
+        DrawingSheet? DraftAvatarSketch;
+
+        /// <summary> How wide the drawn face is shown in the editor: large enough to be a face rather than a thumbnail. </summary>
+        const int DrawnFacePreviewDiameterPx = AppMeasures.Size.Px64;
+
+        /// <summary> The frosted glass the board's panel sits on, the same recipe every other panel uses. </summary>
+        static string FaceBoardPanelStyle => AppStyles.BuildAcrylicStyle(AcrylicLevel.Strong, AppMeasures.Blur.Heavy);
+
+        /// <summary> True while the board is open over the editor. </summary>
+        bool IsDrawingFace;
+
+        /// <summary> The face as it stands on the open board, or null while nothing has been drawn on it. </summary>
+        DrawingSheet? BoardSketch;
 
         /// <summary> Name the owner has typed in the editor. </summary>
         string DraftDisplayName = string.Empty;
@@ -683,6 +727,7 @@ namespace ChaySocial.MainProject.UI.Pages
             if (!IsOwnProfile) return;
 
             DraftAvatar = ShownAvatar;
+            DraftAvatarSketch = ShownProfile?.HasWearableFace == true ? ShownProfile.AvatarSketch : null;
             DraftDisplayName = ShownName;
             DraftBio = ShownBio;
             DraftTipCurrency = ShownProfile?.TipCurrency ?? string.Empty;
@@ -699,9 +744,67 @@ namespace ChaySocial.MainProject.UI.Pages
             EditErrorMessage = null;
         }
 
-        /// <summary> Selects one emoji from the picker as the draft avatar. </summary>
+        /// <summary>
+        /// Selects one emoji from the picker as the draft avatar. Choosing an emoji does not throw a drawn face
+        /// away: the face is what gets worn while there is one, and the emoji stays underneath it for every
+        /// bubble too small to read a drawing in.
+        /// </summary>
         /// <param name="emoji"> The emoji that was tapped. </param>
         void ChooseAvatar(string emoji) => DraftAvatar = emoji;
+
+        /// <summary> Opens the board over the editor, on whatever face is already being worn. </summary>
+        void OpenFaceBoard()
+        {
+            if (IsSavingProfile) return;
+
+            BoardSketch = null;
+            IsDrawingFace = true;
+        }
+
+        /// <summary> Closes the board and keeps nothing that was drawn on it. </summary>
+        void CloseFaceBoard()
+        {
+            IsDrawingFace = false;
+            BoardSketch = null;
+        }
+
+        /// <summary> Takes the board's drawing as it changes, so the keep button knows whether there is a face on it. </summary>
+        /// <param name="sheet"> The face as it now stands. </param>
+        void TakeBoardSketch(DrawingSheet sheet) => BoardSketch = sheet;
+
+        /// <summary> Puts the drawn face on the draft and closes the board. </summary>
+        void KeepDrawnFace()
+        {
+            if (!CanKeepDrawnFace) return;
+
+            DraftAvatarSketch = BoardSketch;
+            IsDrawingFace = false;
+            BoardSketch = null;
+        }
+
+        /// <summary> Takes the drawn face off the draft, leaving the emoji that was underneath it all along. </summary>
+        void DropDrawnFace() => DraftAvatarSketch = null;
+
+        /// <summary> True while the board holds a face that is small enough to be worn. </summary>
+        bool CanKeepDrawnFace => ProfileData.IsWearableFace(BoardSketch);
+
+        /// <summary>
+        /// True when the board holds something, but more of it than a profile can carry. This is the one case worth
+        /// a line to the writer: the keep button is refusing, and it should say why rather than look broken.
+        /// </summary>
+        bool IsDrawnFaceTooFull =>
+            BoardSketch is { Strokes.Count: > 0 } && !ProfileData.IsWearableFace(BoardSketch);
+
+        /// <summary> How many points the open board holds, so the writer can watch it fill up. </summary>
+        int BoardPointCount => BoardSketch?.Strokes.Sum(stroke => stroke.Points.Count) ?? 0;
+
+        /// <summary> The line shown when the board holds more than a profile can carry. </summary>
+        string FaceTooFullMessage => string.Format(
+            FaceTooFullFormat,
+            BoardPointCount,
+            BoardSketch?.Strokes.Count ?? 0,
+            ProfileData.MaximumAvatarSketchPointsAltogether,
+            ProfileData.MaximumAvatarSketchStrokes);
 
         /// <summary> Keeps the draft name in step with the field on every keystroke. </summary>
         /// <param name="args"> The input event; its value is the field's new contents. </param>
@@ -753,6 +856,7 @@ namespace ChaySocial.MainProject.UI.Pages
                 {
                     DisplayName = name,
                     Avatar = string.IsNullOrWhiteSpace(DraftAvatar) ? ProfileData.DefaultAvatar : DraftAvatar,
+                    AvatarSketch = ProfileData.IsWearableFace(DraftAvatarSketch) ? DraftAvatarSketch : null,
                     Bio = bio
                 };
 

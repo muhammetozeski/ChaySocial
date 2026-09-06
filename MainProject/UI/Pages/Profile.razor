@@ -86,6 +86,33 @@
                                     @onclick="() => ChooseAvatar(choice)">@choice</button>
                         }
                     </div>
+
+                    @* Everything else about how an account looks is dealt out by its keys. This is the one part
+                       somebody makes themselves. *@
+                    <div class="profile-face-row">
+                        <button type="button"
+                                class="profile-face-open"
+                                disabled="@IsSavingProfile"
+                                @onclick="OpenFaceBoard">
+                            <span class="profile-face-emoji">@DrawFaceEmoji</span>
+                            <span>@DrawFaceLabel</span>
+                        </button>
+
+                        @if (DraftAvatarSketch is not null)
+                        {
+                            <AvatarBubble Emoji="@DraftAvatar"
+                                          Address="@TargetAddress"
+                                          Sketch="@DraftAvatarSketch"
+                                          DiameterPx="@DrawnFacePreviewDiameterPx" />
+
+                            <span class="profile-face-note">@WearingDrawnFaceLabel</span>
+
+                            <button type="button"
+                                    class="profile-face-drop"
+                                    disabled="@IsSavingProfile"
+                                    @onclick="DropDrawnFace">@DropFaceLabel</button>
+                        }
+                    </div>
                 </div>
 
                 <div class="profile-field">
@@ -196,7 +223,11 @@
                       CustomClass="profile-card profile-header">
 
                 <div class="profile-header-top">
-                    <AvatarBubble Emoji="@ShownAvatar" Address="@TargetAddress" DiameterPx="@HeaderAvatarDiameterPx" IsHighlighted="true" />
+                    <AvatarBubble Emoji="@ShownAvatar"
+                                  Address="@TargetAddress"
+                                  Sketch="@ShownProfile?.AvatarSketch"
+                                  DiameterPx="@HeaderAvatarDiameterPx"
+                                  IsHighlighted="true" />
 
                     <div class="profile-identity">
                         <h1 class="profile-name">@ShownName</h1>
@@ -555,6 +586,45 @@
             </div>
         </div>
     </CoreModal>
+</AppOverlay>
+
+@* Its own panel rather than a CoreModal, for the reason DrawingPicker gives: the board cannot be scaled, and a
+   modal leaves less room across a narrow screen than the board itself needs. It goes out through AppOverlay
+   because the editor is a frosted card and anything fixed inside one is trapped in it. *@
+<AppOverlay>
+    @if (IsDrawingFace)
+    {
+        <div class="profile-face-backdrop" @onclick="CloseFaceBoard">
+            <div class="profile-face-panel" style="@FaceBoardPanelStyle" @onclick:stopPropagation>
+
+                <p class="profile-face-title">@FaceBoardTitle</p>
+                <p class="profile-face-subtitle">@FaceBoardSubtitle</p>
+
+                <DrawingPad SheetChanged="TakeBoardSketch" IsDisabled="@IsSavingProfile" />
+
+                @if (IsDrawnFaceTooFull)
+                {
+                    <p class="profile-face-full">@FaceTooFullMessage</p>
+                }
+
+                <div class="profile-face-actions">
+                    <button type="button" class="profile-face-quiet" @onclick="CloseFaceBoard">@DiscardFaceLabel</button>
+
+                    <CoreButton OnClick="KeepDrawnFace"
+                                Disabled="@(!CanKeepDrawnFace)"
+                                Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                                TextColor="@AppColors.TextOnAccent"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Shadow="@AppStyles.ShadowPrimaryGlow">
+                        @KeepFaceLabel
+                    </CoreButton>
+                </div>
+
+            </div>
+        </div>
+    }
 </AppOverlay>
 
 <ProfileCss />
