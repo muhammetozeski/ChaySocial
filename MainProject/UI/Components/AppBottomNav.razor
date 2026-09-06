@@ -37,10 +37,18 @@
 
     private void UpdateActivePath(string uri)
     {
-        // Normalize to an absolute path like "/home" so NavItem.Path (a full route from NavigationConstants) matches directly.
-        var absolutePath = "/" + NavManager.ToBaseRelativePath(uri).ToLowerInvariant();
-        // Hidden pages (splash, login, paywall, etc.) won't match any tab and fall back to string.Empty.
-        _activePath = NavigationConstants.BottomNavigationItems.FirstOrDefault(item => absolutePath.StartsWith(item.Link)).Link ?? string.Empty;
+        // Normalize to an absolute path like "/wall" so a generated link ("/Wall") can be matched against it.
+        // The comparison ignores case: the routes are spelled in Pascal case and a browser address bar is not,
+        // and lower-casing one side while comparing ordinally is what left every tab drawn as inactive.
+        var absolutePath = "/" + NavManager.ToBaseRelativePath(uri).Split('?', '#')[0];
+
+        // Matched on whole segments rather than any prefix, so a route that merely begins with a tab's name does
+        // not light that tab up. Hidden pages match nothing and fall back to string.Empty.
+        _activePath = NavigationConstants.BottomNavigationItems
+            .FirstOrDefault(item =>
+                absolutePath.Equals(item.Link, StringComparison.OrdinalIgnoreCase)
+                || absolutePath.StartsWith(item.Link + "/", StringComparison.OrdinalIgnoreCase))
+            .Link ?? string.Empty;
     }
 
     public void Dispose()
