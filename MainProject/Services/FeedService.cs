@@ -10,7 +10,12 @@ namespace ChaySocial.MainProject.Services
     /// <param name="Post"> The post to draw. </param>
     /// <param name="ReposterAddress"> Address of the account that passed it on, or empty when it arrived on its own. </param>
     /// <param name="SortedAtUnixMs"> When it reached the feed: the repost's time, or the post's own. </param>
-    public readonly record struct FeedEntry(PostData Post, string ReposterAddress, long SortedAtUnixMs)
+    /// <param name="CameFromOutside"> True when the reader's own dial let this line in from an account they do not follow. </param>
+    public readonly record struct FeedEntry(
+        PostData Post,
+        string ReposterAddress,
+        long SortedAtUnixMs,
+        bool CameFromOutside = false)
     {
         /// <summary> True when this line reached the feed through somebody else's wall. </summary>
         public bool IsRepost => ReposterAddress.Length > 0;
@@ -26,6 +31,12 @@ namespace ChaySocial.MainProject.Services
         /// <returns> The feed line for it, timed by the passing on rather than the writing. </returns>
         public static FeedEntry ForRepost(PostData post, RepostData repost)
             => new(post, repost.ReposterAddress, repost.CreatedAtUnixMs);
+
+        /// <summary> A post from outside the reader's own people, let in by their own dial. </summary>
+        /// <param name="post"> The post. </param>
+        /// <returns> The feed line for it, marked so the receipt above it can say where it came from. </returns>
+        public static FeedEntry ForStranger(PostData post)
+            => new(post, string.Empty, post.CreatedAtUnixMs, CameFromOutside: true);
     }
 
     /// <summary>
@@ -103,11 +114,16 @@ namespace ChaySocial.MainProject.Services
             // has a feed, and returning early on the account list alone would leave it permanently empty.
             IReadOnlyList<string> following = await FollowService.ReadFollowingAsync(viewerAddress, FollowedAccountsPerFeed);
             IReadOnlyList<string> subjects = await SubjectFollowService.ReadFollowedSubjectsAsync(viewerAddress, FollowedSubjectsPerFeed);
-            if (following.Count == 0 && subjects.Count == 0) return [];
+
+            // With the dial off these two are the end of it. With the dial on they are not: a reader who follows
+            // nobody yet is exactly who a page of strangers is for, and giving up here would leave the tab empty
+            // for the one person the setting was turned on by.
+            bool lettingStrangersIn = StrangerShare.IsOn;
+            if (following.Count == 0 && subjects.Count == 0 && !lettingStrangersIn) return [];
 
             HashSet<string> hidden = await ReadHiddenAddressesAsync(viewerAddress);
             string[] authors = [.. following.Distinct().Where(address => !hidden.Contains(address))];
-            if (authors.Length == 0 && subjects.Count == 0) return [];
+            if (authors.Length == 0 && subjects.Count == 0 && !lettingStrangersIn) return [];
 
             Task<List<PostData>> postsRead = ReadPostsByAuthorsAsync(authors);
             Task<List<RepostData>> repostsRead = ReadRepostsByAccountsAsync(authors);
@@ -120,7 +136,61 @@ namespace ChaySocial.MainProject.Services
 
             // A post that arrives both because its author is followed and because it names a followed subject is
             // drawn once: NewestFirst already keys on the post and whoever passed it on.
-            return NewestFirst([.. written, .. named, .. passedOn], limit);
+            IReadOnlyList<FeedEntry> chosen = NewestFirst([.. written, .. named, .. passedOn], limit);
+
+            return lettingStrangersIn
+                ? await LetStrangersInAsync(viewerAddress, chosen, authors, limit)
+                : chosen;
+        }
+
+        /// <summary>
+        /// Adds lines from outside the reader's own people to the page, in the proportion their dial asks for.
+        /// </summary>
+        /// <param name="viewerAddress"> The reader, whose blocks the wall read already applies. </param>
+        /// <param name="chosen"> The feed as their own follows and subjects made it, newest first. </param>
+        /// <param name="authors"> Accounts they follow, so nobody already followed is offered as a stranger. </param>
+        /// <param name="limit"> Largest number of lines to return. </param>
+        /// <returns> Both kinds of line together, marked, and never more than was asked for. </returns>
+        /// <remarks>
+        /// This decides how many come from outside, not where they sit. Laying them out is the ordering's job,
+        /// because the ordering runs afterwards and would undo any placement made here — a reader who asked for
+        /// fewest-chays-first would have got every stranger swept into one clump at the top of the page.
+        /// </remarks>
+        static async Task<IReadOnlyList<FeedEntry>> LetStrangersInAsync(
+            string viewerAddress,
+            IReadOnlyList<FeedEntry> chosen,
+            IReadOnlyCollection<string> authors,
+            int limit)
+        {
+            int wanted = StrangerShare.StrangersOnAPageOf(limit, StrangerShare.Level);
+            if (wanted <= 0) return chosen;
+
+            // Room for as many as the dial asks for, and for as many more as the reader's own people leave empty:
+            // somebody who follows nobody should get a full page rather than a third of one.
+            int room = Math.Max(wanted, limit - chosen.Count);
+
+            // The wall read already leaves out both directions of a block, so nothing here is filtered for that a
+            // second time.
+            IReadOnlyList<FeedEntry> outside = await ReadDiscoverFeedAsync(viewerAddress, limit);
+
+            HashSet<string> alreadyFollowed = [.. authors, viewerAddress];
+            HashSet<string> alreadyShown = [.. chosen.Select(entry => entry.Post.PostId)];
+
+            FeedEntry[] strangers =
+            [
+                .. outside
+                    .Where(entry => !alreadyFollowed.Contains(entry.Post.AuthorAddress))
+                    .Where(entry => alreadyShown.Add(entry.Post.PostId))
+                    .Take(room)
+                    .Select(entry => FeedEntry.ForStranger(entry.Post))
+            ];
+
+            if (strangers.Length == 0) return chosen;
+
+            // The reader's own lines give way to make room, newest kept, so the page stays the length asked for.
+            IEnumerable<FeedEntry> kept = chosen.Take(Math.Max(limit - strangers.Length, 0));
+
+            return [.. kept, .. strangers];
         }
 
         /// <summary> Reads the newest posts from the whole app, for a reader who is looking beyond the accounts they follow. </summary>
