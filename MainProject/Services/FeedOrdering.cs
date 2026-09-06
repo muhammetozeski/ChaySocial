@@ -29,13 +29,84 @@ namespace ChaySocial.MainProject.Services
         /// <summary> How many of them a hundred holds, for spotting the teens in any hundred. </summary>
         const int Hundred = 100;
 
-        /// <summary> Puts a page of feed lines in one order. </summary>
+        /// <summary>
+        /// Puts a page of feed lines in one order, and lays the lines from outside the reader's own people at the
+        /// spacing their dial asks for.
+        /// </summary>
         /// <param name="entries"> The page as it came out of the store. </param>
         /// <param name="engagements"> The counts under each post, keyed by post id. </param>
         /// <param name="order"> The order the reader chose. </param>
         /// <param name="shuffleSeed"> The seed the shuffled order deals from. </param>
-        /// <returns> The same lines, in the reader's order. </returns>
+        /// <returns> The same lines, in the reader's order and at the reader's spacing. </returns>
+        /// <remarks>
+        /// The spacing is applied here rather than where the strangers were read, because this runs afterwards:
+        /// ordering a mixed page by anything at all sweeps every stranger into one clump, which is neither the
+        /// order nor the mix anybody asked for. Each stream is ordered on its own and then the two are laid
+        /// together, so both choices hold at once.
+        /// </remarks>
         public static IReadOnlyList<FeedEntry> Apply(
+            IReadOnlyList<FeedEntry> entries,
+            IReadOnlyDictionary<string, PostEngagement> engagements,
+            FeedOrder order,
+            int shuffleSeed)
+        {
+            int gap = StrangerShare.LinesFollowedBetweenStrangers(StrangerShare.Level);
+            if (gap <= 0) return InOneOrder(entries, engagements, order, shuffleSeed);
+
+            FeedEntry[] chosen = [.. entries.Where(entry => !entry.CameFromOutside)];
+            FeedEntry[] outside = [.. entries.Where(entry => entry.CameFromOutside)];
+
+            if (chosen.Length == 0 || outside.Length == 0) return InOneOrder(entries, engagements, order, shuffleSeed);
+
+            return LayTogether(
+                InOneOrder(chosen, engagements, order, shuffleSeed),
+                InOneOrder(outside, engagements, order, shuffleSeed),
+                gap);
+        }
+
+        /// <summary>
+        /// Lays two ordered streams together: so many of the reader's own, then one from outside, and so on until
+        /// both run out.
+        /// </summary>
+        /// <param name="chosen"> The reader's own lines, in their order. </param>
+        /// <param name="outside"> The lines from outside, in the same order. </param>
+        /// <param name="gap"> How many of the reader's own are laid out between two from outside. </param>
+        /// <returns> Every line from both, in one page. </returns>
+        static IReadOnlyList<FeedEntry> LayTogether(
+            IReadOnlyList<FeedEntry> chosen,
+            IReadOnlyList<FeedEntry> outside,
+            int gap)
+        {
+            List<FeedEntry> laid = new(chosen.Count + outside.Count);
+            int nextChosen = 0;
+            int nextOutside = 0;
+
+            while (nextChosen < chosen.Count || nextOutside < outside.Count)
+            {
+                for (int placed = 0; placed < gap && nextChosen < chosen.Count; placed++)
+                {
+                    laid.Add(chosen[nextChosen++]);
+                }
+
+                if (nextOutside < outside.Count) laid.Add(outside[nextOutside++]);
+
+                // Neither stream moved, which means one is empty and the other is out of turns: pour the rest.
+                if (nextChosen >= chosen.Count && nextOutside < outside.Count)
+                {
+                    while (nextOutside < outside.Count) laid.Add(outside[nextOutside++]);
+                }
+            }
+
+            return laid;
+        }
+
+        /// <summary> Puts one stream of lines in one order. </summary>
+        /// <param name="entries"> The lines. </param>
+        /// <param name="engagements"> The counts under each post, keyed by post id. </param>
+        /// <param name="order"> The order the reader chose. </param>
+        /// <param name="shuffleSeed"> The seed the shuffled order deals from. </param>
+        /// <returns> The same lines, ordered. </returns>
+        static IReadOnlyList<FeedEntry> InOneOrder(
             IReadOnlyList<FeedEntry> entries,
             IReadOnlyDictionary<string, PostEngagement> engagements,
             FeedOrder order,
@@ -80,8 +151,22 @@ namespace ChaySocial.MainProject.Services
                 _ => age
             };
 
-            return $"{Ordinal(position)}: {reason}";
+            // Said on the line itself rather than in a legend somewhere, because the whole point of the dial is
+            // that a reader can tell which lines it put there.
+            return entry.CameFromOutside
+                ? $"{Ordinal(position)}: {reason} — {FromOutsideNote}"
+                : $"{Ordinal(position)}: {reason}";
         }
+
+        /// <summary>
+        /// What a line let in by the dial says about itself. The placeholder takes the setting that put it there,
+        /// so the reader is told which of their own choices to change if they would rather it had not.
+        /// </summary>
+        const string FromOutsideNoteFormat = "you don't follow them; your dial is set to {0}";
+
+        /// <summary> That note with the setting currently in force written into it. </summary>
+        static string FromOutsideNote
+            => string.Format(FromOutsideNoteFormat, StrangerShare.Describe(StrangerShare.Level).ToLowerInvariant());
 
         /// <summary> How much a post has been answered, which is what the fewest-first order sorts on. </summary>
         /// <param name="entry"> The line being weighed. </param>
