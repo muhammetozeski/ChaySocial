@@ -99,6 +99,15 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Sentence completing "<c>&lt;name&gt; …</c>" for an alert about being named. </summary>
         const string MentionSentence = "mentioned you";
 
+        /// <summary> Emoji on the badge of an alert about somebody vouching. </summary>
+        const string VouchKindEmoji = "✍️";
+
+        /// <summary>
+        /// Sentence completing "<c>&lt;name&gt; …</c>" for a vouch. What they wrote is deliberately not here: the
+        /// name is theirs to choose and an alert line is not the place for one account to write into another's.
+        /// </summary>
+        const string VouchSentence = "put their name behind your account";
+
         /// <summary> Sentence used for a kind this screen was written before — true of any alert, whatever it turns out to be. </summary>
         const string UnknownSentence = "interacted with you";
 
@@ -303,6 +312,7 @@ namespace ChaySocial.MainProject.UI.Pages
             NotificationKind.Follow => FollowSentence,
             NotificationKind.Message => MessageSentence,
             NotificationKind.Mention => MentionSentence,
+            NotificationKind.Vouch => VouchSentence,
             _ => UnknownSentence
         };
 
@@ -316,6 +326,7 @@ namespace ChaySocial.MainProject.UI.Pages
             NotificationKind.Follow => FollowKindEmoji,
             NotificationKind.Message => MessageKindEmoji,
             NotificationKind.Mention => MentionKindEmoji,
+            NotificationKind.Vouch => VouchKindEmoji,
             _ => UnknownKindEmoji
         };
 
