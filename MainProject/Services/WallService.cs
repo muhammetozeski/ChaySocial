@@ -376,12 +376,18 @@ namespace ChaySocial.MainProject.Services
         /// <param name="postId"> Post to count. </param>
         /// <returns> Addresses of the accounts that reposted it. </returns>
         public static async Task<IReadOnlyList<string>> ReadRepostersAsync(string postId)
+            => [.. (await ReadRepostRecordsAsync(postId)).Select(repost => repost.ReposterAddress)];
+
+        /// <summary> Reads the repost records under a post, signatures and all. </summary>
+        /// <param name="postId"> Post to read. </param>
+        /// <returns> The records, for anything that has to check them rather than count them. </returns>
+        public static async Task<IReadOnlyList<RepostData>> ReadRepostRecordsAsync(string postId)
         {
             DocumentQuery<RepostData> query = new DocumentQuery<RepostData>()
                 .WithMatch(RepostData.PostField, postId)
                 .WithLimit(MaximumRepostsPerPost);
 
-            return [.. (await AppServices.Documents.QueryAsync(query)).Documents.Select(repost => repost.ReposterAddress)];
+            return (await AppServices.Documents.QueryAsync(query)).Documents;
         }
 
         /// <summary> Reads the newest reposts across the whole app, the way <see cref="ReadWallAsync"/> reads posts. </summary>
