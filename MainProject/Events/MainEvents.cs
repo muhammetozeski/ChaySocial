@@ -48,6 +48,9 @@ namespace ChaySocial.MainProject.Events
 
             /// <summary> A panel that covers the screen was offered, redrawn or withdrawn. Payload is null; the host re-reads the list. </summary>
             public const string OverlayChanged = nameof(OverlayChanged);
+
+            /// <summary> The app started or stopped reading a sealed archive instead of a server. Payload is null. </summary>
+            public const string OfflineReadingChanged = nameof(OfflineReadingChanged);
         }
 
         /// <summary> Registers a handler that receives every triggered event. </summary>

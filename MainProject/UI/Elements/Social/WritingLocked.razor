@@ -1,4 +1,5 @@
 @using ChaySocial.MainProject.Protection
+@using ChaySocial.MainProject.Services
 @inject NavigationManager NavManager
 
 @*
@@ -12,30 +13,55 @@
     <span class="writing-locked-emoji">@Emoji</span>
 
     <div class="writing-locked-text">
-        <span class="writing-locked-headline">@Headline</span>
-        <span class="writing-locked-description">@Description</span>
+        <span class="writing-locked-headline">@(IsOffline ? OfflineHeadline : Headline)</span>
+        <span class="writing-locked-description">@(IsOffline ? OfflineDescription : Description)</span>
     </div>
 
-    <CoreButton OnClick="OpenSettings"
-                Gradient="@((AppColors.Primary, AppColors.Secondary))"
-                TextColor="@AppColors.TextOnAccent"
-                BorderRadius="@(AppMeasures.Radius.Pill + "px")"
-                Padding="@ActionPadding"
-                FontSize="@AppMeasures.Font.Small"
-                Shadow="@AppStyles.ShadowPrimaryGlow"
-                CustomClass="writing-locked-action">
-        @ActionLabel
-    </CoreButton>
+    @if (!IsOffline)
+    {
+        <CoreButton OnClick="OpenSettings"
+                    Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                    TextColor="@AppColors.TextOnAccent"
+                    BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                    Padding="@ActionPadding"
+                    FontSize="@AppMeasures.Font.Small"
+                    Shadow="@AppStyles.ShadowPrimaryGlow"
+                    CustomClass="writing-locked-action">
+            @ActionLabel
+        </CoreButton>
+    }
 </div>
 
 <WritingLockedCss />
 
 @code {
-    /// <summary> True when the signed-in account still needs to earn its permit, which is when this belongs on screen. </summary>
-    public static bool IsLocked => AppServices.ProofOfWork is { HasWritingPermit: false };
+    /// <summary>
+    /// True when a composer must not be offered: either the account still owes its permit, or the app is reading a
+    /// sealed file and there is nothing anywhere to write to.
+    /// </summary>
+    /// <remarks>
+    /// The offline half is not decoration. Reading an archive leaves the proof of work unwired, so the permit test
+    /// on its own comes back false and every composer in the app would offer to write into a sealed file.
+    /// </remarks>
+    public static bool IsLocked => OfflineReadingService.IsReading || AppServices.ProofOfWork is { HasWritingPermit: false };
+
+    /// <summary> True while what is on screen came out of a file rather than a server. </summary>
+    static bool IsOffline => OfflineReadingService.IsReading;
 
     /// <summary> Emoji beside the offer. </summary>
-    const string Emoji = "✍️";
+    string Emoji => IsOffline ? OfflineEmoji : PermitEmoji;
+
+    /// <summary> Marks the permit offer. </summary>
+    const string PermitEmoji = "✍️";
+
+    /// <summary> Marks the offline notice: a box holding what was written, with nothing to send it to. </summary>
+    const string OfflineEmoji = "📦";
+
+    /// <summary> First line while a file is being read. </summary>
+    const string OfflineHeadline = "You are reading a file";
+
+    /// <summary> Second line: why there is nothing to write with. </summary>
+    const string OfflineDescription = "Nothing is being talked to, so there is nowhere for a new post to go. Everything here is what you sealed.";
 
     /// <summary> First line: what the state is. </summary>
     const string Headline = "Writing is earned once";
