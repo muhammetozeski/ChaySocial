@@ -2,6 +2,7 @@ using ChaySocial.MainProject.Constants.ThemeConstants;
 using ChaySocial.MainProject.DataModels;
 using ChaySocial.MainProject.Events;
 using ChaySocial.MainProject.Services;
+using Microsoft.AspNetCore.Components;
 
 namespace ChaySocial.MainProject.UI.Pages
 {
@@ -183,6 +184,103 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Who the post being written will be open to; the door is wide until its writer narrows it. </summary>
         ReplyCircle ComposerReplyCircle = ReplyCircle.Anyone;
 
+        /// <summary> Marks the action and the sheet that put a post on the shelf. </summary>
+        const string KeepEmoji = "🔖";
+
+        /// <summary> Heading of that sheet. </summary>
+        const string KeepTitle = "Keep this";
+
+        /// <summary> Line under it, saying who can read what is about to be written. </summary>
+        const string KeepSubtitle = "Your shelf is sealed to you. Nobody else can see what you kept, or what you wrote about it.";
+
+        /// <summary> What the empty note box invites. </summary>
+        const string KeepNotePlaceholder = "Why are you keeping this? (optional)";
+
+        /// <summary> Text on the button that seals it onto the shelf. </summary>
+        const string KeepConfirmLabel = "Keep it";
+
+        /// <summary> What that button says while the sealing runs. </summary>
+        const string KeepingLabel = "Keeping…";
+
+        /// <summary> Lines the note box shows before it starts scrolling. </summary>
+        const int KeepNoteRowCount = 3;
+
+        /// <summary> The post the keeping sheet is open for, or null while the sheet is closed. </summary>
+        PostData? KeepingPost;
+
+        /// <summary> The note being typed for it. </summary>
+        string KeepNote = string.Empty;
+
+        /// <summary> True while a clipping is being sealed, which locks the sheet. </summary>
+        bool IsKeepInFlight;
+
+        /// <summary> Ids of the posts already on this reader's shelf, so the action can show which are kept. </summary>
+        HashSet<string> KeptPostIds = [];
+
+        /// <summary> True while the keeping sheet should be on screen. </summary>
+        bool IsKeepingOpen => KeepingPost is not null;
+
+        /// <summary> True when one post is already on the shelf. </summary>
+        /// <param name="postId"> The post being drawn. </param>
+        /// <returns> Whether it is kept. </returns>
+        bool IsKept(string postId) => KeptPostIds.Contains(postId);
+
+        /// <summary> Opens the keeping sheet on a clean note. </summary>
+        /// <param name="post"> The post to keep. </param>
+        void OpenKeeping(PostData post)
+        {
+            KeepingPost = post;
+            KeepNote = string.Empty;
+        }
+
+        /// <summary> Closes the sheet, leaving a sealing that is already running to finish. </summary>
+        void CloseKeeping()
+        {
+            if (IsKeepInFlight) return;
+
+            KeepingPost = null;
+            KeepNote = string.Empty;
+        }
+
+        /// <summary> Keeps the typed note on the page. </summary>
+        /// <param name="args"> The input event; its value is the box's new contents. </param>
+        void HandleKeepNoteInput(ChangeEventArgs args) => KeepNote = args.Value?.ToString() ?? string.Empty;
+
+        /// <summary>
+        /// Seals the post and the note onto the shelf.
+        /// </summary>
+        /// <returns> A task that completes once it is kept or the attempt has failed. </returns>
+        /// <remarks>
+        /// The shelf is not re-read afterwards: the id is added here instead, because reading it back would be a
+        /// second pass over every sealed row for one fact this page already knows.
+        /// </remarks>
+        async Task KeepAsync()
+        {
+            if (IsKeepInFlight || KeepingPost is not PostData post) return;
+
+            IsKeepInFlight = true;
+
+            try
+            {
+                if (await ClippingService.KeepAsync(Account, post.PostId, KeepNote) is not null)
+                {
+                    KeptPostIds.Add(post.PostId);
+                }
+
+                KeepingPost = null;
+                KeepNote = string.Empty;
+            }
+            catch (Exception error)
+            {
+                Log($"{nameof(Wall)} could not keep post '{post.PostId}'.\n{error}", LogLevel.Error);
+            }
+            finally
+            {
+                IsKeepInFlight = false;
+                if (!HasNavigatedAway) StateHasChanged();
+            }
+        }
+
         /// <summary> Title typed for a long piece not published yet. </summary>
         string ComposerTitle = string.Empty;
 
@@ -286,6 +384,10 @@ namespace ChaySocial.MainProject.UI.Pages
             // in the picker on the next refresh instead of after a reload.
             WritingChoices = await WritingIdentities.ReadForAsync(Account);
             if (WritingChoices.All(choice => choice.Address != WritingAsAddress)) WritingAsAddress = viewerAddress;
+
+            // Read whole rather than per card: every row on a shelf is sealed, so there is no asking the store
+            // "is this one post kept" without opening all of them anyway.
+            KeptPostIds = [.. (await ClippingService.ReadShelfAsync(Account)).Select(clipping => clipping.PostId)];
 
             Entries = FeedOrdering.Apply(entries, engagements, FeedRecipe.Order, FeedRecipe.ShuffleSeed);
             QuotedPosts = quoted;

@@ -322,6 +322,20 @@
                         <span class="profile-action-emoji">@CardEmoji</span>
                         <span>@CardLabel</span>
                     </CoreButton>
+
+                    @* Only on the reader's own profile, because a shelf is sealed to whoever keeps it and there is
+                       nothing to link to on anybody else's. *@
+                    <CoreButton OnClick="OpenShelf"
+                                Background="@AppColors.SurfaceSubtle"
+                                TextColor="@AppColors.TextSecondary"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Border="@QuietButtonBorder"
+                                CustomClass="profile-action-button">
+                        <span class="profile-action-emoji">@ShelfEmoji</span>
+                        <span>@ShelfLabel</span>
+                    </CoreButton>
                 }
                 else
                 {

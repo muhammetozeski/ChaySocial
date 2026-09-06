@@ -135,6 +135,12 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Label on that control. </summary>
         const string CardLabel = "Card";
 
+        /// <summary> Marks the control that opens the reader's own shelf. </summary>
+        const string ShelfEmoji = "📚";
+
+        /// <summary> Label on that control. </summary>
+        const string ShelfLabel = "Shelf";
+
         /// <summary> Heading over the card. </summary>
         const string CardModalTitle = "This account, as a picture";
 
@@ -901,6 +907,9 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> Puts the card away. </summary>
         void CloseCard() => IsCardVisible = false;
+
+        /// <summary> Opens the reader's own shelf of kept posts. </summary>
+        void OpenShelf() => NavManager.NavigateTo(Clippings.ClippingsRoute);
 
         /// <summary> When this account first published a profile, or zero when it never did. </summary>
         long ShownJoinedAtUnixMs => ShownProfile?.CreatedAtUnixMs ?? 0;

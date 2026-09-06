@@ -342,6 +342,66 @@
         }
     }
 
+    /* The sheet that puts a post on the shelf. Laid out like the report sheet beside it, because both are one
+       decision taken about one post. */
+    .wall-keep {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+    }
+
+    .wall-keep-emoji {
+        font-size: @(AppMeasures.Font.Hero)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .wall-keep-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Large)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .wall-keep-subtitle {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        text-align: center;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .wall-keep-note {
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px12)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Medium)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        resize: vertical;
+    }
+
+        .wall-keep-note::placeholder {
+            color: @(AppColors.TextMuted.ToRgbaHex(true));
+        }
+
+        .wall-keep-note:focus {
+            outline: none;
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+    .wall-keep-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+    }
+
     /* Phone width: the page keeps every control, it only gives back the padding and type size it can spare. */
     @@media (max-width: @(NarrowScreenBreakpointPx)px) {
         .wall-page {

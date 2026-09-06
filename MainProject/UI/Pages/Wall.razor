@@ -202,6 +202,8 @@
                                   OnOpenReposter="() => OpenAuthor(entry.ReposterAddress)"
                                   OnOpenComments="() => OpenComments(post.PostId)"
                                   OnQuote="() => StartQuoting(post)"
+                                  OnKeep="() => OpenKeeping(post)"
+                                  IsKept="@IsKept(post.PostId)"
                                   QuotedPost="@QuotedPostFor(post)"
                                   QuotedAuthorProfile="@QuotedAuthorProfileFor(post)"
                                   OnOpenQuoted="() => OpenComments(post.QuotedPostId)" />
@@ -211,6 +213,43 @@
         }
 
     </div>
+
+    @* Sealed the moment it is written, so the note goes onto the shelf and nowhere else. *@
+    <CoreModal IsVisible="@IsKeepingOpen" IsAcrylic="true" OnBackdropClick="CloseKeeping">
+        <div class="wall-keep">
+            <span class="wall-keep-emoji">@KeepEmoji</span>
+            <h2 class="wall-keep-title">@KeepTitle</h2>
+            <p class="wall-keep-subtitle">@KeepSubtitle</p>
+
+            @if (KeepingPost is not null)
+            {
+                <p class="wall-report-quote">@KeepingPost.Text</p>
+            }
+
+            <textarea class="wall-keep-note"
+                      rows="@KeepNoteRowCount"
+                      maxlength="@ClippingData.MaximumNoteLength"
+                      placeholder="@KeepNotePlaceholder"
+                      disabled="@IsKeepInFlight"
+                      value="@KeepNote"
+                      @oninput="HandleKeepNoteInput"></textarea>
+
+            <div class="wall-keep-actions">
+                <button type="button" class="wall-report-cancel" disabled="@IsKeepInFlight" @onclick="CloseKeeping">@CancelLabel</button>
+
+                <CoreButton OnClick="KeepAsync"
+                            Disabled="@IsKeepInFlight"
+                            Gradient="@((AppColors.Primary, AppColors.Secondary))"
+                            TextColor="@AppColors.TextOnAccent"
+                            BorderRadius="@(AppMeasures.Radius.Pill + "px")"
+                            Padding="@ActionButtonPadding"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow">
+                    @(IsKeepInFlight ? KeepingLabel : KeepConfirmLabel)
+                </CoreButton>
+            </div>
+        </div>
+    </CoreModal>
 
     <CoreModal IsVisible="@IsReportOpen" IsAcrylic="true" OnBackdropClick="CloseReport">
         <div class="wall-report">
