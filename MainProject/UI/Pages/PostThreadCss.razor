@@ -112,6 +112,34 @@
             text-decoration: underline;
         }
 
+    /* The way back to where the reading stopped. A link rather than a button, because the browser's own fragment
+       handling is what does the scrolling and this app runs without a line of script. */
+    .post-thread-resume {
+        align-self: flex-start;
+        margin: 0 0 @(AppMeasures.Space.Px8)px @(AppMeasures.Space.Px4)px;
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px12)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+        color: @(AppColors.Primary.ToRgbaHex(true));
+        text-decoration: none;
+    }
+
+        .post-thread-resume:hover {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+    /* Where the reading stopped, drawn as a line across the thread rather than as a label: a reader scrolling
+       down needs to recognise the place, not read about it. */
+    .post-thread-since-you-left {
+        height: @(SinceYouLeftLineThicknessPx)px;
+        margin: @(AppMeasures.Space.Px8)px 0;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: @(AppColors.Primary.ToRgbaHex(true));
+        opacity: @(SinceYouLeftLineOpacity);
+    }
+
     /* Sits just above the bottom navigation and stays there while the thread scrolls. The fade behind it is what
        stops replies from sliding out from under the pill with a hard edge. */
     .post-thread-composer {
@@ -212,6 +240,12 @@
 @code {
     /// <summary> Widest the thread column grows on a large screen, so a reply never stretches into an unreadable band. </summary>
     const int ThreadColumnMaximumWidthPx = AppMeasures.Size.Px420;
+
+    /// <summary> Thickness of the line marking where the reading stopped: enough to find, not enough to shout. </summary>
+    const int SinceYouLeftLineThicknessPx = AppMeasures.Border.Medium;
+
+    /// <summary> How solid that line is; it marks a place rather than warning about one. </summary>
+    const string SinceYouLeftLineOpacity = AppMeasures.Opacity.Dim;
 
     /// <summary> How far above the viewport's bottom edge the composer parks: exactly the height of the bottom navigation it must clear. </summary>
     const int ComposerBottomOffsetPx = AppMeasures.Space.ScrollBottomInset;

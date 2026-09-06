@@ -105,6 +105,12 @@
                 <button type="button" class="post-thread-show-all" @onclick="ShowWholeThread">@ShowWholeThreadLabel</button>
             }
 
+            @* A plain fragment link. The browser does the scrolling, so where somebody left off costs no script. *@
+            @if (FirstUnread is { } resumeAt)
+            {
+                <a class="post-thread-resume" href="@($"{LinkTo(PostId)}#{AnchorFor(resumeAt.Comment)}")">@ResumeLabel</a>
+            }
+
             @if (ShownThread.Count == 0)
             {
                 @if (chosenBlockIndex > 0)
@@ -124,8 +130,16 @@
                        the last one in the thread. *@
                     CommentData reply = entry.Comment;
 
+                    @* Drawn once, in front of the first reply this reader has not seen: everything below it
+                       arrived while they were away. *@
+                    @if (FirstUnread is { } firstNew && firstNew.Comment.CommentId == reply.CommentId)
+                    {
+                        <div class="post-thread-since-you-left"></div>
+                    }
+
                     <CommentRow @key="reply.CommentId"
                                 Comment="@reply"
+                                AnchorId="@AnchorFor(reply)"
                                 AuthorProfile="@ProfileFor(reply.AuthorAddress)"
                                 CanDelete="@IsOwnReply(reply)"
                                 IsAnswer="@entry.IsAnswer"

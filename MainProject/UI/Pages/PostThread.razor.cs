@@ -170,6 +170,60 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> The same replies in reading order: each remark, then the answers written to it. </summary>
         IReadOnlyList<ThreadedComment> thread = [];
 
+        /// <summary>
+        /// The moment of the newest reply this reader had already seen when they opened the page. Everything after
+        /// it is what arrived while they were away.
+        /// </summary>
+        /// <remarks>
+        /// Read before the mark is moved, not after. Reading it afterwards would make every visit say nothing is
+        /// new, because the mark would already have been moved to the newest reply on screen.
+        /// </remarks>
+        long lastSeenReplyAtUnixMs;
+
+        /// <summary> Conversation <see cref="lastSeenReplyAtUnixMs"/> was read for, so a reload does not read it again. </summary>
+        string markedPostId = string.Empty;
+
+        /// <summary> Start of the id put on each reply, so a link can point straight at one. </summary>
+        const string CommentAnchorPrefix = "reply-";
+
+        /// <summary> What the way back says for a single new reply, where the plural would read wrong. </summary>
+        const string SingleResumeLabel = "1 reply since you left";
+
+        /// <summary> And for any other number; the placeholder takes the count. </summary>
+        const string ManyResumeLabelFormat = "{0} replies since you left";
+
+        /// <summary> The id one reply is drawn with. </summary>
+        /// <param name="reply"> The reply being drawn. </param>
+        /// <returns> Its anchor id. </returns>
+        static string AnchorFor(CommentData reply) => CommentAnchorPrefix + reply.CommentId;
+
+        /// <summary> True when one reply arrived after this reader last put the conversation down. </summary>
+        /// <param name="reply"> The reply being drawn. </param>
+        /// <returns> True when it is new to them. </returns>
+        bool IsUnread(CommentData reply) => reply.CreatedAtUnixMs > lastSeenReplyAtUnixMs;
+
+        /// <summary> How many replies arrived while this reader was away. </summary>
+        int UnreadCount => ShownThread.Count(entry => IsUnread(entry.Comment));
+
+        /// <summary> The first of them in reading order, or null when nothing is new. </summary>
+        ThreadedComment? FirstUnread
+        {
+            get
+            {
+                foreach (ThreadedComment entry in ShownThread)
+                {
+                    if (IsUnread(entry.Comment)) return entry;
+                }
+
+                return null;
+            }
+        }
+
+        /// <summary> What the way back to the first new reply says. </summary>
+        string ResumeLabel => UnreadCount == 1
+            ? SingleResumeLabel
+            : string.Format(ManyResumeLabelFormat, UnreadCount);
+
         /// <summary> Block of the piece the reader is reading the notes beside, counting from one, or zero for the whole thread. </summary>
         int chosenBlockIndex;
 
@@ -466,7 +520,48 @@ namespace ChaySocial.MainProject.UI.Pages
             isLikedByViewer = likerAddresses.Contains(Account.Public.Address);
 
             await ReadMissingProfilesAsync();
+            await MoveReadingMarkAsync();
             hasLoadedOnce = true;
+        }
+
+        /// <summary>
+        /// Reads how far this reader got last time, then moves the mark to the newest reply now on screen.
+        /// </summary>
+        /// <returns> A task that completes once the mark has been read and moved. </returns>
+        /// <remarks>
+        /// The order is the whole trick: what the page shows as new is the value read <em>before</em> the mark is
+        /// moved. A thread with nothing in it moves no mark, so opening an empty conversation does not quietly
+        /// spend a place in a reader's book.
+        /// </remarks>
+        async Task MoveReadingMarkAsync()
+        {
+            if (post is null) return;
+
+            // Read once per conversation rather than once per load. A reader who answers, or who is still on the
+            // page when somebody else does, would otherwise watch the line they were reading up to disappear.
+            long newest = replies.Count == 0 ? 0 : replies.Max(reply => reply.CreatedAtUnixMs);
+
+            if (markedPostId != post.PostId)
+            {
+                markedPostId = post.PostId;
+
+                // A conversation nobody has marked yet is not thirty unread replies — it is a conversation being
+                // opened for the first time. The mark starts at the newest reply on screen, so what is new is
+                // what arrives after today rather than everything ever written.
+                lastSeenReplyAtUnixMs = newest;
+
+                foreach (ReadingMark mark in await ReadingMarkService.ReadMarksAsync(Account))
+                {
+                    if (mark.PostId != post.PostId) continue;
+
+                    lastSeenReplyAtUnixMs = mark.LastSeenReplyAtUnixMs;
+                    break;
+                }
+            }
+
+            if (replies.Count == 0) return;
+
+            await ReadingMarkService.WriteMarkAsync(Account, post.PostId, newest);
         }
 
         /// <summary>
