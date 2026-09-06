@@ -38,6 +38,24 @@ namespace ChaySocial.MainProject.Services
             return moment.ToLocalTime().ToString(Constants.ContentConstants.DateFormats.UiBanner, WrittenIn);
         }
 
+        /// <summary> Formats how long something lasted, in the same short units a distance from now is written in. </summary>
+        /// <param name="milliseconds"> How long it lasted. </param>
+        /// <returns> The short label, e.g. <c>7m</c>, <c>3h</c>, <c>2d</c>. </returns>
+        /// <remarks>
+        /// A stretch of time and a distance from now read the same way to somebody looking at them, so they are
+        /// written the same way. Anything shorter than a minute is called a minute rather than "just now": "going
+        /// for just now" would be nonsense, where "going for 1m" is merely small.
+        /// </remarks>
+        public static string FormatDuration(long milliseconds)
+        {
+            TimeSpan span = TimeSpan.FromMilliseconds(Math.Max(0, milliseconds));
+
+            if (span.TotalSeconds < SecondsPerMinute * MinutesPerHour) return $"{Math.Max(1, (int)span.TotalMinutes)}m";
+            if (span.TotalHours < HoursPerDay) return $"{(int)span.TotalHours}h";
+
+            return $"{(int)span.TotalDays}d";
+        }
+
         /// <summary> Writes out a date in full, for the lines that name a day rather than a distance from now. </summary>
         /// <param name="unixMilliseconds"> The moment to write. </param>
         /// <returns> The date in the reader's own timezone, e.g. <c>September 4, 2026</c>. </returns>
