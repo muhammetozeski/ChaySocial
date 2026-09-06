@@ -1,0 +1,45 @@
+@*
+    Styling for StyleMirror. StyleMirror renders this component itself, so the mirror always arrives with its own
+    CSS attached. Every selector is namespaced "style-mirror-*" because *Css.razor styles are global.
+*@
+<style>
+    /* Quieter than the writing mirror beside it, and deliberately so: this line is not about anything the writer
+       did wrong. It is one observation about how a draft reads, offered and then left alone. */
+    .style-mirror {
+        display: flex;
+        align-items: baseline;
+        gap: @(AppMeasures.Space.Px6)px;
+        margin: @(AppMeasures.Space.Px6)px 0 0 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        animation: style-mirror-arrive @(AppMeasures.Duration.Fast)s ease-out;
+    }
+
+    /* The lead never wraps away from its reading: the two are one sentence broken over two spans. */
+    .style-mirror-lead {
+        flex: 0 0 auto;
+    }
+
+    .style-mirror-reading {
+        font-style: italic;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+    }
+
+    /* Fades in rather than appearing: a line that pops into existence mid-sentence reads as an interruption. */
+    @@keyframes style-mirror-arrive {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @@media (prefers-reduced-motion: reduce) {
+        .style-mirror {
+            animation: none;
+        }
+    }
+</style>

@@ -1,0 +1,139 @@
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.Text
+
+@*
+    Holds a second mirror up to a draft: not what it says, but who it sounds like. Every other protection in this
+    app hides somebody from the server. This one shows them the thing no key can hide — that the way they build a
+    sentence follows them from one account to another — and then gets out of the way. It never blocks, never
+    disables the share button, never reports, and never tells the other account anything.
+
+    It stays quiet until there is enough draft to read, and until one account is clearly ahead of the one being
+    written as. A line that fires on two words, or on a hair's difference, is nagging, and nagging is how a place
+    stops feeling free.
+*@
+
+@if (ShouldShow)
+{
+    <p class="style-mirror">
+        <span class="style-mirror-lead">@LeadLabel</span>
+        <span class="style-mirror-reading">@Reading</span>
+    </p>
+}
+
+<StyleMirrorCss />
+
+@code {
+    /// <summary> The draft as it stands right now, mid-typing. </summary>
+    [Parameter, EditorRequired] public string Text { get; set; } = string.Empty;
+
+    /// <summary> Address the draft will go out under; empty falls back to the signed-in account. </summary>
+    [Parameter] public string WritingAsAddress { get; set; } = string.Empty;
+
+    /// <summary> What introduces the reading, phrased as an observation rather than a ruling. </summary>
+    const string LeadLabel = "Sounds like";
+
+    /// <summary> Wording of the reading; the placeholder takes the shortened address of the account it sounds like. </summary>
+    const string ReadingFormat = "{0} — of the accounts on this device, that is the one this draft reads most like.";
+
+    /// <summary>
+    /// Shortest draft the mirror will read, in characters. Below this a fingerprint is measuring one sentence,
+    /// which says a great deal about that sentence and nothing about a habit.
+    /// </summary>
+    /// <remarks>
+    /// Measured rather than chosen, over five accounts and every window this long cut out of their writing: at 140
+    /// characters the line named the wrong account one time in four, and at 180 it named the right one 88% of the
+    /// time and never once fired on somebody writing in their own voice under their own account. The cost of the
+    /// longer floor is silence on drafts between the two, which is the right side to be wrong on — a line that
+    /// cries wolf is a line people learn to skip. See docs/Measurements.md.
+    /// </remarks>
+    const int ShortestJudgeableDraft = 180;
+
+    /// <summary>
+    /// How much closer another account has to read than the one being written as before the mirror says anything,
+    /// on the nought-to-one scale <see cref="StyleFingerprint.Closeness"/> returns. Two accounts kept by one
+    /// person land close together on every axis, so the gap is the number that carries the answer, not the height.
+    /// </summary>
+    /// <remarks>
+    /// Also measured: with no gap required at all, the line fired on 20% of people writing in their own voice
+    /// under their own account, and at three hundredths it fired on none of them while still catching 70% of the
+    /// drafts written under a different account than the voice belonged to.
+    /// </remarks>
+    const double ClosenessLeadWorthMentioning = 0.03;
+
+    /// <summary> Fingerprints of the accounts this device carries, read once when the composer appears. </summary>
+    IReadOnlyDictionary<string, StyleFingerprint> carried = new Dictionary<string, StyleFingerprint>();
+
+    /// <summary> The draft this reading was worked out from, so typing does not redo it on unrelated renders. </summary>
+    string readText = string.Empty;
+
+    /// <summary> The carried account the draft reads most like, or empty when there is nothing worth saying. </summary>
+    string soundsLikeAddress = string.Empty;
+
+    /// <summary> True when there is something to show the writer. </summary>
+    bool ShouldShow => soundsLikeAddress.Length > 0;
+
+    /// <summary> The line itself. </summary>
+    string Reading => string.Format(ReadingFormat, AddressChip.Shorten(soundsLikeAddress));
+
+    /// <summary> The account the draft will go out under. </summary>
+    string WritingAs => WritingAsAddress.Length > 0 ? WritingAsAddress : SessionService.CurrentAddress;
+
+    /// <summary>
+    /// Reads the carried accounts once. Typing must not cost a network read, so every fingerprint but the draft's
+    /// own is worked out before the first keystroke.
+    /// </summary>
+    /// <returns> A task that completes once the carried fingerprints are held. </returns>
+    protected override async Task OnInitializedAsync()
+    {
+        carried = await StyleService.ReadCarriedAsync();
+        Judge();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (readText == Text) return;
+
+        readText = Text;
+        Judge();
+    }
+
+    /// <summary>
+    /// Works out whether the draft reads more like another carried account than like the one it is going out
+    /// under, and by enough to be worth a line.
+    /// </summary>
+    void Judge()
+    {
+        soundsLikeAddress = string.Empty;
+
+        string draft = Text ?? string.Empty;
+        if (draft.Trim().Length < ShortestJudgeableDraft) return;
+        if (carried.Count < 2) return;
+
+        StyleFingerprint drafted = StyleFingerprint.Of(draft);
+        if (!drafted.IsWritten) return;
+
+        string writingAs = WritingAs;
+        double ownCloseness = carried.TryGetValue(writingAs, out StyleFingerprint own)
+            ? StyleFingerprint.Closeness(drafted, own)
+            : 0.0;
+
+        string closestAddress = string.Empty;
+        double closest = 0.0;
+
+        foreach (KeyValuePair<string, StyleFingerprint> account in carried)
+        {
+            if (account.Key == writingAs) continue;
+
+            double closeness = StyleFingerprint.Closeness(drafted, account.Value);
+            if (closeness <= closest) continue;
+
+            closest = closeness;
+            closestAddress = account.Key;
+        }
+
+        if (closestAddress.Length == 0) return;
+        if (closest - ownCloseness < ClosenessLeadWorthMentioning) return;
+
+        soundsLikeAddress = closestAddress;
+    }
+}
