@@ -81,6 +81,8 @@ namespace ChaySocial.MainProject.Services
         /// <param name="groupAddress"> Group to write it in, or empty to write it on the wall. </param>
         /// <param name="pollChoices"> Answers to offer, or null when the post is not asking anything. </param>
         /// <param name="pollClosesAtUnixMs"> When the asking closes, or zero to leave it open. </param>
+        /// <param name="title"> Line set above a long piece, or empty when the post is not one. </param>
+        /// <param name="longBody"> The whole of a long piece, or empty for an ordinary post. </param>
         /// <returns> The stored post, or null when the post was not publishable. </returns>
         public static async Task<PostData?> PublishAsync(
             PrivateIdentity author,
@@ -89,9 +91,13 @@ namespace ChaySocial.MainProject.Services
             string quotedPostId = "",
             string groupAddress = "",
             IReadOnlyList<string>? pollChoices = null,
-            long pollClosesAtUnixMs = 0)
+            long pollClosesAtUnixMs = 0,
+            string title = "",
+            string longBody = "")
         {
             string trimmed = text.Trim();
+            string trimmedTitle = title.Trim();
+            string trimmedBody = longBody.Trim();
 
             // Blank answers are dropped rather than refused: a composer that offers four boxes should not punish
             // somebody for filling in two of them.
@@ -99,12 +105,17 @@ namespace ChaySocial.MainProject.Services
                 ? []
                 : [.. pollChoices.Select(choice => choice.Trim()).Where(choice => choice.Length > 0)];
 
-            // A post has to carry something: words, media, somebody else's post it is speaking about, or a question.
+            // A post has to carry something: words, media, somebody else's post it is speaking about, a question,
+            // or a whole piece written into its body.
             bool hasMedia = attachments is { Count: > 0 };
             bool hasPoll = choices.Count > 0;
+            bool hasLongBody = trimmedBody.Length > 0;
             if (trimmed.Length > PostData.MaximumTextLength) return null;
-            if (trimmed.Length == 0 && !hasMedia && quotedPostId.Length == 0 && !hasPoll) return null;
+            if (trimmed.Length == 0 && !hasMedia && quotedPostId.Length == 0 && !hasPoll && !hasLongBody) return null;
             if (attachments is { Count: > MediaAttachment.MaximumPerPost }) return null;
+
+            if (trimmedTitle.Length > PostData.MaximumTitleLength) return null;
+            if (trimmedBody.Length > PostData.MaximumLongBodyLength) return null;
 
             // One answer is not a question, and a choice long enough to be a post of its own stops being a label.
             if (hasPoll && choices.Count < PostData.LeastPollChoiceCount) return null;
@@ -119,9 +130,13 @@ namespace ChaySocial.MainProject.Services
             // leave a post whose own signature does not verify.
             long closesAt = hasPoll ? pollClosesAtUnixMs : 0;
 
+            // A title with nothing under it is a line, not a piece, so it is dropped rather than stored beside an
+            // empty body where nothing would ever draw it.
+            string keptTitle = hasLongBody ? trimmedTitle : string.Empty;
+
             byte[] transcript = BuildTranscript(
                 postId, author.Public.Address, trimmed, createdAt, string.Empty, media, quotedPostId, groupAddress,
-                choices, closesAt);
+                choices, closesAt, keptTitle, trimmedBody);
 
             PostData post = new()
             {
@@ -134,6 +149,8 @@ namespace ChaySocial.MainProject.Services
                 GroupAddress = groupAddress,
                 PollChoices = choices,
                 PollClosesAtUnixMs = closesAt,
+                Title = keptTitle,
+                LongBody = trimmedBody,
                 Signature = Convert.ToBase64String(author.Sign(transcript))
             };
 
@@ -142,7 +159,13 @@ namespace ChaySocial.MainProject.Services
             // A subject named inside a group belongs to that group's wall, not to a listing the whole app reads.
             if (!post.IsInGroup) await IndexSubjectsAsync(post);
 
-            await NotificationService.NotifyMentionedAsync(trimmed, author.Public.Address, postId, trimmed);
+            // Naming somebody inside a long piece is still naming them, so the line and the piece are both read for
+            // names; the excerpt beside the alert stays the short line, which is what a bell has room for.
+            await NotificationService.NotifyMentionedAsync(
+                hasLongBody ? trimmed + Environment.NewLine + trimmedBody : trimmed,
+                author.Public.Address,
+                postId,
+                trimmed.Length > 0 ? trimmed : keptTitle);
 
             MainEvents.Trigger(post.IsInGroup ? MainEvents.Names.GroupsChanged : MainEvents.Names.WallChanged, groupAddress);
             return post;
@@ -157,7 +180,9 @@ namespace ChaySocial.MainProject.Services
         /// <returns> A task that completes once every subject it names has been noted. </returns>
         static async Task IndexSubjectsAsync(PostData post)
         {
-            foreach (string subject in WrittenText.SubjectsIn(post.Text))
+            // A subject named inside a long piece counts as much as one named in the line above it: both are things
+            // the writer said in this post, and somebody following that subject came for the words either way.
+            foreach (string subject in SubjectsThroughout(post))
             {
                 try
                 {
@@ -176,6 +201,14 @@ namespace ChaySocial.MainProject.Services
                 }
             }
         }
+
+        /// <summary> Every subject a post names, wherever in it they were written. </summary>
+        /// <param name="post"> The post being read. </param>
+        /// <returns> Its subjects, each once, in the form they are stored under. </returns>
+        static IReadOnlyList<string> SubjectsThroughout(PostData post)
+            => [.. WrittenText.SubjectsIn(post.Text)
+                .Concat(WrittenText.SubjectsIn(post.LongBody))
+                .Distinct(StringComparer.Ordinal)];
 
         /// <summary>
         /// Reads the posts written under one subject. Every post is checked against its own text before it is
@@ -202,7 +235,7 @@ namespace ChaySocial.MainProject.Services
             return
             [
                 .. posts
-                    .Where(post => post is not null && WrittenText.SubjectsIn(post.Text).Contains(wanted))
+                    .Where(post => post is not null && SubjectsThroughout(post).Contains(wanted))
                     .Select(post => post!)
                     .OrderByDescending(post => post.CreatedAtUnixMs)
             ];
@@ -253,7 +286,8 @@ namespace ChaySocial.MainProject.Services
 
                 byte[] transcript = BuildTranscript(
                     post.PostId, post.AuthorAddress, post.Text, post.CreatedAtUnixMs, post.Topic,
-                    post.Attachments, post.QuotedPostId, post.GroupAddress, post.PollChoices, post.PollClosesAtUnixMs);
+                    post.Attachments, post.QuotedPostId, post.GroupAddress, post.PollChoices, post.PollClosesAtUnixMs,
+                    post.Title, post.LongBody);
 
                 return AppCryptography.Identities.Verify(transcript, Convert.FromBase64String(post.Signature), author);
             }
@@ -456,7 +490,9 @@ namespace ChaySocial.MainProject.Services
             string quotedPostId,
             string groupAddress,
             IReadOnlyList<string> pollChoices,
-            long pollClosesAtUnixMs)
+            long pollClosesAtUnixMs,
+            string title,
+            string longBody)
         {
             TranscriptWriter transcript = new();
             transcript.WriteBytes(PostSignatureDomain);
@@ -487,6 +523,11 @@ namespace ChaySocial.MainProject.Services
             transcript.WriteNamedText(
                 nameof(PostData.PollClosesAtUnixMs),
                 pollClosesAtUnixMs == 0 ? string.Empty : pollClosesAtUnixMs.ToString(CultureInfo.InvariantCulture));
+
+            // Named too, and after the fields that came before them, so every post signed before long pieces
+            // existed writes exactly the bytes it always did and keeps verifying.
+            transcript.WriteNamedText(nameof(PostData.Title), title);
+            transcript.WriteNamedText(nameof(PostData.LongBody), longBody);
 
             return transcript.ToArray();
         }

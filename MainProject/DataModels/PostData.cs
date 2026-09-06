@@ -70,8 +70,30 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> True when this post is asking something. </summary>
         public bool IsAsking => PollChoices.Count > 0;
 
+        /// <summary> Line the writer set above a long piece, or empty when the post is not one. </summary>
+        public string Title { get; init; } = string.Empty;
+
+        /// <summary>
+        /// The whole of a long piece, or empty for an ordinary post. A manifesto, a recipe or a long defence is
+        /// one signed post rather than a screenshot of somewhere else.
+        /// </summary>
+        public string LongBody { get; init; } = string.Empty;
+
+        /// <summary> True when this post carries a long piece. </summary>
+        /// <remarks> Worked out from the body rather than stored, so no flag can ever disagree with the words. </remarks>
+        public bool IsLongForm => LongBody.Length > 0;
+
         /// <summary> Longest post accepted. </summary>
         public const int MaximumTextLength = 500;
+
+        /// <summary> Longest title accepted. A title is a line above a piece, not the piece. </summary>
+        public const int MaximumTitleLength = 120;
+
+        /// <summary>
+        /// Longest piece accepted. Generous enough that the limit is not what decides whether something can be
+        /// said here, and bounded because a document store still has to hand it back in one read.
+        /// </summary>
+        public const int MaximumLongBodyLength = 20_000;
 
         /// <summary> Most answers a question may offer; past this the row of choices stops being readable. </summary>
         public const int MaximumPollChoiceCount = 4;
