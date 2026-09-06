@@ -72,12 +72,17 @@
         <div class="post-thread-post">
             @* This is the page the card's own way in leads to, so a long piece is drawn whole here rather than as
                an opening with a link back to where the reader already is. *@
+            @* The margin down the side of a piece is handed in only here: OnBlockChosen is what draws it, and a
+               card in a feed leaves it unhandled so it stays exactly the card it was. *@
             <PostCard Post="@post"
                       AuthorProfile="@ProfileFor(post.AuthorAddress)"
                       IsLiked="@isLikedByViewer"
                       LikeCount="@likeCount"
                       CommentCount="@replies.Count"
                       ShowLongFormInFull="true"
+                      NoteCountsPerBlock="@noteCountsPerBlock"
+                      ChosenBlockIndex="@chosenBlockIndex"
+                      OnBlockChosen="@(CanAnchorNotes ? EventCallback.Factory.Create<int>(this, ChooseBlock) : default)"
                       OnLike="ToggleLikeAsync"
                       OnOpenAuthor="OpenAuthorProfile" />
 
@@ -91,17 +96,29 @@
 
         <section class="post-thread-replies">
             <h2 class="post-thread-section-title">
-                <span class="post-thread-section-emoji">@RepliesEmoji</span>
-                @RepliesHeading
+                <span class="post-thread-section-emoji">@(chosenBlockIndex == 0 ? RepliesEmoji : NoNotesEmoji)</span>
+                @RepliesSectionHeading
             </h2>
 
-            @if (replies.Count == 0)
+            @if (chosenBlockIndex > 0)
             {
-                <EmptyState Emoji="@NoRepliesEmoji" Headline="@NoRepliesHeadline" Description="@NoRepliesDescription" />
+                <button type="button" class="post-thread-show-all" @onclick="ShowWholeThread">@ShowWholeThreadLabel</button>
+            }
+
+            @if (ShownThread.Count == 0)
+            {
+                @if (chosenBlockIndex > 0)
+                {
+                    <EmptyState Emoji="@NoNotesEmoji" Headline="@NoNotesHeadline" Description="@NoNotesDescription" />
+                }
+                else
+                {
+                    <EmptyState Emoji="@NoRepliesEmoji" Headline="@NoRepliesHeadline" Description="@NoRepliesDescription" />
+                }
             }
             else
             {
-                @foreach (ThreadedComment entry in thread)
+                @foreach (ThreadedComment entry in ShownThread)
                 {
                     @* Declared inside the loop body, so each row's handlers capture their own reply rather than
                        the last one in the thread. *@
@@ -139,6 +156,8 @@
                                  TextChanged="HandleDraftChanged"
                                  AnsweringName="@AnsweringName"
                                  OnCancelAnswer="StopAnswering"
+                                 AnchoredBlockLabel="@AnchoredBlockLabel"
+                                 OnCancelAnchor="ShowWholeThread"
                                  OnSubmit="PublishReplyAsync"
                                  IsBusy="@isPublishing" />
             }

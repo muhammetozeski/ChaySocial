@@ -6,6 +6,21 @@
     disc that sends. The return key sends too, and the disc lights up in primary the moment there is something
     worth sending — but it is a real button, because a phone has no return key beside the thumb on the screen.
 *@
+@* The twin of the answering bar below, and drawn first because it says where the note lands rather than who it
+   answers: a reader should see the paragraph they are writing beside while they write it, not after they send. *@
+@if (AnchoredBlockLabel is not null)
+{
+    <div class="comment-composer-answering" style="@SurfaceStyle">
+        <span class="comment-composer-answering-mark">@AnchoredMark</span>
+        <span class="comment-composer-answering-text">@AnchoredLabel @AnchoredBlockLabel</span>
+        <button type="button"
+                class="comment-composer-answering-drop"
+                title="@DropAnchorHint"
+                disabled="@IsBusy"
+                @onclick="OnCancelAnchor">@DropAnswerMark</button>
+    </div>
+}
+
 @if (AnsweringName is not null)
 {
     <div class="comment-composer-answering" style="@SurfaceStyle">
@@ -71,6 +86,12 @@
     /// <summary> Raised when the author drops the answer and goes back to replying to the post. </summary>
     [Parameter] public EventCallback OnCancelAnswer { get; set; }
 
+    /// <summary> Which paragraph the note will land beside, or null while the reply speaks to the whole piece. </summary>
+    [Parameter] public string? AnchoredBlockLabel { get; set; }
+
+    /// <summary> Raised when the author drops the anchor and goes back to speaking to the whole piece. </summary>
+    [Parameter] public EventCallback OnCancelAnchor { get; set; }
+
     /// <summary> Prompt used when the caller does not supply one. </summary>
     const string DefaultPlaceholder = "Say something kind…";
 
@@ -80,11 +101,20 @@
     /// <summary> Leads that name. </summary>
     const string AnsweringLabel = "Answering";
 
-    /// <summary> Mark on the control that drops the answer. </summary>
+    /// <summary> Mark on the control that drops the answer, and the one that drops the anchor. </summary>
     const string DropAnswerMark = "✕";
 
     /// <summary> Tooltip on that control. </summary>
     const string DropAnswerHint = "Reply to the post instead";
+
+    /// <summary> Mark before the paragraph a note is being left beside; the same one drawn in the piece's margin. </summary>
+    const string AnchoredMark = "🔖";
+
+    /// <summary> Leads that paragraph. </summary>
+    const string AnchoredLabel = "Beside";
+
+    /// <summary> Tooltip on the control that drops the anchor. </summary>
+    const string DropAnchorHint = "Say it to the whole piece instead";
 
     /// <summary> Emoji marking the pill as a place to write a reply. </summary>
     const string ComposerEmoji = "💬";

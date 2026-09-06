@@ -94,6 +94,24 @@
         line-height: @(AppMeasures.LineHeight.None);
     }
 
+    /* The way back out of one paragraph's notes. Drawn as a quiet line rather than a button, because leaving a
+       narrower view is not an action anybody should have to look for. */
+    .post-thread-show-all {
+        align-self: flex-start;
+        margin: 0 0 @(AppMeasures.Space.Px8)px @(AppMeasures.Space.Px4)px;
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        color: @(AppColors.Primary.ToRgbaHex(true));
+        cursor: pointer;
+    }
+
+        .post-thread-show-all:hover {
+            text-decoration: underline;
+        }
+
     /* Sits just above the bottom navigation and stays there while the thread scrolls. The fade behind it is what
        stops replies from sliding out from under the pill with a hard edge. */
     .post-thread-composer {

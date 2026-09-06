@@ -3,6 +3,7 @@ using ChaySocial.MainProject.DataModels;
 using ChaySocial.MainProject.Events;
 using ChaySocial.MainProject.Persistence;
 using ChaySocial.MainProject.Services;
+using ChaySocial.MainProject.Text;
 using Microsoft.AspNetCore.Components;
 
 namespace ChaySocial.MainProject.UI.Pages
@@ -168,6 +169,61 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> The same replies in reading order: each remark, then the answers written to it. </summary>
         IReadOnlyList<ThreadedComment> thread = [];
+
+        /// <summary> Block of the piece the reader is reading the notes beside, counting from one, or zero for the whole thread. </summary>
+        int chosenBlockIndex;
+
+        /// <summary> How many notes sit beside each block of the piece, in the piece's own order. </summary>
+        IReadOnlyList<int> noteCountsPerBlock = [];
+
+        /// <summary> The piece's blocks, kept so the composer can say which paragraph a note is landing beside. </summary>
+        IReadOnlyList<ProseBlock> blocks = [];
+
+        /// <summary> True when this post is a piece somebody can leave notes down the side of. </summary>
+        bool CanAnchorNotes => post is { IsLongForm: true } && blocks.Count > 0;
+
+        /// <summary> How the chosen paragraph is named in the composer's bar; the placeholder takes its number. </summary>
+        const string AnchoredBlockFormat = "paragraph {0}";
+
+        /// <summary> Heading over the replies while the reader is reading one paragraph's notes; the placeholder takes its number. </summary>
+        const string NotesOnBlockHeadingFormat = "Notes beside paragraph {0}";
+
+        /// <summary> Label on the control that drops the chosen paragraph and shows the whole thread again. </summary>
+        const string ShowWholeThreadLabel = "Show every reply";
+
+        /// <summary> Emoji for the placeholder shown while a chosen paragraph has no notes beside it yet. </summary>
+        const string NoNotesEmoji = "🔖";
+
+        /// <summary> Headline of that placeholder. </summary>
+        const string NoNotesHeadline = "Nothing beside this one yet";
+
+        /// <summary> Supporting line of that placeholder, which is also the invitation to write the first note. </summary>
+        const string NoNotesDescription = "Whatever you write now lands beside this paragraph rather than under the whole piece.";
+
+        /// <summary> The replies actually listed: everything, or only the notes beside the paragraph the reader picked. </summary>
+        IReadOnlyList<ThreadedComment> ShownThread => chosenBlockIndex == 0
+            ? thread
+            : [.. thread.Where(entry => entry.Comment.AnchorBlockIndex == chosenBlockIndex)];
+
+        /// <summary> Which paragraph the composer is writing beside, or null while the draft speaks to the whole piece. </summary>
+        string? AnchoredBlockLabel => chosenBlockIndex == 0
+            ? null
+            : string.Format(AnchoredBlockFormat, chosenBlockIndex);
+
+        /// <summary> Heading over the replies: the whole thread's, or the chosen paragraph's. </summary>
+        string RepliesSectionHeading => chosenBlockIndex == 0
+            ? RepliesHeading
+            : string.Format(NotesOnBlockHeadingFormat, chosenBlockIndex);
+
+        /// <summary>
+        /// Takes the paragraph the reader tapped in the margin, or drops the choice when they tapped the same one
+        /// again. Both the list and the composer follow it, which is what makes a note land where it was read.
+        /// </summary>
+        /// <param name="index"> The block's place in the piece, counting from one, or zero for none. </param>
+        void ChooseBlock(int index) => chosenBlockIndex = index;
+
+        /// <summary> Drops the chosen paragraph, so the whole thread is listed again. </summary>
+        void ShowWholeThread() => chosenBlockIndex = 0;
 
         /// <summary> Reply the composer is answering, or null while the draft speaks to the post itself. </summary>
         CommentData? answeringReply;
@@ -336,6 +392,10 @@ namespace ChaySocial.MainProject.UI.Pages
                 return;
             }
 
+            // A paragraph belongs to the piece it was picked in. Opening another thread on the same page has to
+            // start it whole, or the reader lands on one post's third paragraph in another post's essay.
+            if (loadedPostId != PostId) chosenBlockIndex = 0;
+
             loadedPostId = PostId;
             post = await AppServices.Documents.ReadAsync(new DocumentId<PostData>(PostId));
 
@@ -348,6 +408,9 @@ namespace ChaySocial.MainProject.UI.Pages
             {
                 replies = [];
                 thread = [];
+                blocks = [];
+                noteCountsPerBlock = [];
+                chosenBlockIndex = 0;
                 likeCount = 0;
                 isLikedByViewer = false;
                 hasLoadedOnce = true;
@@ -363,6 +426,14 @@ namespace ChaySocial.MainProject.UI.Pages
             replies = await CommentService.KeepAllowedAsync(
                 post, await CommentService.ReadForPostAsync(post.PostId), shutOut);
             thread = CommentService.ArrangeThread(replies);
+
+            // The piece is split once here rather than by every part of the page that needs to know how long it is.
+            blocks = post.IsLongForm ? WrittenProse.Read(post.LongBody) : [];
+            noteCountsPerBlock = CommentService.CountNotesPerBlock(replies, blocks.Count);
+
+            // A piece that was rewritten shorter, or a post the reader arrived at from another thread, can leave a
+            // choice pointing at a paragraph that is no longer there.
+            if (chosenBlockIndex > blocks.Count) chosenBlockIndex = 0;
 
             isShutOut = shutOut.Contains(post.AuthorAddress);
             mayReply = await CommentService.MayReplyAsync(post, Account.Public.Address);
@@ -456,7 +527,8 @@ namespace ChaySocial.MainProject.UI.Pages
 
             try
             {
-                CommentData? published = await CommentService.PublishAsync(Account, post, draftText, answeringReply);
+                CommentData? published = await CommentService.PublishAsync(
+                    Account, post, draftText, answeringReply, chosenBlockIndex);
 
                 if (published is null)
                 {
