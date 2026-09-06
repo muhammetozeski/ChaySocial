@@ -55,8 +55,10 @@
                           IsDisabled="@IsBusy" />
     </div>
 
-    @* Shown to the writer only, before anything is sent. It reports and blocks nothing. *@
+    @* Both shown to the writer only, before anything is sent. Neither reports nor blocks anything: the first says
+       how the line will read to somebody else, the second says which of this device's accounts it sounds like. *@
     <WritingMirror Text="@Text" />
+    <StyleMirror Text="@Text" WritingAsAddress="@WritingAsAddress" />
 
     <div class="post-composer-footer">
         <span class="post-composer-counter" style="@CounterStyle">@CounterLabel</span>
@@ -141,6 +143,13 @@
 
     /// <summary> Emoji drawn in the composer's bubble, normally the signed-in account's own avatar. </summary>
     [Parameter] public string Avatar { get; set; } = ProfileData.DefaultAvatar;
+
+    /// <summary>
+    /// Address this post will actually go out under, which is the reader's own account unless they picked a page.
+    /// Only the style mirror reads it, and only to leave that account out of what it compares the draft against —
+    /// sounding like yourself is not worth a line.
+    /// </summary>
+    [Parameter] public string WritingAsAddress { get; set; } = string.Empty;
 
     /// <summary> Media already attached to the post being written. </summary>
     [Parameter] public IReadOnlyList<MediaAttachment> Attachments { get; set; } = [];
