@@ -44,13 +44,12 @@
     /// which says a great deal about that sentence and nothing about a habit.
     /// </summary>
     /// <remarks>
-    /// Measured rather than chosen, over five accounts and every window this long cut out of their writing: at 140
-    /// characters the line named the wrong account one time in four, and at 180 it named the right one 88% of the
-    /// time and never once fired on somebody writing in their own voice under their own account. The cost of the
-    /// longer floor is silence on drafts between the two, which is the right side to be wrong on — a line that
-    /// cries wolf is a line people learn to skip. See docs/Measurements.md.
+    /// Measured rather than chosen, over four accounts and every window this long cut out of their writing. At 180
+    /// characters the line named an account written in the draft's own voice 82% of the time; at 240 it does so
+    /// 89% of the time. The cost of the longer floor is silence on drafts between the two, which is the right side
+    /// to be wrong on — a line that cries wolf is a line people learn to skip. See docs/Measurements.md.
     /// </remarks>
-    const int ShortestJudgeableDraft = 180;
+    const int ShortestJudgeableDraft = 240;
 
     /// <summary>
     /// How much closer another account has to read than the one being written as before the mirror says anything,
@@ -58,14 +57,17 @@
     /// person land close together on every axis, so the gap is the number that carries the answer, not the height.
     /// </summary>
     /// <remarks>
-    /// Also measured: with no gap required at all, the line fired on 20% of people writing in their own voice
-    /// under their own account, and at three hundredths it fired on none of them while still catching 70% of the
+    /// Also measured: with no gap required at all, the line fired on 17% of people writing in their own voice
+    /// under their own account. At five hundredths that falls to 6% while it still catches seven in ten of the
     /// drafts written under a different account than the voice belonged to.
     /// </remarks>
-    const double ClosenessLeadWorthMentioning = 0.03;
+    const double ClosenessLeadWorthMentioning = 0.05;
 
-    /// <summary> Fingerprints of the accounts this device carries, read once when the composer appears. </summary>
+    /// <summary> Fingerprints of the accounts this device carries, read once a draft is worth judging. </summary>
     IReadOnlyDictionary<string, StyleFingerprint> carried = new Dictionary<string, StyleFingerprint>();
+
+    /// <summary> True once that reading has been asked for, so it is asked for exactly once. </summary>
+    bool hasReadCarried;
 
     /// <summary> The draft this reading was worked out from, so typing does not redo it on unrelated renders. </summary>
     string readDraft = string.Empty;
@@ -90,24 +92,36 @@
     /// <summary> The account the draft will go out under. </summary>
     string WritingAs => WritingAsAddress.Length > 0 ? WritingAsAddress : SessionService.CurrentAddress;
 
-    /// <summary>
-    /// Reads the carried accounts once. Typing must not cost a network read, so every fingerprint but the draft's
-    /// own is worked out before the first keystroke.
-    /// </summary>
-    /// <returns> A task that completes once the carried fingerprints are held. </returns>
-    protected override async Task OnInitializedAsync()
-    {
-        carried = await StyleService.ReadCarriedAsync();
-        Judge();
-    }
-
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         if (readDraft == Draft && readWritingAs == WritingAs) return;
 
         readDraft = Draft;
         readWritingAs = WritingAs;
+
+        await ReadCarriedOnceAsync();
         Judge();
+    }
+
+    /// <summary>
+    /// Reads every carried account's writing, the first time a draft is long enough for the answer to matter, and
+    /// never again after that.
+    /// </summary>
+    /// <returns> A task that completes once the fingerprints are held, or at once when they already are. </returns>
+    /// <remarks>
+    /// Not on the way in. The composer is on screen for everybody who opens the wall, and reading there asked the
+    /// server for the posts of every account this device carries — up to twelve wall queries at once — the moment
+    /// the page appeared, for a line most of those people were never going to see. Waiting until the draft passes
+    /// the length floor spends that on the people it is actually for, and it is still spent once: the reading is
+    /// kept for the life of the composer, so typing never costs a second one.
+    /// </remarks>
+    async Task ReadCarriedOnceAsync()
+    {
+        if (hasReadCarried) return;
+        if ((Draft ?? string.Empty).Trim().Length < ShortestJudgeableDraft) return;
+
+        hasReadCarried = true;
+        carried = await StyleService.ReadCarriedAsync();
     }
 
     /// <summary>
