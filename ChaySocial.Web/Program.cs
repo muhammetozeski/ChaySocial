@@ -31,7 +31,15 @@ namespace ChaySocial
         /// <param name="args"> Host arguments handed over by the runtime. </param>
         public static void Main(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);
+            // Rooted at the folder the executable sits in rather than at whatever directory it happened to be
+            // started from. The default is the current directory, so launching the server from a shortcut, a
+            // scheduled task, or a shell parked somewhere else served no wwwroot at all — every static file came
+            // back as an empty 200 and the app never started — and it wrote its documents into that other folder.
+            var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+            {
+                Args = args,
+                ContentRootPath = AppContext.BaseDirectory
+            });
 
             // Nothing here keeps a trail of who asked for what and when. The hosting layer's own request logging
             // writes a line per request, and those lines are exactly the record this app promises not to hold, so
