@@ -130,9 +130,8 @@
         // on every draft. An account with no posts behind it therefore gets silence rather than a line that would
         // fire every time and mean nothing.
         string writingAs = WritingAs;
-        if (!carried.TryGetValue(writingAs, out StyleFingerprint own) || !own.IsWritten) return;
-
-        double ownCloseness = StyleFingerprint.Closeness(drafted, own);
+        if (!carried.TryGetValue(writingAs, out StyleFingerprint own)) return;
+        if (StyleFingerprint.Closeness(drafted, own) is not double ownCloseness) return;
 
         string closestAddress = string.Empty;
         double closest = 0.0;
@@ -140,8 +139,7 @@
         foreach (KeyValuePair<string, StyleFingerprint> account in carried)
         {
             if (account.Key == writingAs) continue;
-
-            double closeness = StyleFingerprint.Closeness(drafted, account.Value);
+            if (StyleFingerprint.Closeness(drafted, account.Value) is not double closeness) continue;
             if (closeness <= closest) continue;
 
             closest = closeness;

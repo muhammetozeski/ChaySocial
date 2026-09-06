@@ -103,19 +103,37 @@ namespace ChaySocial.MainProject.Text
         /// </summary>
         /// <param name="left"> One fingerprint. </param>
         /// <param name="right"> The other. </param>
-        /// <returns> Their closeness, or zero when either side has no writing behind it. </returns>
-        public static double Closeness(StyleFingerprint left, StyleFingerprint right)
+        /// <returns> Their closeness, or null when there is nothing to compare. </returns>
+        /// <remarks>
+        /// <para>
+        /// Null rather than zero when a side has no writing behind it. Zero is a real answer — it means these two
+        /// are as far apart as this measure goes — and handing back the furthest possible answer for a comparison
+        /// that could not be made is how a caller ends up treating an account with no posts as the least like
+        /// everybody, which is the opposite of what it is.
+        /// </para>
+        /// <para>
+        /// An axis where both sides sit at zero is left out of the average. Neither piece of writing used that word
+        /// at all, so the axis says nothing about either of them; counted, it would report writing in a language
+        /// the word list does not cover as more alike than it is, simply for sharing an absence.
+        /// </para>
+        /// </remarks>
+        public static double? Closeness(StyleFingerprint left, StyleFingerprint right)
         {
-            if (!left.IsWritten || !right.IsWritten) return 0.0;
-            if (left.Axes.Count != right.Axes.Count) return 0.0;
+            if (!left.IsWritten || !right.IsWritten) return null;
+            if (left.Axes.Count != right.Axes.Count) return null;
 
             double apart = 0.0;
+            int counted = 0;
+
             for (int index = 0; index < left.Axes.Count; index++)
             {
+                if (left.Axes[index] == 0.0 && right.Axes[index] == 0.0) continue;
+
                 apart += Math.Abs(left.Axes[index] - right.Axes[index]);
+                counted++;
             }
 
-            return 1.0 - (apart / left.Axes.Count);
+            return counted == 0 ? null : 1.0 - (apart / counted);
         }
 
         /// <summary> Turns a raw measurement into the fraction of its ceiling that an axis holds. </summary>
