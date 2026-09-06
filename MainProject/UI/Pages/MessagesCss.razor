@@ -236,6 +236,56 @@
         scrollbar-color: @(AppColors.BorderStrong.ToRgbaHex(true)) transparent;
     }
 
+    /* A letter still waiting to go. Dimmed and dashed rather than drawn as a sent bubble, because it is not one
+       yet — and the wait is shown on purpose: an app that quietly held a letter would be worse than one that did
+       not hold it at all. */
+    .messages-waiting {
+        align-self: flex-end;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px6)px;
+        max-width: @(WaitingMaximumWidthPercent)%;
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px14)px;
+        border: @(AppMeasures.Border.Thin)px dashed @(AppColors.Primary.WithAlpha(WaitingEdgeOpacity).ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        opacity: @(AppMeasures.Opacity.Muted);
+    }
+
+    .messages-waiting-text {
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .messages-waiting-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: @(AppMeasures.Space.Px12)px;
+    }
+
+    .messages-waiting-countdown {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .messages-waiting-now {
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: @(AppColors.Primary.ToRgbaHex(true));
+        cursor: pointer;
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.XSmall)px;
+    }
+
+        .messages-waiting-now:hover {
+            text-decoration: underline;
+        }
+
     /* Sits at the foot of the column, under the letters that scroll past above it. */
     .messages-composer {
         box-sizing: border-box;
@@ -366,6 +416,12 @@
 
     /// <summary> Lane kept clear down the right of the thread, so a bubble never sits under the scrollbar. </summary>
     const int ScrollbarLanePx = AppMeasures.Space.Px10;
+
+    /// <summary> Widest a waiting letter grows, matching how far a sent bubble is allowed across the thread. </summary>
+    const int WaitingMaximumWidthPercent = 78;
+
+    /// <summary> How solid the dashed edge around a waiting letter is: visible as a state, quiet as a thing. </summary>
+    const float WaitingEdgeOpacity = 0.5f;
 
     /// <summary>
     /// Height the page shell already reserves under every screen for the floating bottom navigation. A screen that

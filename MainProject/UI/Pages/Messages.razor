@@ -66,7 +66,7 @@
                         </Action>
                     </EmptyState>
                 }
-                else if (conversation.Count == 0)
+                else if (conversation.Count == 0 && Waiting.Count == 0)
                 {
                     <EmptyState Emoji="@EmptyConversationEmoji"
                                 Headline="@EmptyConversationHeadline"
@@ -75,6 +75,25 @@
                 else
                 {
                     <div class="messages-thread">
+
+                        @* Drawn first because the thread is laid out bottom-upwards: a letter still waiting is the
+                           newest thing in the conversation. The wait is shown rather than hidden, and it can always
+                           be skipped — a queue in memory dies with the tab, and a letter that quietly never went
+                           would be worse than no delay at all. *@
+                        @foreach (WaitingLetter waiting in Waiting)
+                        {
+                            WaitingLetter held = waiting;
+
+                            <div class="messages-waiting" @key="held.Id">
+                                <span class="messages-waiting-text">@held.Text</span>
+
+                                <span class="messages-waiting-foot">
+                                    <span class="messages-waiting-countdown">@string.Format(WaitingFormat, SecondsLeft(held))</span>
+                                    <button type="button" class="messages-waiting-now" @onclick="() => SendWaitingNow(held)">@SendNowLabel</button>
+                                </span>
+                            </div>
+                        }
+
                         @foreach (OpenedMessage letter in NewestFirst)
                         {
                             @* The time drawn is the one from inside the seal: the two people who can read a letter

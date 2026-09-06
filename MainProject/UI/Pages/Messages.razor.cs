@@ -198,7 +198,8 @@ namespace ChaySocial.MainProject.UI.Pages
         protected override string[] ReloadOnEvents =>
         [
             MainEvents.Names.MessagesChanged,
-            MainEvents.Names.SessionChanged
+            MainEvents.Names.SessionChanged,
+            MainEvents.Names.OutboxChanged
         ];
 
         /// <summary> Conversations of the signed-in account, newest first. Empty while a conversation is open. </summary>
@@ -222,6 +223,28 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> True while a letter is being sealed and stored, which locks the composer. </summary>
         bool isSending;
+
+        /// <summary> True while this device holds a letter for a moment before sending it. </summary>
+        bool isSendDelayed = true;
+
+        /// <summary> Wording on a waiting letter; the placeholder takes the seconds left. </summary>
+        const string WaitingFormat = "going in {0}s";
+
+        /// <summary> Text on the control that stops a letter waiting. </summary>
+        const string SendNowLabel = "send now";
+
+        /// <summary> Letters written into this conversation that have not gone out yet. </summary>
+        IReadOnlyList<WaitingLetter> Waiting => MessageOutbox.For(Address);
+
+        /// <summary> How long one waiting letter still has, in whole seconds and never below zero. </summary>
+        /// <param name="letter"> The letter that is waiting. </param>
+        /// <returns> Seconds left. </returns>
+        static int SecondsLeft(WaitingLetter letter)
+            => (int)Math.Max(0, Math.Ceiling((letter.DispatchAtUnixMs - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()) / 1000d));
+
+        /// <summary> Sends one waiting letter straight away. </summary>
+        /// <param name="letter"> The letter to stop waiting on. </param>
+        static void SendWaitingNow(WaitingLetter letter) => MessageOutbox.SendNow(letter.Id);
 
         /// <summary> True while the next letter should be sent to be read exactly once. </summary>
         bool isDraftVanishing;
@@ -321,6 +344,7 @@ namespace ChaySocial.MainProject.UI.Pages
             if (loadedAddress != Address) Forget();
 
             loadedAddress = Address;
+            isSendDelayed = await AnonymityService.IsSendDelayedAsync();
 
             if (IsConversation) await LoadConversationAsync();
             else await LoadInboxAsync();
@@ -559,13 +583,22 @@ namespace ChaySocial.MainProject.UI.Pages
 
             try
             {
-                MessageData? sent = await MessageService.SendAsync(
-                    Account, otherProfile, draftText, isDraftVanishing, draftAttachments, replyingToMessageId);
-
-                if (sent is null)
+                // Held rather than sent when this device is holding letters. What the writer sees is the same act
+                // either way; what changes is that the moment it lands is no longer the moment they pressed send.
+                if (isSendDelayed)
                 {
-                    Log($"Letter to '{Address}' was refused at {draftText.Trim().Length} characters.", LogLevel.Warning);
-                    return;
+                    MessageOutbox.Hold(Account, otherProfile, draftText, isDraftVanishing, draftAttachments, replyingToMessageId);
+                }
+                else
+                {
+                    MessageData? sent = await MessageService.SendAsync(
+                        Account, otherProfile, draftText, isDraftVanishing, draftAttachments, replyingToMessageId);
+
+                    if (sent is null)
+                    {
+                        Log($"Letter to '{Address}' was refused at {draftText.Trim().Length} characters.", LogLevel.Warning);
+                        return;
+                    }
                 }
 
                 draftText = string.Empty;
