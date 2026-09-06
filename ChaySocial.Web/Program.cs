@@ -1,5 +1,9 @@
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using ChaySocial.Web.Api;
 using ChaySocial.Web.Components;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 
 namespace ChaySocial
 {
@@ -126,7 +130,65 @@ namespace ChaySocial
                     typeof(ChaySocial.MainProject.UI.Routes).Assembly,
                     typeof(ChaySocial.Web.Client._Imports).Assembly);
 
+            app.Lifetime.ApplicationStarted.Register(() => AnnounceReachableAddresses(app));
+
             app.Run();
         }
+
+        /// <summary>
+        /// Prints every address this server can actually be reached at, once it is listening.
+        /// </summary>
+        /// <param name="app"> The running application, for the addresses it bound and the log to write to. </param>
+        /// <remarks>
+        /// Kestrel prints what it was told to bind — "http://0.0.0.0:5000" — which is the one address nothing can
+        /// be typed into. Somebody bringing a phone to their own server has to know which address on this machine
+        /// to point it at, and hunting for it in ipconfig is not part of running a social app.
+        /// </remarks>
+        static void AnnounceReachableAddresses(WebApplication app)
+        {
+            IServerAddressesFeature? bound = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>();
+            if (bound is null) return;
+
+            List<string> reachable = [];
+
+            foreach (string address in bound.Addresses)
+            {
+                if (!Uri.TryCreate(address, UriKind.Absolute, out Uri? parsed)) continue;
+
+                // A wildcard binding is every address this machine has, so it is expanded into the ones somebody
+                // can actually type. Anything else was named explicitly and is printed as it stands.
+                if (parsed.Host is not (WildcardHost or AnyIPv4Host))
+                {
+                    reachable.Add(address);
+                    continue;
+                }
+
+                reachable.Add($"{parsed.Scheme}://localhost:{parsed.Port}");
+
+                foreach (string local in ReadLocalAddresses())
+                {
+                    reachable.Add($"{parsed.Scheme}://{local}:{parsed.Port}");
+                }
+            }
+
+            app.Logger.LogInformation("Reachable at: {Addresses}", string.Join(", ", reachable));
+        }
+
+        /// <summary> The addresses of this machine on the networks it is actually attached to. </summary>
+        /// <returns> One address per usable interface, loopback and disconnected ones left out. </returns>
+        static IEnumerable<string> ReadLocalAddresses()
+            => NetworkInterface.GetAllNetworkInterfaces()
+                .Where(card => card.OperationalStatus == OperationalStatus.Up)
+                .Where(card => card.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .SelectMany(card => card.GetIPProperties().UnicastAddresses)
+                .Where(address => address.Address.AddressFamily == AddressFamily.InterNetwork)
+                .Select(address => address.Address.ToString())
+                .Distinct(StringComparer.Ordinal);
+
+        /// <summary> How a binding to every address is written with a star. </summary>
+        const string WildcardHost = "*";
+
+        /// <summary> And how it is written as an address. </summary>
+        const string AnyIPv4Host = "0.0.0.0";
     }
 }
