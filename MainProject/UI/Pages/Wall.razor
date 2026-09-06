@@ -61,6 +61,31 @@
             }
         </div>
 
+        @* Plain buttons rather than CoreChip: a chip is a div, and choosing how your own feed is ordered is
+           something you press. *@
+        <div class="wall-order-strip">
+            <p class="wall-order-note">@OrderStripLabel</p>
+
+            <div class="wall-order-choices">
+                @foreach (FeedOrder order in SelectableOrders)
+                {
+                    <button type="button"
+                            class="wall-order @(order == FeedRecipe.Order ? ActiveOrderClass : string.Empty)"
+                            @onclick="() => SelectOrderAsync(order)">
+                        @FeedRecipe.Describe(order)
+                    </button>
+                }
+
+                @if (FeedRecipe.Order == FeedOrder.Shuffled)
+                {
+                    <button type="button" class="wall-order wall-order--throw" title="@ReshuffleHint" @onclick="ReshuffleAsync">
+                        <span class="wall-order-emoji">@ReshuffleEmoji</span>
+                        <span>@ReshuffleLabel</span>
+                    </button>
+                }
+            </div>
+        </div>
+
         @if (LoadFailureMessage is not null)
         {
             <CoreCard Acrylic="AcrylicLevel.Strong"
@@ -112,32 +137,39 @@
         else
         {
             <div class="wall-feed">
-                @foreach (FeedEntry entry in Entries)
+                @for (int index = 0; index < Entries.Count; index++)
                 {
                     @* Declared inside the loop body, so each card's handlers capture their own post rather than
                        the last one in the feed. *@
+                    FeedEntry entry = Entries[index];
                     PostData post = entry.Post;
 
-                    <PostCard @key="(post.PostId, entry.ReposterAddress)"
-                              Post="post"
-                              AuthorProfile="@AuthorProfileFor(post)"
-                              IsLiked="@EngagementFor(post).IsLikedByViewer"
-                              LikeCount="@EngagementFor(post).LikeCount"
-                              CommentCount="@EngagementFor(post).CommentCount"
-                              IsReposted="@EngagementFor(post).IsRepostedByViewer"
-                              RepostCount="@EngagementFor(post).RepostCount"
-                              RepostedByName="@ReposterNameFor(entry)"
-                              OnLike="() => ToggleLikeAsync(post)"
-                              OnRepost="() => ToggleRepostAsync(post)"
-                              OnDelete="() => DeletePostAsync(post)"
-                              OnReport="() => OpenReport(post)"
-                              OnOpenAuthor="() => OpenAuthor(post.AuthorAddress)"
-                              OnOpenReposter="() => OpenAuthor(entry.ReposterAddress)"
-                              OnOpenComments="() => OpenComments(post.PostId)"
-                              OnQuote="() => StartQuoting(post)"
-                              QuotedPost="@QuotedPostFor(post)"
-                              QuotedAuthorProfile="@QuotedAuthorProfileFor(post)"
-                              OnOpenQuoted="() => OpenComments(post.QuotedPostId)" />
+                    <div class="wall-feed-line" @key="(post.PostId, entry.ReposterAddress)">
+
+                        @* Above the card rather than inside it: the card draws the post, and this says why the post
+                           is here — which is the reader's own arithmetic, not something the writer did. *@
+                        <p class="wall-order-receipt">@OrderReceiptFor(entry, index + 1)</p>
+
+                        <PostCard Post="post"
+                                  AuthorProfile="@AuthorProfileFor(post)"
+                                  IsLiked="@EngagementFor(post).IsLikedByViewer"
+                                  LikeCount="@EngagementFor(post).LikeCount"
+                                  CommentCount="@EngagementFor(post).CommentCount"
+                                  IsReposted="@EngagementFor(post).IsRepostedByViewer"
+                                  RepostCount="@EngagementFor(post).RepostCount"
+                                  RepostedByName="@ReposterNameFor(entry)"
+                                  OnLike="() => ToggleLikeAsync(post)"
+                                  OnRepost="() => ToggleRepostAsync(post)"
+                                  OnDelete="() => DeletePostAsync(post)"
+                                  OnReport="() => OpenReport(post)"
+                                  OnOpenAuthor="() => OpenAuthor(post.AuthorAddress)"
+                                  OnOpenReposter="() => OpenAuthor(entry.ReposterAddress)"
+                                  OnOpenComments="() => OpenComments(post.PostId)"
+                                  OnQuote="() => StartQuoting(post)"
+                                  QuotedPost="@QuotedPostFor(post)"
+                                  QuotedAuthorProfile="@QuotedAuthorProfileFor(post)"
+                                  OnOpenQuoted="() => OpenComments(post.QuotedPostId)" />
+                    </div>
                 }
             </div>
         }

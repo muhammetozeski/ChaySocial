@@ -109,6 +109,76 @@
         gap: @(AppMeasures.Space.Px16)px;
     }
 
+    /* One post and the line saying why it is here, kept together so the receipt reads as belonging to the card
+       under it rather than to the card above it. */
+    .wall-feed-line {
+        display: flex;
+        flex-direction: column;
+        gap: @(OrderStripGapPx)px;
+    }
+
+    /* The strip that hands the ordering to the reader. Quiet by design: it is a choice, not a headline. */
+    .wall-order-strip {
+        display: flex;
+        flex-direction: column;
+        gap: @(OrderStripGapPx)px;
+    }
+
+    .wall-order-note {
+        margin: 0;
+        font-size: @(OrderReceiptFontSizePx)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .wall-order-choices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: @(OrderStripGapPx)px;
+    }
+
+    .wall-order {
+        display: inline-flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px6)px;
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px12)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        cursor: pointer;
+        transition: background @(AppMeasures.Duration.Fast)s, color @(AppMeasures.Duration.Fast)s, border-color @(AppMeasures.Duration.Fast)s;
+    }
+
+        .wall-order:hover {
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+        }
+
+        .wall-order.is-active {
+            background: linear-gradient(@(TitleGradientAngleDegrees)deg, @(AppColors.Primary.ToRgbaHex(true)), @(AppColors.Secondary.ToRgbaHex(true)));
+            border-color: transparent;
+            color: @(AppColors.TextOnAccent.ToRgbaHex(true));
+            font-weight: @(AppMeasures.Weight.Medium);
+        }
+
+    .wall-order-emoji {
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    /* The receipt over one post. Smaller and quieter than anything on the card, because it explains the feed
+       rather than saying anything the writer wrote. */
+    .wall-order-receipt {
+        margin: 0;
+        padding-left: @(AppMeasures.Space.Px12)px;
+        font-size: @(OrderReceiptFontSizePx)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
     /* Shared by the loading throbber and the failure card, so both sit in the same centred column. */
     .wall-status {
         display: flex;
@@ -302,6 +372,12 @@
 
     /// <summary> Angle of the two-colour sheen shared by the heading and the selected tab, matching every other gradient surface in the app. </summary>
     const int TitleGradientAngleDegrees = 135;
+
+    /// <summary> Size of the ordering strip's own line and of the receipt over each post: smaller than anything the writer wrote. </summary>
+    const int OrderReceiptFontSizePx = AppMeasures.Font.XSmall;
+
+    /// <summary> Space between the ordering buttons, and between a receipt and the card it belongs to. </summary>
+    const int OrderStripGapPx = AppMeasures.Space.Px6;
 
     /// <summary> How far the teapot rises at the top of its idle float. </summary>
     const int HeaderEmojiFloatLiftPx = AppMeasures.Space.Px6;

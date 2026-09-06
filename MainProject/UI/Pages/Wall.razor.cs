@@ -112,6 +112,24 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Inside spacing of this page's pill buttons: wide enough to stay comfortable to tap on a phone. </summary>
         static readonly string ActionButtonPadding = $"{AppMeasures.Space.Px10}px {AppMeasures.Space.Px20}px";
 
+        /// <summary> Line above the ordering strip, saying plainly what the strip does and what it is ordering. </summary>
+        const string OrderStripLabel = "You choose the order. This device decides it, and nothing about it is sent anywhere.";
+
+        /// <summary> Text on the button that throws the shuffle again. </summary>
+        const string ReshuffleLabel = "Throw again";
+
+        /// <summary> Marks that button. </summary>
+        const string ReshuffleEmoji = "🎲";
+
+        /// <summary> Tooltip on it. </summary>
+        const string ReshuffleHint = "Deal this page from a new seed";
+
+        /// <summary> Class appended to whichever order is chosen. </summary>
+        const string ActiveOrderClass = "is-active";
+
+        /// <summary> The orders offered, in the order they are drawn. </summary>
+        static readonly IReadOnlyList<FeedOrder> SelectableOrders = FeedRecipe.Choices;
+
         /// <summary> The tabs offered, in the order they are drawn. </summary>
         static readonly WallFeed[] SelectableFeeds = Enum.GetValues<WallFeed>();
 
@@ -250,11 +268,40 @@ namespace ChaySocial.MainProject.UI.Pages
             WritingChoices = await WritingIdentities.ReadForAsync(Account);
             if (WritingChoices.All(choice => choice.Address != WritingAsAddress)) WritingAsAddress = viewerAddress;
 
-            Entries = entries;
+            Entries = FeedOrdering.Apply(entries, engagements, FeedRecipe.Order, FeedRecipe.ShuffleSeed);
             QuotedPosts = quoted;
             AuthorProfiles = authorProfiles;
             Engagements = engagements;
         }
+
+        /// <summary>
+        /// Reads the feed in a different order. Nothing is fetched again: the page is already in memory and the
+        /// order is arithmetic on it, so the wall rearranges under the reader's finger rather than after a wait.
+        /// </summary>
+        /// <param name="order"> The order the reader picked. </param>
+        /// <returns> A task that completes once the choice has been stored. </returns>
+        async Task SelectOrderAsync(FeedOrder order)
+        {
+            if (order == FeedRecipe.Order) return;
+
+            await FeedRecipe.ApplyAndRememberAsync(order);
+            Entries = FeedOrdering.Apply(Entries, Engagements, FeedRecipe.Order, FeedRecipe.ShuffleSeed);
+        }
+
+        /// <summary> Throws the shuffle again, which is the only thing that changes a shuffled page. </summary>
+        /// <returns> A task that completes once the new seed has been stored. </returns>
+        async Task ReshuffleAsync()
+        {
+            await FeedRecipe.ReshuffleAsync();
+            Entries = FeedOrdering.Apply(Entries, Engagements, FeedRecipe.Order, FeedRecipe.ShuffleSeed);
+        }
+
+        /// <summary> The line drawn above one post, saying why it is where it is. </summary>
+        /// <param name="entry"> The line being drawn. </param>
+        /// <param name="position"> Where it sits, counting from one. </param>
+        /// <returns> The receipt for that line. </returns>
+        string OrderReceiptFor(FeedEntry entry, int position)
+            => FeedOrdering.Explain(entry, EngagementFor(entry.Post), FeedRecipe.Order, position);
 
         /// <summary>
         /// Reads the originals behind the quotes in a feed. A quoted post that no longer exists simply does not
