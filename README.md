@@ -114,13 +114,21 @@ dotnet run --project ChaySocial.Web/ChaySocial.Web.csproj --urls http://localhos
 Make an account with one tap. To post anything you need a writing permit, which the Settings screen offers and
 which takes a few minutes of the machine's own time, once.
 
-Build every target — Windows (x64, x86, arm64), the web app, and Android APKs:
+Build everything that ships — the server, the web client, Windows (x64, x86, arm64) and Android
+(arm64-v8a, armeabi-v7a, x86_64, x86), each in a self-contained and a framework-dependent form:
 
 ```bash
 pwsh ./Publish.ps1
 ```
 
-Output lands in `Publish/`.
+Output lands in `Publish/`, one directory per platform, architecture and packaging mode.
+
+Three of those combinations do not exist, and the script says so rather than pretending otherwise.
+Windows arm32 is not in .NET 10's runtime identifier graph. The browser has no shared runtime, so a
+framework-dependent Blazor WebAssembly build is refused outright. And an Android package always carries its
+own runtime, so its two forms come out identical — both are produced, and they are the same APK.
+
+Built binaries are unsigned. Windows Smart App Control, where it is on, will refuse to load them.
 
 ## Layout
 
