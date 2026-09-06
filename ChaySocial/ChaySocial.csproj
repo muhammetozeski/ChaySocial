@@ -3,7 +3,11 @@
   <PropertyGroup>
     <TargetFrameworks>net10.0-android</TargetFrameworks>
     <!--<TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>-->
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
+    <!-- The Windows head is dropped when SkipWindowsHead is set. Restore covers every target framework a project
+         declares even when -f names one of them, so publishing Android's 32-bit ABIs — which need
+         UseMonoRuntime=true, a global property that reaches every head — otherwise sent the Windows head looking
+         for a Microsoft.NETCore.App.Runtime.Mono.win-x64 that .NET 10 does not publish. -->
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows')) AND '$(SkipWindowsHead)' != 'true'">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
 
     <!-- Note for MacCatalyst:
       The default runtime is maccatalyst-x64, except in Release config, in which case the default is maccatalyst-x64;maccatalyst-arm64.
@@ -56,11 +60,10 @@
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
     <RuntimeIdentifier Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">win-x64</RuntimeIdentifier>
-    <!-- .NET 10 SDK doesn't ship a Microsoft.NETCore.App.Runtime.Mono NuGet package for any RID, so the Windows
-         head uses the regular .NET runtime. Android is left out of this: it resolves its own runtime pack, and its
-         32-bit ABIs (android-arm, android-x86) exist only as Mono packs — setting this there asks for a
-         Microsoft.NETCore.App.Runtime.Mono that does not exist. -->
-    <UseMonoRuntime Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) != 'android'">false</UseMonoRuntime>
+    <!-- .NET 10 SDK doesn't ship a Microsoft.NETCore.App.Runtime.Mono NuGet package for any RID, so every head
+         built here uses the regular .NET runtime. Android's 32-bit ABIs are the exception and are published with
+         -p:UseMonoRuntime=true alongside -p:SkipWindowsHead=true; see SkipWindowsHead below for why both. -->
+    <UseMonoRuntime>false</UseMonoRuntime>
   </PropertyGroup>
 
   <ItemGroup>
