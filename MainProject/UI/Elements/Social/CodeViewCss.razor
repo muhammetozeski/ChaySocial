@@ -1,0 +1,34 @@
+@*
+    Styling for a fenced snippet. Only two things matter here: that the characters line up under each other, and
+    that a long line scrolls inside the block rather than stretching the card it sits in.
+*@
+<style>
+    .code-view {
+        box-sizing: border-box;
+        margin: 0;
+        padding: @(AppMeasures.Space.Px12)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.BackgroundDeep.ToRgbaHex(true));
+        /* The block scrolls itself. Without this a single long line pushes the whole card wider than the screen,
+           and the page ends up scrolling sideways because of one snippet in the middle of it. */
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+    }
+
+    /* Whitespace is meaning here, so none of it is collapsed and nothing is wrapped: an indented line that was
+       re-wrapped would be a different piece of code from the one that was signed. */
+    .code-view code {
+        display: block;
+        white-space: pre;
+        font-family: @CodeTypeface;
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+</style>
+
+@code {
+    /// <summary> Fixed-width faces, so a column of code lines up the way its writer laid it out. </summary>
+    const string CodeTypeface = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+}

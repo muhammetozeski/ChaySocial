@@ -1,0 +1,70 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.Text
+
+@*
+    Draws a fenced snippet. Every character that was written is drawn; the colouring is the only thing added, and
+    it comes off the reader's own theme rather than out of the stored piece.
+
+    Nothing here goes through WrittenLine. Inside code an @ is not somebody being named and a # is not a subject,
+    and turning either into a link would rewrite what the writer meant by it.
+*@
+
+@* The break is written before each line but the first, rather than after each of them: a break after the last
+   line would leave every snippet with an empty line hanging off the bottom of it. *@
+<pre class="code-view"><code>@for (int index = 0; index < Lines.Count; index++)
+{
+    @(index > 0 ? LineBreak : string.Empty)
+    @foreach (CodeToken token in TokensOf(Lines[index]))
+    {
+        <span style="color:@CodeInks.HexOf(token.Kind)">@token.Text</span>
+    }
+}</code></pre>
+
+<CodeViewCss />
+
+@code {
+    /// <summary> The snippet, its lines joined the way <see cref="WrittenProse"/> joined them. </summary>
+    [Parameter, EditorRequired] public string Text { get; set; } = string.Empty;
+
+    /// <summary> The label the fence carried; an unknown one is drawn in one colour rather than guessed at. </summary>
+    [Parameter] public string Language { get; set; } = string.Empty;
+
+    /// <summary>
+    /// How many lines are coloured. Past this the lines are still drawn, in one colour: a snippet arriving off the
+    /// network is somebody else's claim, and it cannot be allowed to ask this device to read tokens for a minute
+    /// while a feed is scrolling. Nothing is hidden — only the colouring stops.
+    /// </summary>
+    const int MostColouredLines = 400;
+
+    /// <summary> How long a line may be before it is drawn in one colour, for the same reason. </summary>
+    const int LongestColouredLine = 500;
+
+    /// <summary> What ends a line inside the drawn block. </summary>
+    const string LineBreak = "\n";
+
+    /// <summary> The snippet cut back into its lines. </summary>
+    IReadOnlyList<string> Lines = [];
+
+    /// <summary> The snippet the lines were cut from, so scrolling a feed does not redo the work. </summary>
+    string readText = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        if (readText == Text) return;
+
+        readText = Text;
+        Lines = Text.Split(WrittenProse.CodeLineEnding);
+    }
+
+    /// <summary> Reads one line into its pieces, or hands it back whole when it is past a cap. </summary>
+    /// <param name="line"> The line to colour. </param>
+    /// <returns> Its pieces, which rejoin into the line either way. </returns>
+    IReadOnlyList<CodeToken> TokensOf(string line)
+    {
+        if (line.Length == 0) return [];
+        if (line.Length > LongestColouredLine) return [new CodeToken(CodeTokenKind.Plain, line)];
+        if (Lines.Count > MostColouredLines) return [new CodeToken(CodeTokenKind.Plain, line)];
+
+        return WrittenCode.Read(line, Language);
+    }
+}
