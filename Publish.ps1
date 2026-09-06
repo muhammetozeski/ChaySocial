@@ -53,13 +53,14 @@ foreach ($mode in @(@{ Name = "SelfContained"; Value = "true" }, @{ Name = "Fram
 }
 
 # ── Web client ──
-# Only one packaging mode exists: Blazor WebAssembly refuses --self-contained false with NETSDK1102,
-# because a browser has no shared runtime to depend on.
+# One output, not two: Blazor WebAssembly refuses --self-contained false with NETSDK1102, because a browser has
+# no shared runtime to depend on. A "SelfContained" folder next to nothing would be a distinction that is not
+# there.
 Write-Host "Web client" -ForegroundColor Green
 Invoke-Publish `
     -Label "browser" `
     -Arguments @($WebClientCsproj, "-c", "Release") `
-    -Output "$PublishDir\Clients\Web\SelfContained"
+    -Output "$PublishDir\Clients\Web"
 
 # ── Windows clients ──
 # win-arm32 is absent on purpose: .NET 10's portable RID graph carries win-x64, win-x86 and win-arm64 only,
@@ -75,8 +76,9 @@ foreach ($rid in @("win-x64", "win-x86", "win-arm64")) {
 }
 
 # ── Android clients ──
-# Both packaging modes are produced because both are asked for, and both come out identical: an APK always
-# carries its own runtime, so --self-contained changes nothing there.
+# One output per architecture. An APK always carries its own runtime, so --self-contained changes nothing: the
+# two forms were built once and came out identical to the byte, same SHA-256, same AOT libraries inside. Two
+# folders holding the same file is not a choice anybody can make.
 Write-Host "Android clients" -ForegroundColor Green
 $AndroidAbis = @(
     @{ Rid = "android-arm64"; NeedsMono = $false },
@@ -85,29 +87,30 @@ $AndroidAbis = @(
     @{ Rid = "android-x86";   NeedsMono = $true }
 )
 foreach ($abi in $AndroidAbis) {
-    foreach ($mode in @(@{ Name = "SelfContained"; Value = "true" }, @{ Name = "FrameworkDependent"; Value = "false" })) {
-        $arguments = @(
-            $MauiCsproj, "-f", $AndroidFramework, "-c", "Release",
-            "-p:AndroidRuntimeIdentifiers=$($abi.Rid)",
-            "-p:AndroidKeyStore=false",
-            "--self-contained", $mode.Value
-        )
-        if ($abi.NeedsMono) { $arguments += @("-p:SkipWindowsHead=true", "-p:UseMonoRuntime=true") }
+    $arguments = @(
+        $MauiCsproj, "-f", $AndroidFramework, "-c", "Release",
+        "-p:AndroidRuntimeIdentifiers=$($abi.Rid)",
+        "-p:AndroidKeyStore=false"
+    )
+    if ($abi.NeedsMono) { $arguments += @("-p:SkipWindowsHead=true", "-p:UseMonoRuntime=true") }
 
-        Invoke-Publish `
-            -Label "$($abi.Rid) $($mode.Name)" `
-            -Arguments $arguments `
-            -Output "$PublishDir\Clients\Android\$($abi.Rid)\$($mode.Name)"
-    }
+    Invoke-Publish `
+        -Label $abi.Rid `
+        -Arguments $arguments `
+        -Output "$PublishDir\Clients\Android\$($abi.Rid)"
 }
 
 # ── What came out ──
 Write-Host ""
 Write-Host "Published:" -ForegroundColor Green
-Get-ChildItem $PublishDir -Recurse -Directory |
-    Where-Object { $_.Name -in @("SelfContained", "FrameworkDependent") } |
-    ForEach-Object {
-        $files = Get-ChildItem $_.FullName -Recurse -File
-        $megabytes = ($files | Measure-Object Length -Sum).Sum / 1MB
-        "  {0,-52} {1,5} files {2,8:N1} MB" -f $_.FullName.Replace("$PublishDir\", ""), $files.Count, $megabytes
-    }
+$Artifacts = @("$PublishDir\Server\win-x64\SelfContained", "$PublishDir\Server\win-x64\FrameworkDependent", "$PublishDir\Clients\Web")
+foreach ($rid in @("win-x64", "win-x86", "win-arm64")) {
+    $Artifacts += @("$PublishDir\Clients\Windows\$rid\SelfContained", "$PublishDir\Clients\Windows\$rid\FrameworkDependent")
+}
+foreach ($abi in $AndroidAbis) { $Artifacts += "$PublishDir\Clients\Android\$($abi.Rid)" }
+
+foreach ($artifact in $Artifacts) {
+    $files = Get-ChildItem $artifact -Recurse -File
+    $megabytes = ($files | Measure-Object Length -Sum).Sum / 1MB
+    "  {0,-46} {1,5} files {2,8:N1} MB" -f $artifact.Replace("$PublishDir\", ""), $files.Count, $megabytes
+}

@@ -115,20 +115,33 @@ Make an account with one tap. To post anything you need a writing permit, which 
 which takes a few minutes of the machine's own time, once.
 
 Build everything that ships — the server, the web client, Windows (x64, x86, arm64) and Android
-(arm64-v8a, armeabi-v7a, x86_64, x86), each in a self-contained and a framework-dependent form:
+(arm64-v8a, armeabi-v7a, x86_64, x86):
 
 ```bash
 pwsh ./Publish.ps1
 ```
 
-Output lands in `Publish/`, one directory per platform, architecture and packaging mode.
+Output lands in `Publish/`, one directory per platform and architecture. Windows is the only place the
+self-contained and framework-dependent split means anything: a browser has no shared runtime to depend on, and
+an Android package always carries its own, so those come out as one build each.
 
-Three of those combinations do not exist, and the script says so rather than pretending otherwise.
-Windows arm32 is not in .NET 10's runtime identifier graph. The browser has no shared runtime, so a
-framework-dependent Blazor WebAssembly build is refused outright. And an Android package always carries its
-own runtime, so its two forms come out identical — both are produced, and they are the same APK.
+Windows arm32 is missing because .NET 10's runtime identifier graph has no `win-arm` in it.
 
 Built binaries are unsigned. Windows Smart App Control, where it is on, will refuse to load them.
+
+### Reaching the server from another device
+
+The server listens on every interface and prints where it can be reached:
+
+```
+Now listening on: http://0.0.0.0:5000
+Reachable at: http://localhost:5000, http://192.168.1.20:5000
+```
+
+That LAN address works in any browser on the same network. A phone needs it set in Settings — on a phone,
+localhost is the phone. To hand out clients with the address already in them, change the one line in
+`ChaySocial/ServerAddress.cs` and publish again; that file names the four forms it takes, including a tunnel
+and a Tor hidden service.
 
 ## Layout
 
