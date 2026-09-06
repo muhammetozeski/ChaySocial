@@ -18,7 +18,10 @@ namespace ChaySocial.MainProject.DataModels
         Message,
 
         /// <summary> Someone named the recipient in something they wrote. </summary>
-        Mention
+        Mention,
+
+        /// <summary> Someone put their own name behind the recipient's account. </summary>
+        Vouch
     }
 
     /// <summary>

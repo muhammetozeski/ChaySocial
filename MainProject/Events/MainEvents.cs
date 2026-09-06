@@ -25,6 +25,9 @@ namespace ChaySocial.MainProject.Events
             /// <summary> One account started or stopped following another. Payload is the followee's address. </summary>
             public const string FollowChanged = nameof(FollowChanged);
 
+            /// <summary> One account vouched for another, or took it back. Payload is the subject's address. </summary>
+            public const string VouchChanged = nameof(VouchChanged);
+
             /// <summary> A comment was published or removed. Payload is the id of the post it belongs to. </summary>
             public const string CommentsChanged = nameof(CommentsChanged);
 
