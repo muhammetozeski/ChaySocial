@@ -25,6 +25,18 @@ namespace ChaySocial.MainProject.Services
         /// <summary> How many of an account's newest posts are folded into its fingerprint. </summary>
         public const int SamplePostCount = 40;
 
+        /// <summary>
+        /// Fewest words an account has to have published before its writing counts as a habit rather than as a
+        /// handful of sentences. Below this it has no fingerprint at all, and the mirror neither names it nor
+        /// measures a draft against it.
+        /// </summary>
+        /// <remarks>
+        /// The same floor the thresholds were measured against: every account in that measurement had at least
+        /// this much writing behind it, so an account with less has never been shown to behave the way the numbers
+        /// in docs/Measurements.md describe. Two posts of "ok" and "lol" would otherwise become a yardstick.
+        /// </remarks>
+        public const int LeastWordsForAFingerprint = 50;
+
         /// <summary> What separates two folded posts, so the last word of one does not join the first of the next. </summary>
         const string PostSeparator = "\n\n";
 
@@ -47,7 +59,9 @@ namespace ChaySocial.MainProject.Services
                 Fold(folded, WritingOf(post.Text, post.Title, post.LongBody));
             }
 
-            return StyleFingerprint.Of(folded.ToString());
+            StyleFingerprint measured = StyleFingerprint.Of(folded.ToString());
+
+            return measured.WordsMeasured >= LeastWordsForAFingerprint ? measured : StyleFingerprint.Unwritten;
         }
 
         /// <summary>
