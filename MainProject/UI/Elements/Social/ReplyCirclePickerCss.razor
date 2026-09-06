@@ -1,0 +1,93 @@
+@*
+    Styling for ReplyCirclePicker. ReplyCirclePicker renders this component itself. Every selector is namespaced
+    "reply-circle-*" because *Css.razor styles are global.
+*@
+<style>
+    .reply-circle-picker {
+        display: contents;
+    }
+
+    /* The same round tool as the pickers beside it, so choosing who may answer reads as one more thing a post
+       carries rather than as a mode the composer switches into. */
+    .reply-circle-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        width: @(AppMeasures.Size.Px36)px;
+        height: @(AppMeasures.Size.Px36)px;
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Small)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        cursor: pointer;
+        transition: border-color @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .reply-circle-toggle:hover:not(:disabled) {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+        }
+
+        .reply-circle-toggle.is-open {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+            background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+        }
+
+        /* Stays lit once the door has been narrowed, even with the choices closed. Somebody who has shut a post to
+           everybody should be able to see that from the tool row rather than by opening it again. */
+        .reply-circle-toggle.is-narrowed {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+        }
+
+        .reply-circle-toggle:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: default;
+        }
+
+    /* Breaks out of the tool row onto its own full-width line, the way the poll's answers do: the choice belongs
+       to the post being written, not to the row of buttons. */
+    .reply-circle-choices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: @(AppMeasures.Space.Px6)px;
+        flex-basis: @(AppMeasures.Percent.Full)%;
+        margin-top: @(AppMeasures.Space.Px8)px;
+    }
+
+    .reply-circle-choice {
+        display: inline-flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px6)px;
+        padding: @(AppMeasures.Space.Px6)px @(AppMeasures.Space.Px12)px;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.BorderSoft.ToRgbaHex(true));
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        font: inherit;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        cursor: pointer;
+        transition: border-color @(AppMeasures.Duration.Fast)s ease, color @(AppMeasures.Duration.Fast)s ease;
+    }
+
+        .reply-circle-choice:hover:not(:disabled) {
+            border-color: @(AppColors.PrimaryLight.ToRgbaHex(true));
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
+        .reply-circle-choice.is-chosen {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            background: @(AppColors.SurfaceTintPrimary.ToRgbaHex(true));
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
+        .reply-circle-choice:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: default;
+        }
+
+    .reply-circle-emoji {
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+</style>

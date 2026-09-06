@@ -46,13 +46,17 @@
                        AttachmentsChanged="@AttachmentsChanged"
                        IsDisabled="@IsBusy" />
 
-        @* Last in the row, because opening it takes a whole line and a control that pushed the ones after it onto
-           their own lines would scatter a row that reads as one row. *@
+        @* These two are last, because opening either takes a whole line and a control that pushed the ones after
+           it onto their own lines would scatter a row that reads as one row. *@
         <LongFormComposer Title="@Title"
                           TitleChanged="@TitleChanged"
                           LongBody="@LongBody"
                           LongBodyChanged="@LongBodyChanged"
                           IsDisabled="@IsBusy" />
+
+        <ReplyCirclePicker Circle="@ReplyCircle"
+                           CircleChanged="@ReplyCircleChanged"
+                           IsDisabled="@IsBusy" />
     </div>
 
     @* Both shown to the writer only, before anything is sent. Neither reports nor blocks anything: the first says
@@ -174,6 +178,12 @@
 
     /// <summary> Hands the answers back to the page that owns them. </summary>
     [Parameter] public EventCallback<IReadOnlyList<string>> PollChoicesChanged { get; set; }
+
+    /// <summary> Who may answer the post being written; anybody, unless the writer narrows it. </summary>
+    [Parameter] public ReplyCircle ReplyCircle { get; set; } = ReplyCircle.Anyone;
+
+    /// <summary> Hands that choice back to the page that owns it. </summary>
+    [Parameter] public EventCallback<ReplyCircle> ReplyCircleChanged { get; set; }
 
     /// <summary> Post the writer is quoting, or null when they are writing a plain post. </summary>
     [Parameter] public PostData? QuotedPost { get; set; }

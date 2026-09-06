@@ -1,0 +1,116 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.DataModels
+
+@*
+    Who may answer the post being written. Closed by default and one tap away, the way the poll composer is: most
+    posts are said to whoever is listening, and a composer that always showed four doors would be a composer about
+    doors.
+
+    The choice is not a setting on this device. It goes inside the post's own signature, so nobody holding the
+    documents can widen it afterwards.
+*@
+
+<div class="reply-circle-picker">
+    <button type="button"
+            class="reply-circle-toggle @(IsOpen ? OpenClass : string.Empty) @(Circle != ReplyCircle.Anyone ? NarrowedClass : string.Empty)"
+            disabled="@IsDisabled"
+            title="@ToggleHint"
+            @onclick="Toggle">
+        @ToggleEmoji
+    </button>
+
+    @if (IsOpen)
+    {
+        <div class="reply-circle-choices">
+            @foreach (ReplyCircle choice in Offered)
+            {
+                @* Declared inside the loop body, so each button carries its own circle rather than the last one. *@
+                ReplyCircle option = choice;
+
+                <button type="button"
+                        class="reply-circle-choice @(option == Circle ? ChosenClass : string.Empty)"
+                        disabled="@IsDisabled"
+                        @onclick="() => ChooseAsync(option)">
+                    <span class="reply-circle-emoji">@EmojiFor(option)</span>
+                    <span class="reply-circle-label">@Describe(option)</span>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+<ReplyCirclePickerCss />
+
+@code {
+    /// <summary> Who may answer, as it stands. </summary>
+    [Parameter] public ReplyCircle Circle { get; set; } = ReplyCircle.Anyone;
+
+    /// <summary> Raised with the newly chosen circle, so the page owns it. </summary>
+    [Parameter] public EventCallback<ReplyCircle> CircleChanged { get; set; }
+
+    /// <summary> True while the composer is busy publishing, which locks this control too. </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+
+    /// <summary> Mark on the control that opens the choices. </summary>
+    const string ToggleEmoji = "🚪";
+
+    /// <summary> What that control says it does. </summary>
+    const string ToggleHint = "Choose who can reply";
+
+    /// <summary> Class the toggle carries while the choices are open. </summary>
+    const string OpenClass = "is-open";
+
+    /// <summary> Class the toggle carries once the door has been narrowed, so a closed control still shows it. </summary>
+    const string NarrowedClass = "is-narrowed";
+
+    /// <summary> Class marking the chosen circle. </summary>
+    const string ChosenClass = "is-chosen";
+
+    /// <summary> The circles offered, in the order <see cref="ReplyCircle"/> declares them. </summary>
+    static readonly ReplyCircle[] Offered = Enum.GetValues<ReplyCircle>();
+
+    /// <summary> True while the choices are on screen. </summary>
+    bool IsOpen;
+
+    /// <summary> Opens the choices, or closes them. </summary>
+    void Toggle()
+    {
+        if (IsDisabled) return;
+
+        IsOpen = !IsOpen;
+    }
+
+    /// <summary> Hands one circle back to the page and closes the choices. </summary>
+    /// <param name="circle"> The circle that was tapped. </param>
+    /// <returns> A task that completes once the page has taken it. </returns>
+    async Task ChooseAsync(ReplyCircle circle)
+    {
+        IsOpen = false;
+
+        await CircleChanged.InvokeAsync(circle);
+    }
+
+    /// <summary> What a writer is told each circle means. </summary>
+    /// <param name="circle"> The circle being described. </param>
+    /// <returns> A short English line for the button. </returns>
+    static string Describe(ReplyCircle circle) => circle switch
+    {
+        ReplyCircle.Anyone => "Anyone can reply",
+        ReplyCircle.FollowedByAuthor => "Only people I follow",
+        ReplyCircle.NamedOnly => "Only people I named",
+        ReplyCircle.NoOne => "Nobody",
+        _ => string.Empty
+    };
+
+    /// <summary> The mark drawn beside each circle. </summary>
+    /// <param name="circle"> The circle being drawn. </param>
+    /// <returns> Its emoji. </returns>
+    static string EmojiFor(ReplyCircle circle) => circle switch
+    {
+        ReplyCircle.Anyone => "🌍",
+        ReplyCircle.FollowedByAuthor => "🤝",
+        ReplyCircle.NamedOnly => "@",
+        ReplyCircle.NoOne => "🔒",
+        _ => string.Empty
+    };
+}
