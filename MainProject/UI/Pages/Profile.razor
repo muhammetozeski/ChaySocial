@@ -344,6 +344,21 @@
                                   IsBusy="@IsFollowBusy"
                                   OnToggle="ToggleFollowAsync" />
 
+                    @* Beside the follow, because both are the reader saying something about this account —
+                       except that this one is signed and says it in words. *@
+                    <CoreButton OnClick="ToggleVouchAsync"
+                                Disabled="@IsVouchBusy"
+                                Background="@AppColors.SurfaceSubtle"
+                                TextColor="@AppColors.TextSecondary"
+                                BorderRadius="@PillRadiusCss"
+                                Padding="@ActionPaddingCss"
+                                FontSize="@AppMeasures.Font.Normal"
+                                Border="@QuietButtonBorder"
+                                CustomClass="profile-action-button">
+                        <span class="profile-action-emoji">@VouchEmoji</span>
+                        <span>@(HasVouched ? WithdrawVouchLabel : VouchLabel)</span>
+                    </CoreButton>
+
                     <CoreButton OnClick="OpenMessages"
                                 Background="@AppColors.SurfaceSubtle"
                                 TextColor="@AppColors.TextSecondary"
@@ -415,6 +430,9 @@
                 }
             </div>
         }
+
+        @* Under the header and above the posts: who somebody is comes before what they said. *@
+        <VouchPanel Vouches="@Vouches" OnOpenVoucher="OpenAccount" />
 
         <section class="profile-posts">
             <h2 class="profile-section-title">@PostsSectionTitle</h2>
@@ -596,6 +614,37 @@
                             FontSize="@AppMeasures.Font.Normal"
                             Border="@QuietButtonBorder">
                     @CardCloseLabel
+                </CoreButton>
+            </div>
+        </div>
+    </CoreModal>
+
+    <CoreModal IsVisible="@IsVouchSheetOpen" IsAcrylic="true" OnBackdropClick="CloseVouchSheet">
+        <div class="profile-vouch-sheet">
+            <span class="profile-vouch-emoji">@VouchEmoji</span>
+            <h2 class="profile-vouch-title">@VouchSheetTitle</h2>
+            <p class="profile-vouch-subtitle">@VouchSheetSubtitle</p>
+
+            <input class="profile-input"
+                   type="text"
+                   maxlength="@VouchData.MaximumKnownAsLength"
+                   placeholder="@VouchNamePlaceholder"
+                   value="@VouchName"
+                   disabled="@IsVouchBusy"
+                   @oninput="HandleVouchNameInput" />
+
+            <div class="profile-vouch-actions">
+                <button type="button" class="profile-vouch-quiet" disabled="@IsVouchBusy" @onclick="CloseVouchSheet">@CancelLabel</button>
+
+                <CoreButton OnClick="VouchAsync"
+                            Disabled="@(!CanVouch)"
+                            Gradient="@PrimaryGradient"
+                            TextColor="@AppColors.TextOnAccent"
+                            BorderRadius="@PillRadiusCss"
+                            Padding="@ActionPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow">
+                    @(IsVouchBusy ? VouchingLabel : VouchConfirmLabel)
                 </CoreButton>
             </div>
         </div>

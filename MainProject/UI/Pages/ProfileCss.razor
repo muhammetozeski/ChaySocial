@@ -518,6 +518,65 @@
             }
     }
 
+    /* The sheet that takes the name a voucher calls somebody. Laid out like the card sheet beside it, because
+       both are one thing said about one account. */
+    .profile-vouch-sheet {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Size.Px320)px;
+        max-width: @(AppMeasures.Percent.Full)%;
+        text-align: center;
+    }
+
+    .profile-vouch-emoji {
+        font-size: @(AppMeasures.Font.Hero)px;
+        line-height: @(AppMeasures.LineHeight.None);
+    }
+
+    .profile-vouch-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Large)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .profile-vouch-subtitle {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .profile-vouch-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: @(AppMeasures.Space.Px12)px;
+        width: @(AppMeasures.Percent.Full)%;
+    }
+
+    .profile-vouch-quiet {
+        padding: @(AppMeasures.Space.Px10)px @(AppMeasures.Space.Px16)px;
+        border: none;
+        border-radius: @(AppMeasures.Radius.Pill)px;
+        background: transparent;
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        cursor: pointer;
+        font: inherit;
+        font-size: @(AppMeasures.Font.Normal)px;
+    }
+
+        .profile-vouch-quiet:hover:not(:disabled) {
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
+        .profile-vouch-quiet:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: not-allowed;
+        }
+
     /* The row under the emoji grid: the control that opens the board, and — once there is a face — the face
        itself, a line saying what it is, and the way back to the emoji. It wraps, because on a narrow screen
        those four together are wider than the card. */

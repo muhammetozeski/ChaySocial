@@ -453,6 +453,7 @@ namespace ChaySocial.MainProject.UI.Pages
         [
             MainEvents.Names.WallChanged,
             MainEvents.Names.FollowChanged,
+            MainEvents.Names.VouchChanged,
             MainEvents.Names.ProfileChanged,
             MainEvents.Names.ModerationChanged,
             MainEvents.Names.SessionChanged
@@ -583,13 +584,17 @@ namespace ChaySocial.MainProject.UI.Pages
             {
                 IsFollowingShownAccount = false;
                 IsShownAccountBlocked = false;
+                HasVouched = false;
             }
             else
             {
                 string viewerAddress = SessionService.CurrentAddress;
                 IsFollowingShownAccount = await FollowService.IsFollowingAsync(viewerAddress, address);
                 IsShownAccountBlocked = await ModerationService.IsBlockedAsync(viewerAddress, address);
+                HasVouched = await VouchService.HasVouchedAsync(viewerAddress, address);
             }
+
+            Vouches = await VouchService.ReadVisibleForSubjectAsync(SessionService.CurrentAddress, address);
 
             WallEntries = await FeedService.ReadAccountWallAsync(address);
             await LoadPostEngagementAsync();
@@ -910,6 +915,134 @@ namespace ChaySocial.MainProject.UI.Pages
 
         /// <summary> Opens the reader's own shelf of kept posts. </summary>
         void OpenShelf() => NavManager.NavigateTo(Clippings.ClippingsRoute);
+
+        /// <summary> Opens another account's profile from this one. </summary>
+        /// <param name="address"> Address of the account to open. </param>
+        void OpenAccount(string address) => NavManager.NavigateTo($"{NavigationConstants.Profile.Link}/{address}");
+
+        /// <summary> Emoji on the control that puts the reader's name behind this account. </summary>
+        const string VouchEmoji = "✍️";
+
+        /// <summary> Label on that control. </summary>
+        const string VouchLabel = "Vouch";
+
+        /// <summary> Label once the reader has already vouched. </summary>
+        const string WithdrawVouchLabel = "Take it back";
+
+        /// <summary> Heading of the sheet that takes the name. </summary>
+        const string VouchSheetTitle = "Stand behind this account";
+
+        /// <summary> Line under it, saying what is being signed and how public it is. </summary>
+        const string VouchSheetSubtitle =
+            "Say who you know them to be. It is signed with your key, so nobody can invent one in your name, and who vouches for whom is public the way following somebody is.";
+
+        /// <summary> What the empty name box invites. </summary>
+        const string VouchNamePlaceholder = "What do you call them?";
+
+        /// <summary> Label on the button that signs it. </summary>
+        const string VouchConfirmLabel = "Sign it";
+
+        /// <summary> What that button says while the signing runs. </summary>
+        const string VouchingLabel = "Signing…";
+
+        /// <summary> The vouches drawn under the header, each with the profile behind it. </summary>
+        IReadOnlyList<(VouchData Vouch, ProfileData Voucher)> Vouches = [];
+
+        /// <summary> True when the reader has already vouched for the account on screen. </summary>
+        bool HasVouched;
+
+        /// <summary> True while the vouching sheet is on screen. </summary>
+        bool IsVouchSheetOpen;
+
+        /// <summary> The name being typed into that sheet. </summary>
+        string VouchName = string.Empty;
+
+        /// <summary> True while a vouch is being signed or withdrawn. </summary>
+        bool IsVouchBusy;
+
+        /// <summary> True when the sheet holds a usable name and nothing is already running. </summary>
+        bool CanVouch => !IsVouchBusy && VouchName.Trim().Length > 0;
+
+        /// <summary>
+        /// One button for both directions: opens the sheet when there is nothing to take back, and takes it back
+        /// when there is. Withdrawing asks nothing, because the sentence being removed is the reader's own.
+        /// </summary>
+        /// <returns> A task that completes once the vouch is gone, or at once when the sheet was opened instead. </returns>
+        Task ToggleVouchAsync()
+        {
+            if (HasVouched) return WithdrawVouchAsync();
+
+            OpenVouchSheet();
+            return Task.CompletedTask;
+        }
+
+        /// <summary> Opens the vouching sheet on a clean name. </summary>
+        void OpenVouchSheet()
+        {
+            VouchName = string.Empty;
+            IsVouchSheetOpen = true;
+        }
+
+        /// <summary> Closes it, leaving a signing that is already running to finish. </summary>
+        void CloseVouchSheet()
+        {
+            if (IsVouchBusy) return;
+
+            IsVouchSheetOpen = false;
+        }
+
+        /// <summary> Keeps the typed name on the page. </summary>
+        /// <param name="args"> The input event; its value is the box's new contents. </param>
+        void HandleVouchNameInput(ChangeEventArgs args) => VouchName = args.Value?.ToString() ?? string.Empty;
+
+        /// <summary> Signs the vouch and reloads the panel. </summary>
+        /// <returns> A task that completes once it is written or the attempt has failed. </returns>
+        async Task VouchAsync()
+        {
+            if (!CanVouch) return;
+
+            IsVouchBusy = true;
+
+            try
+            {
+                await VouchService.VouchAsync(Account, TargetAddress, VouchName);
+                IsVouchSheetOpen = false;
+                await ReloadAsync();
+            }
+            catch (Exception error)
+            {
+                Log($"{nameof(Profile)} could not vouch for '{TargetAddress}'.\n{error}", LogLevel.Error);
+            }
+            finally
+            {
+                IsVouchBusy = false;
+                if (!HasNavigatedAway) StateHasChanged();
+            }
+        }
+
+        /// <summary> Takes the reader's vouch back and reloads the panel. </summary>
+        /// <returns> A task that completes once it is gone. </returns>
+        async Task WithdrawVouchAsync()
+        {
+            if (IsVouchBusy) return;
+
+            IsVouchBusy = true;
+
+            try
+            {
+                await VouchService.WithdrawAsync(Account, TargetAddress);
+                await ReloadAsync();
+            }
+            catch (Exception error)
+            {
+                Log($"{nameof(Profile)} could not withdraw a vouch for '{TargetAddress}'.\n{error}", LogLevel.Error);
+            }
+            finally
+            {
+                IsVouchBusy = false;
+                if (!HasNavigatedAway) StateHasChanged();
+            }
+        }
 
         /// <summary> When this account first published a profile, or zero when it never did. </summary>
         long ShownJoinedAtUnixMs => ShownProfile?.CreatedAtUnixMs ?? 0;
