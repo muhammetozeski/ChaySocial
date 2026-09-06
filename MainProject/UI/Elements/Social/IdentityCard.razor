@@ -1,0 +1,66 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using System.Text
+@using ChaySocial.MainProject.Identity
+
+@*
+    An account drawn as one picture, and the link that carries it out of here.
+
+    The copy on screen and the copy in the file are the same string: the drawing is built once and rendered
+    inline, so what somebody saves can never be a different card from the one they were shown.
+*@
+
+<div class="identity-card">
+    <div class="identity-card-drawing">@((MarkupString)_drawing)</div>
+
+    @* A plain link with a data URI, the same shape the archive screen already saves a file with. Nothing here
+       runs: the card is a picture, and saving it is the browser's own download. *@
+    <a class="identity-card-save" download="@FileName" href="@_fileUri">@SaveLabel</a>
+
+    <p class="identity-card-note">@Note</p>
+</div>
+
+<IdentityCardCss />
+
+@code {
+    /// <summary> Address of the account the card is for. </summary>
+    [Parameter, EditorRequired] public string Address { get; set; } = string.Empty;
+
+    /// <summary> The name it goes by. </summary>
+    [Parameter] public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary> The emoji beside that name. </summary>
+    [Parameter] public string AvatarEmoji { get; set; } = string.Empty;
+
+    /// <summary> When the account was made. </summary>
+    [Parameter] public long CreatedAtUnixMs { get; set; }
+
+    /// <summary> What the saved file is called. </summary>
+    const string FileName = "chay-card.svg";
+
+    /// <summary> Media type the file is offered as. </summary>
+    const string CardContentType = "image/svg+xml";
+
+    /// <summary> Text on the link that saves it. </summary>
+    const string SaveLabel = "Save the card";
+
+    /// <summary> Line under it, saying what this is and what it is not. </summary>
+    const string Note = "A picture, drawn on this device and never sent anywhere. It carries your address, not your secret.";
+
+    /// <summary> The card as one SVG document, rebuilt only when what it shows changes. </summary>
+    string _drawing = string.Empty;
+
+    /// <summary> That same document as something the link can hand over. </summary>
+    string _fileUri = string.Empty;
+
+    /// <summary> What the drawing was built from, so it is not rebuilt for nothing. </summary>
+    (string Address, string DisplayName, string AvatarEmoji, long CreatedAtUnixMs) _drawnFrom;
+
+    protected override void OnParametersSet()
+    {
+        if (_drawnFrom == (Address, DisplayName, AvatarEmoji, CreatedAtUnixMs)) return;
+
+        _drawnFrom = (Address, DisplayName, AvatarEmoji, CreatedAtUnixMs);
+        _drawing = IdentityCardDrawing.Build(Address, DisplayName, AvatarEmoji, CreatedAtUnixMs);
+        _fileUri = $"data:{CardContentType};base64,{Convert.ToBase64String(Encoding.UTF8.GetBytes(_drawing))}";
+    }
+}
