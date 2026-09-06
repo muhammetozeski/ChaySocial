@@ -1,0 +1,104 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.Moderation
+@using ChaySocial.MainProject.Text
+
+@*
+    Draws a long piece: its headings, quotes, lists and paragraphs. Every line still goes through WrittenLine, so
+    the accounts and subjects somebody named are links inside an essay exactly as they are inside a post, and
+    neither is written a second time.
+
+    The curtain is judged once over the whole body rather than line by line, and covers the whole piece. Judging
+    each block on its own would let a writer put a word on one line and its target on the next and slip under the
+    band the reader chose — the weights are summed across a text, and so is what makes it directed at somebody.
+*@
+
+@if (IsCovered)
+{
+    <button type="button" class="written-line-curtain" @onclick="Reveal" title="@RevealHint">
+        <span class="written-line-curtain-reason">@Verdict.Reason()</span>
+        <span class="written-line-curtain-open">@ShowAnywayLabel</span>
+    </button>
+}
+else
+{
+    <div class="prose-view">
+        @foreach (ProseBlock block in Shown)
+        {
+            @switch (block.Kind)
+            {
+                case ProseBlockKind.Heading:
+                    <h3 class="prose-view-heading"><WrittenLine Text="@block.Text" MayBeCovered="false" /></h3>
+                    break;
+
+                case ProseBlockKind.Quote:
+                    <blockquote class="prose-view-quote"><WrittenLine Text="@block.Text" MayBeCovered="false" /></blockquote>
+                    break;
+
+                case ProseBlockKind.Bullet:
+                    <p class="prose-view-bullet">
+                        <span class="prose-view-bullet-mark">@BulletGlyph</span>
+                        <span class="prose-view-bullet-text"><WrittenLine Text="@block.Text" MayBeCovered="false" /></span>
+                    </p>
+                    break;
+
+                default:
+                    <p class="prose-view-paragraph"><WrittenLine Text="@block.Text" MayBeCovered="false" /></p>
+                    break;
+            }
+        }
+    </div>
+}
+
+<ProseViewCss />
+
+@code {
+    /// <summary> The long body as its writer typed it. </summary>
+    [Parameter, EditorRequired] public string Body { get; set; } = string.Empty;
+
+    /// <summary> Blocks to draw, or zero for all of them — a card shows the opening, a page shows the piece. </summary>
+    [Parameter] public int BlockLimit { get; set; }
+
+    /// <summary> Whether this piece may be covered at all; off where a reader is looking at their own words. </summary>
+    [Parameter] public bool MayBeCovered { get; set; } = true;
+
+    /// <summary> Drawn in front of a list item. </summary>
+    const string BulletGlyph = "•";
+
+    /// <summary> What the curtain offers, worded as the one over a single line is. </summary>
+    const string ShowAnywayLabel = "Show anyway";
+
+    /// <summary> Tooltip on the curtain, so the reader knows this is their own setting and not somebody's ruling. </summary>
+    const string RevealHint = "Covered by your own setting. Tap to read it.";
+
+    /// <summary> The body split into blocks, recomputed only when the body itself changes. </summary>
+    IReadOnlyList<ProseBlock> Blocks = [];
+
+    /// <summary> What the whole body was read as, recomputed only when the body itself changes. </summary>
+    ContentVerdict Verdict = ContentVerdict.Clean;
+
+    /// <summary> The body the blocks and the verdict were worked out from, so neither is redone for nothing. </summary>
+    string readBody = string.Empty;
+
+    /// <summary> Set once the reader has lifted the curtain on this piece. </summary>
+    bool revealed;
+
+    /// <summary> True while this piece is behind a curtain. </summary>
+    bool IsCovered => MayBeCovered && !revealed && Verdict.ReachesBand(ContentGuard.Covered);
+
+    /// <summary> The blocks actually drawn, which is all of them unless a caller asked for an opening. </summary>
+    IEnumerable<ProseBlock> Shown => BlockLimit > 0 ? Blocks.Take(BlockLimit) : Blocks;
+
+    protected override void OnParametersSet()
+    {
+        if (readBody == Body) return;
+
+        readBody = Body;
+        Blocks = WrittenProse.Read(Body);
+        Verdict = ContentJudge.Judge(Body);
+
+        revealed = false;
+    }
+
+    /// <summary> Lifts the curtain on this piece, for this reader, until the body changes. </summary>
+    void Reveal() => revealed = true;
+}

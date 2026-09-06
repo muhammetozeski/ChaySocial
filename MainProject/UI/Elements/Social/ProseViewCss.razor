@@ -1,0 +1,72 @@
+@*
+    Styling for a long piece. Reading is the whole point of this component, so the measurements here are the ones
+    that decide whether a page of text is comfortable: the space between blocks, the line height, and how far a
+    quote stands out of the column.
+*@
+<style>
+    .prose-view {
+        display: flex;
+        flex-direction: column;
+        gap: @(ProseBlockGapPx)px;
+    }
+
+    .prose-view-paragraph {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .prose-view-heading {
+        margin: 0;
+        font-size: @(ProseHeadingFontSizePx)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    /* A bar down the side rather than quotation marks: the words inside are somebody else's, and a reader should
+       see that before they read them rather than after. */
+    .prose-view-quote {
+        margin: 0;
+        padding-left: @(AppMeasures.Space.Px12)px;
+        border-left: @(ProseQuoteBarWidthPx)px solid @(AppColors.Primary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .prose-view-bullet {
+        display: flex;
+        gap: @(AppMeasures.Space.Px8)px;
+        margin: 0;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    .prose-view-bullet-mark {
+        flex-shrink: 0;
+        color: @(AppColors.Primary.ToRgbaHex(true));
+    }
+
+    .prose-view-bullet-text {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+</style>
+
+@code {
+    /// <summary> Space between one block and the next: what turns a wall of lines into paragraphs. </summary>
+    const int ProseBlockGapPx = AppMeasures.Space.Px12;
+
+    /// <summary> Size of a heading inside a piece — above the prose around it, below the post's own title. </summary>
+    const int ProseHeadingFontSizePx = AppMeasures.Font.Large;
+
+    /// <summary> Thickness of the bar down the side of a quoted line. </summary>
+    const int ProseQuoteBarWidthPx = AppMeasures.Border.Medium;
+}
