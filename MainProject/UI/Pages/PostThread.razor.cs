@@ -79,6 +79,29 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> True when the reader may write under this post; false while the writer's circle shuts them out. </summary>
         bool mayReply = true;
 
+        /// <summary> True while the count receipt is open. </summary>
+        bool isReceiptOpen;
+
+        /// <summary> What the numbers under this post were counted from, or null while it has not been read. </summary>
+        PostCountReceipt? receipt;
+
+        /// <summary>
+        /// Opens or closes the count receipt, reading it the first time it is opened.
+        /// </summary>
+        /// <returns> A task that completes once the receipt is held, or at once when it already is. </returns>
+        /// <remarks>
+        /// Read on opening rather than alongside the post. Checking every signature under a post costs a read per
+        /// account named by a record, and a reader who never asks should not pay for an answer they did not want.
+        /// </remarks>
+        async Task ToggleReceiptAsync()
+        {
+            isReceiptOpen = !isReceiptOpen;
+
+            if (!isReceiptOpen || receipt is not null || post is null) return;
+
+            receipt = await CountReceipt.ReadAsync(post, Account.Public.Address);
+        }
+
         /// <summary> What to tell the reader about the door they are outside of. </summary>
         string ReplyLimitedDescription => post?.ReplyCircle switch
         {
@@ -298,6 +321,11 @@ namespace ChaySocial.MainProject.UI.Pages
 
             loadedPostId = PostId;
             post = await AppServices.Documents.ReadAsync(new DocumentId<PostData>(PostId));
+
+            // A receipt belongs to the post it was counted from. Reading another thread on the same page, or the
+            // same one again after a reply, must not leave last time's numbers under this time's post.
+            receipt = null;
+            isReceiptOpen = false;
 
             if (post is null)
             {

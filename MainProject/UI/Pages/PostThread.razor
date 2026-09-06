@@ -80,6 +80,13 @@
                       ShowLongFormInFull="true"
                       OnLike="ToggleLikeAsync"
                       OnOpenAuthor="OpenAuthorProfile" />
+
+            @* Under the post rather than inside the card: the numbers on the card are what the post says about
+               itself, and this is the reader checking them. *@
+            <CountReceiptCard Receipt="@receipt"
+                              IsOpen="@isReceiptOpen"
+                              IsAsking="@post.IsAsking"
+                              OnToggle="ToggleReceiptAsync" />
         </div>
 
         <section class="post-thread-replies">
