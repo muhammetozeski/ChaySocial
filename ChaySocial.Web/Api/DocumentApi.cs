@@ -217,7 +217,7 @@ namespace ChaySocial.Web.Api
         /// expensive, which is the thing worth making expensive.
         /// </remarks>
         static readonly string[] PermittedWritingCollections =
-            ["posts", "comments", "messages", "reposts", "groups", "subjects", "pages", "pageeditors"];
+            ["posts", "comments", "messages", "reposts", "groups", "subjects", "pages", "pageeditors", "vouches"];
 
         /// <summary> Registers every document route on the application. </summary>
         /// <param name="app"> Application to register on. </param>
