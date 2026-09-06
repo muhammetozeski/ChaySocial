@@ -83,6 +83,7 @@ namespace ChaySocial.MainProject.Services
         /// <param name="pollClosesAtUnixMs"> When the asking closes, or zero to leave it open. </param>
         /// <param name="title"> Line set above a long piece, or empty when the post is not one. </param>
         /// <param name="longBody"> The whole of a long piece, or empty for an ordinary post. </param>
+        /// <param name="replyCircle"> Who may answer it; <see cref="ReplyCircle.Anyone"/> leaves the door as wide as it has always been. </param>
         /// <returns> The stored post, or null when the post was not publishable. </returns>
         public static async Task<PostData?> PublishAsync(
             PrivateIdentity author,
@@ -93,7 +94,8 @@ namespace ChaySocial.MainProject.Services
             IReadOnlyList<string>? pollChoices = null,
             long pollClosesAtUnixMs = 0,
             string title = "",
-            string longBody = "")
+            string longBody = "",
+            ReplyCircle replyCircle = ReplyCircle.Anyone)
         {
             string trimmed = text.Trim();
             string trimmedTitle = title.Trim();
@@ -136,7 +138,7 @@ namespace ChaySocial.MainProject.Services
 
             byte[] transcript = BuildTranscript(
                 postId, author.Public.Address, trimmed, createdAt, string.Empty, media, quotedPostId, groupAddress,
-                choices, closesAt, keptTitle, trimmedBody);
+                choices, closesAt, keptTitle, trimmedBody, replyCircle);
 
             PostData post = new()
             {
@@ -151,6 +153,7 @@ namespace ChaySocial.MainProject.Services
                 PollClosesAtUnixMs = closesAt,
                 Title = keptTitle,
                 LongBody = trimmedBody,
+                ReplyCircle = replyCircle,
                 Signature = Convert.ToBase64String(author.Sign(transcript))
             };
 
@@ -287,7 +290,7 @@ namespace ChaySocial.MainProject.Services
                 byte[] transcript = BuildTranscript(
                     post.PostId, post.AuthorAddress, post.Text, post.CreatedAtUnixMs, post.Topic,
                     post.Attachments, post.QuotedPostId, post.GroupAddress, post.PollChoices, post.PollClosesAtUnixMs,
-                    post.Title, post.LongBody);
+                    post.Title, post.LongBody, post.ReplyCircle);
 
                 return AppCryptography.Identities.Verify(transcript, Convert.FromBase64String(post.Signature), author);
             }
@@ -492,7 +495,8 @@ namespace ChaySocial.MainProject.Services
             IReadOnlyList<string> pollChoices,
             long pollClosesAtUnixMs,
             string title,
-            string longBody)
+            string longBody,
+            ReplyCircle replyCircle)
         {
             TranscriptWriter transcript = new();
             transcript.WriteBytes(PostSignatureDomain);
@@ -528,6 +532,14 @@ namespace ChaySocial.MainProject.Services
             // existed writes exactly the bytes it always did and keeps verifying.
             transcript.WriteNamedText(nameof(PostData.Title), title);
             transcript.WriteNamedText(nameof(PostData.LongBody), longBody);
+
+            // Last, and written as nothing at all when the door was left as wide as it has always been. That is
+            // what keeps every post signed before this field existed producing exactly the bytes it did then — and
+            // it is the whole reason the limit is worth anything: a server that widened it would have to forge a
+            // signature, and a server that narrowed it would break one.
+            transcript.WriteNamedText(
+                nameof(PostData.ReplyCircle),
+                replyCircle == ReplyCircle.Anyone ? string.Empty : replyCircle.ToString());
 
             return transcript.ToArray();
         }
