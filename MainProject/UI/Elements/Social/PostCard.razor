@@ -55,6 +55,23 @@
             <p class="post-card-text"><WrittenLine Text="@Post.Text" /></p>
         }
 
+        @* A long piece is shown as its title and its opening, with the way in underneath. The card is a place to
+           decide whether to read something, and an essay printed whole in a feed is neither. *@
+        @if (Post.IsLongForm)
+        {
+            @if (Post.Title.Length > 0)
+            {
+                <h2 class="post-card-title"><WrittenLine Text="@Post.Title" MayBeCovered="false" /></h2>
+            }
+
+            <ProseView Body="@Post.LongBody" BlockLimit="@(ShowLongFormInFull ? EveryBlock : OpeningBlockCount)" />
+
+            @if (!ShowLongFormInFull)
+            {
+                <button type="button" class="post-card-read-on" @onclick="HandleOpenComments">@ReadOnLabel</button>
+            }
+        }
+
         @* Drawn under the question's own words, because the choices are an answer to them rather than a thing of
            their own. A post that is not asking anything renders nothing here. *@
         <PollView Post="@Post" />
@@ -168,6 +185,21 @@
 <PostCardCss />
 
 @code {
+    /// <summary>
+    /// True where the card is the whole page rather than a line in a feed, which is where a long piece belongs in
+    /// full and where a way in would only lead back to itself.
+    /// </summary>
+    [Parameter] public bool ShowLongFormInFull { get; set; }
+
+    /// <summary> Blocks of a long piece shown on the card: enough to know what it is about, not enough to be the piece. </summary>
+    const int OpeningBlockCount = 2;
+
+    /// <summary> Asks the piece for all of it. </summary>
+    const int EveryBlock = 0;
+
+    /// <summary> Text on the control that opens a long piece in full. </summary>
+    const string ReadOnLabel = "Read on →";
+
     /// <summary> Glass drawn once the reader has given this post a chay. </summary>
     const string PouredGlassEmoji = "🍵";
 

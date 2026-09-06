@@ -70,11 +70,14 @@
     else
     {
         <div class="post-thread-post">
+            @* This is the page the card's own way in leads to, so a long piece is drawn whole here rather than as
+               an opening with a link back to where the reader already is. *@
             <PostCard Post="@post"
                       AuthorProfile="@ProfileFor(post.AuthorAddress)"
                       IsLiked="@isLikedByViewer"
                       LikeCount="@likeCount"
                       CommentCount="@replies.Count"
+                      ShowLongFormInFull="true"
                       OnLike="ToggleLikeAsync"
                       OnOpenAuthor="OpenAuthorProfile" />
         </div>

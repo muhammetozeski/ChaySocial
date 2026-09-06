@@ -112,6 +112,33 @@
         overflow-wrap: anywhere;
     }
 
+    /* The title of a long piece: the loudest thing on the card, because on a card carrying an essay it is what a
+       reader is actually choosing between. */
+    .post-card-title {
+        margin: 0;
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        font-size: @(PostTitleFontSizePx)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        line-height: @(AppMeasures.LineHeight.Snug);
+        overflow-wrap: anywhere;
+    }
+
+    .post-card-read-on {
+        align-self: flex-start;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: @(AppColors.Primary.ToRgbaHex(true));
+        cursor: pointer;
+        font-family: inherit;
+        font-size: @(AppMeasures.Font.Small)px;
+        font-weight: @(AppMeasures.Weight.Medium);
+    }
+
+        .post-card-read-on:hover {
+            text-decoration: underline;
+        }
+
     .post-card-actions {
         display: flex;
         align-items: center;
@@ -366,6 +393,9 @@
 </style>
 
 @code {
+    /// <summary> Size of a long piece's title on a card: above the post text under it, below the page heading. </summary>
+    const int PostTitleFontSizePx = AppMeasures.Font.Large;
+
     /// <summary> Angle of the avatar bubble's two-colour sheen, matching the diagonal every other gradient surface uses. </summary>
     const int AvatarGradientAngleDegrees = 135;
 
