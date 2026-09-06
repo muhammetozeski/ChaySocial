@@ -170,6 +170,12 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Answers typed into the composer for a question not published yet, blanks included. </summary>
         IReadOnlyList<string> ComposerPollChoices = [];
 
+        /// <summary> Title typed for a long piece not published yet. </summary>
+        string ComposerTitle = string.Empty;
+
+        /// <summary> The long piece typed but not published yet. </summary>
+        string ComposerLongBody = string.Empty;
+
         /// <summary> Post the composer is quoting, or null while a plain post is being written. </summary>
         PostData? ComposerQuotedPost;
 
@@ -437,6 +443,14 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <param name="choices"> The answers currently in the composer, blanks included. </param>
         void HandleComposerPollChoicesChanged(IReadOnlyList<string> choices) => ComposerPollChoices = choices;
 
+        /// <summary> Takes the title of a long piece as it is typed. </summary>
+        /// <param name="title"> The title box's new contents. </param>
+        void HandleComposerTitleChanged(string title) => ComposerTitle = title;
+
+        /// <summary> Takes the long piece as it is typed. </summary>
+        /// <param name="body"> The body box's new contents. </param>
+        void HandleComposerLongBodyChanged(string body) => ComposerLongBody = body;
+
         /// <summary> Points the composer at a post to speak about, and scrolls nothing: the composer is already at the top. </summary>
         /// <param name="post"> Post being quoted. </param>
         void StartQuoting(PostData post)
@@ -500,13 +514,15 @@ namespace ChaySocial.MainProject.UI.Pages
             {
                 PostData? published = await WallService.PublishAsync(
                     WritingAs.Signer, ComposerText, ComposerAttachments, ComposerQuotedPost?.PostId ?? string.Empty,
-                    pollChoices: ComposerPollChoices);
+                    pollChoices: ComposerPollChoices, title: ComposerTitle, longBody: ComposerLongBody);
 
                 if (published is null) return;
 
                 ComposerText = string.Empty;
                 ComposerAttachments = [];
                 ComposerPollChoices = [];
+                ComposerTitle = string.Empty;
+                ComposerLongBody = string.Empty;
                 StopQuoting();
             }
             finally

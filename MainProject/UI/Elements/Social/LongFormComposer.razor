@@ -1,0 +1,118 @@
+@namespace ChaySocial.MainProject.UI.Elements.Social
+@using ChaySocial.MainProject.DataModels
+
+@*
+    Turns a post into a whole piece. Closed by default and one tap away, because most posts are not essays and a
+    composer that always showed a page-sized box would be a composer about essays.
+
+    The words the page owns stay where they were: this hands the title and the body back the same way the poll
+    composer hands back its answers, so the page keeps owning everything that will be signed.
+*@
+
+<div class="long-form-composer @(IsOpen ? OpenClass : string.Empty)">
+
+    <button type="button"
+            class="long-form-composer-toggle @(IsOpen ? ChosenClass : string.Empty)"
+            disabled="@IsDisabled"
+            title="@ToggleHint"
+            @onclick="ToggleAsync">
+        @ToggleEmoji
+    </button>
+
+    @if (IsOpen)
+    {
+        <div class="long-form-composer-panel">
+            <input class="long-form-composer-title"
+                   type="text"
+                   maxlength="@PostData.MaximumTitleLength"
+                   placeholder="@TitlePlaceholder"
+                   disabled="@IsDisabled"
+                   value="@Title"
+                   @oninput="HandleTitleInput" />
+
+            <textarea class="long-form-composer-body"
+                      rows="@VisibleRowCount"
+                      maxlength="@PostData.MaximumLongBodyLength"
+                      placeholder="@BodyPlaceholder"
+                      disabled="@IsDisabled"
+                      value="@LongBody"
+                      @oninput="HandleBodyInput"></textarea>
+
+            <p class="long-form-composer-hint">@MarkupHint</p>
+        </div>
+    }
+
+</div>
+
+<LongFormComposerCss />
+
+@code {
+    /// <summary> The line set above the piece, owned by the page. </summary>
+    [Parameter] public string Title { get; set; } = string.Empty;
+
+    /// <summary> Hands the title back to the page that owns it. </summary>
+    [Parameter] public EventCallback<string> TitleChanged { get; set; }
+
+    /// <summary> The piece itself, owned by the page. </summary>
+    [Parameter] public string LongBody { get; set; } = string.Empty;
+
+    /// <summary> Hands the piece back to the page that owns it. </summary>
+    [Parameter] public EventCallback<string> LongBodyChanged { get; set; }
+
+    /// <summary> True while a publish is running, so nothing can be typed mid-flight. </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+
+    /// <summary> Mark on the button that opens and closes the piece. </summary>
+    const string ToggleEmoji = "📜";
+
+    /// <summary> What that button says it does. </summary>
+    const string ToggleHint = "Write a whole piece instead of a line";
+
+    /// <summary> Class the control carries while the piece is open, so the tool row gives it a line of its own. </summary>
+    const string OpenClass = "is-open";
+
+    /// <summary> Class the button carries while the piece is open. </summary>
+    const string ChosenClass = "is-chosen";
+
+    /// <summary> What the empty title box invites. </summary>
+    const string TitlePlaceholder = "A title, if it has one";
+
+    /// <summary> What the empty body invites. </summary>
+    const string BodyPlaceholder = "Write as much as you like. Nothing here cuts you off at five hundred characters.";
+
+    /// <summary> The line under the box, saying how the four shapes are written. </summary>
+    const string MarkupHint = "Start a line with # for a heading, > for a quote, - for a list. Everything else is a paragraph.";
+
+    /// <summary> Lines the body shows before it starts scrolling: enough that it reads as a page rather than a field. </summary>
+    const int VisibleRowCount = 12;
+
+    /// <summary> True while the piece is showing. </summary>
+    bool IsOpen;
+
+    /// <summary> Opens the piece, or closes it and throws away what was written. </summary>
+    /// <returns> A task that completes once the page has taken the change. </returns>
+    async Task ToggleAsync()
+    {
+        if (IsDisabled) return;
+
+        IsOpen = !IsOpen;
+
+        // Closing means "never mind": leaving a body behind would publish a piece the writer decided against, and
+        // they would have no way of seeing that it was still there.
+        if (!IsOpen)
+        {
+            await TitleChanged.InvokeAsync(string.Empty);
+            await LongBodyChanged.InvokeAsync(string.Empty);
+        }
+    }
+
+    /// <summary> Hands each keystroke of the title back to the page. </summary>
+    /// <param name="args"> The input event carrying the box's new contents. </param>
+    /// <returns> A task that completes once the page has taken it. </returns>
+    Task HandleTitleInput(ChangeEventArgs args) => TitleChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    /// <summary> Hands each keystroke of the body back to the page. </summary>
+    /// <param name="args"> The input event carrying the box's new contents. </param>
+    /// <returns> A task that completes once the page has taken it. </returns>
+    Task HandleBodyInput(ChangeEventArgs args) => LongBodyChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+}

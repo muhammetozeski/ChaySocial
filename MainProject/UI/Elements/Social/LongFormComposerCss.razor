@@ -1,0 +1,122 @@
+@*
+    Styling for the control that turns a post into a whole piece.
+*@
+<style>
+    .long-form-composer {
+        display: flex;
+        align-items: center;
+    }
+
+        /* Open, it takes a whole line of the composer's tool row and stacks the page-sized box under its button. */
+        .long-form-composer.is-open {
+            flex-basis: @(AppMeasures.Percent.Full)%;
+            flex-direction: column;
+            align-items: stretch;
+            gap: @(AppMeasures.Space.Px12)px;
+        }
+
+    /* Sized and coloured to match the poll and drawing buttons beside it, so the tool row reads as one row. */
+    .long-form-composer-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-start;
+        width: @(ToggleDiameterPx)px;
+        height: @(ToggleDiameterPx)px;
+        padding: 0;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Circular)%;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        cursor: pointer;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.None);
+        transition: background @(AppMeasures.Duration.Fast)s, border-color @(AppMeasures.Duration.Fast)s;
+    }
+
+        .long-form-composer-toggle:hover:not(:disabled) {
+            background: @(AppColors.SurfaceStrong.ToRgbaHex(true));
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+        }
+
+        .long-form-composer-toggle.is-chosen {
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            background: @(AppColors.SurfaceStrong.ToRgbaHex(true));
+        }
+
+        .long-form-composer-toggle:disabled {
+            opacity: @(AppMeasures.Opacity.Disabled);
+            cursor: not-allowed;
+        }
+
+    .long-form-composer-panel {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px8)px;
+        animation: long-form-composer-unfold @(AppMeasures.Duration.Normal)s ease-out both;
+    }
+
+    .long-form-composer-title,
+    .long-form-composer-body {
+        box-sizing: border-box;
+        width: @(AppMeasures.Percent.Full)%;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px14)px;
+        border: @(AppMeasures.Border.Thin)px solid @(AppColors.GlassBorderDefault.ToRgbaHex(true));
+        border-radius: @(AppMeasures.Radius.Large)px;
+        background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        font-family: inherit;
+    }
+
+    .long-form-composer-title {
+        font-size: @(AppMeasures.Font.Medium)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+    }
+
+    /* A page rather than a field: the writing area is the point of this control, so it is given room and left
+       resizable, which is the one place a reader of their own draft actually wants a handle. */
+    .long-form-composer-body {
+        resize: vertical;
+        font-size: @(AppMeasures.Font.Normal)px;
+        line-height: @(AppMeasures.LineHeight.Relaxed);
+    }
+
+        .long-form-composer-title::placeholder,
+        .long-form-composer-body::placeholder {
+            color: @(AppColors.TextMuted.ToRgbaHex(true));
+            font-weight: @(AppMeasures.Weight.Normal);
+        }
+
+        .long-form-composer-title:focus,
+        .long-form-composer-body:focus {
+            outline: none;
+            border-color: @(AppColors.Primary.ToRgbaHex(true));
+            box-shadow: @AppStyles.ShadowPrimaryGlow;
+        }
+
+        .long-form-composer-title:disabled,
+        .long-form-composer-body:disabled {
+            opacity: @(AppMeasures.Opacity.Dim);
+        }
+
+    .long-form-composer-hint {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    @@keyframes long-form-composer-unfold {
+        from {
+            opacity: 0;
+            transform: translateY(-@(UnfoldDropPx)px);
+        }
+    }
+</style>
+
+@code {
+    /// <summary> Diameter of the button that opens the piece, matched to the poll and drawing buttons beside it. </summary>
+    const int ToggleDiameterPx = AppMeasures.Size.Px32;
+
+    /// <summary> How far the box drops from as it unfolds, so it reads as opening out of the button above it. </summary>
+    const int UnfoldDropPx = AppMeasures.Space.Px8;
+}
