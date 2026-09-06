@@ -26,6 +26,33 @@
             }
         </button>
     }
+
+    @* Offered only to somebody signed in, because it is built from their address: nobody chooses this colour,
+       nobody else has it, and nobody can take it. *@
+    @if (SessionService.IsSignedIn)
+    {
+        AppTheme mine = IdentityPalette.BuildFrom(SessionService.CurrentAddress, BaseThemeForMine);
+
+        <button type="button"
+                class="theme-picker-choice @(IsActive(mine) ? ActiveClass : string.Empty)"
+                style="@SwatchStyle(mine)"
+                title="@MineTitle"
+                @onclick="() => ChooseMineAsync(BaseThemeForMine)">
+
+            <span class="theme-picker-dots">
+                <span class="theme-picker-dot" style="@DotStyle(mine.Primary)"></span>
+                <span class="theme-picker-dot" style="@DotStyle(mine.Secondary)"></span>
+                <span class="theme-picker-dot" style="@DotStyle(mine.Accent)"></span>
+            </span>
+
+            <span class="theme-picker-name" style="@NameStyle(mine)">@MineLabel</span>
+
+            @if (IsActive(mine))
+            {
+                <span class="theme-picker-tick" style="@NameStyle(mine)">@ActiveMark</span>
+            }
+        </button>
+    }
 </div>
 
 <ThemePickerCss />
@@ -45,10 +72,31 @@
     /// <returns> True when it is active. </returns>
     static bool IsActive(AppTheme theme) => ThemeManager.Current.Name == theme.Name;
 
+    /// <summary> Text on the choice built from the reader's own address. </summary>
+    const string MineLabel = "Mine";
+
+    /// <summary> What that choice says it is when hovered. </summary>
+    const string MineTitle = "The colour your address deals you";
+
+    /// <summary>
+    /// The shipped palette the account's own colours are turned out of. Whichever is in force, so choosing a
+    /// different one first and then this one turns that one instead of always starting from the same place.
+    /// </summary>
+    static AppTheme BaseThemeForMine
+        => IdentityPalette.BaseThemeOf(ThemeManager.Current.Name)
+           ?? AppThemes.FindByName(ThemeManager.Current.Name)
+           ?? AppThemes.All[0];
+
     /// <summary> Switches the app to a palette and remembers the choice on this device. </summary>
     /// <param name="theme"> Palette to switch to. </param>
     /// <returns> A task that completes once the choice has been stored. </returns>
     static Task ChooseAsync(AppTheme theme) => ThemeManager.ApplyAndRememberAsync(theme);
+
+    /// <summary> Switches the app to the palette the signed-in account's address deals. </summary>
+    /// <param name="baseTheme"> The shipped palette to turn. </param>
+    /// <returns> A task that completes once the choice has been stored. </returns>
+    static Task ChooseMineAsync(AppTheme baseTheme)
+        => ThemeManager.ApplyForAccountAsync(SessionService.CurrentAddress, baseTheme);
 
     /// <summary> Paints a choice in its own palette's background, so the swatch shows what the app would look like. </summary>
     /// <param name="theme"> Palette being drawn. </param>
