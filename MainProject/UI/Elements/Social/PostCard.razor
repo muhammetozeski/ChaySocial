@@ -70,9 +70,14 @@
                        ChosenBlockIndex="@ChosenBlockIndex"
                        OnBlockChosen="OnBlockChosen" />
 
+            @* The length sits beside the way in rather than anywhere else on the card: it is what somebody wants
+               to know in the moment they are deciding whether to go through that door. *@
             @if (!ShowLongFormInFull)
             {
-                <button type="button" class="post-card-read-on" @onclick="HandleOpenComments">@ReadOnLabel</button>
+                <div class="post-card-read-row">
+                    <button type="button" class="post-card-read-on" @onclick="HandleOpenComments">@ReadOnLabel</button>
+                    <span class="post-card-read-length">@readingLengthLabel</span>
+                </div>
             }
         }
 
@@ -430,6 +435,9 @@
     /// <summary> Result of the last signature check, kept between renders so verifying does not run on every repaint. </summary>
     bool IsSignatureTrusted;
 
+    /// <summary> How long the long piece takes to read, worked out when the post changes rather than at every repaint. </summary>
+    string readingLengthLabel = string.Empty;
+
     /// <summary>
     /// Re-runs the signature check whenever the post or its author profile changes, so the verdict the card draws
     /// always belongs to the post currently on screen.
@@ -441,6 +449,10 @@
         // Checked here rather than at every repaint, and only against a profile the card was actually handed:
         // a payment address is worth exactly as much as the signature over it.
         CanBeTipped = !IsOwnPost && ProfileService.VerifyTipAddress(AuthorProfile);
+
+        // Splitting a body into blocks to count its words belongs here for the same reason: it is work about the
+        // post, not about the frame it is being drawn in.
+        readingLengthLabel = Post is { IsLongForm: true } ? ReadingLength.Describe(Post.LongBody) : string.Empty;
     }
 
     /// <summary> True when the signed-in account wrote this post, which swaps the report button for a delete button. </summary>

@@ -358,11 +358,28 @@ namespace ChaySocial.MainProject.UI.Pages
         bool IsRefreshing => IsLoading && hasLoadedOnce;
 
         /// <summary> Header line under the title: what the reader is looking at, in one short phrase. </summary>
-        string ThreadSubtitle => post is null
-            ? MissingPostSubtitle
-            : replies.Count == 1
-                ? SingleReplySubtitle
-                : string.Format(ManyRepliesSubtitleFormat, replies.Count);
+        /// <remarks>
+        /// The length is added here as well as on the card, because a reader who arrived from an alert or a link
+        /// never saw the card and would otherwise meet an essay with nothing saying how long it is.
+        /// </remarks>
+        string ThreadSubtitle
+        {
+            get
+            {
+                if (post is null) return MissingPostSubtitle;
+
+                string counted = replies.Count == 1
+                    ? SingleReplySubtitle
+                    : string.Format(ManyRepliesSubtitleFormat, replies.Count);
+
+                return post.IsLongForm
+                    ? counted + SubtitlePartSeparator + ReadingLength.Describe(post.LongBody)
+                    : counted;
+            }
+        }
+
+        /// <summary> Sets the reply count apart from the reading length in the header line. </summary>
+        const string SubtitlePartSeparator = " · ";
 
         /// <summary> Frosted bar the sticky header is painted on, so the thread scrolls under glass instead of under nothing. </summary>
         static string HeaderSurfaceStyle => AppStyles.BuildBarSurface(pinnedToBottom: false);

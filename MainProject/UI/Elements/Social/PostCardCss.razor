@@ -139,6 +139,19 @@
             text-decoration: underline;
         }
 
+    /* The door and how far it is. Aligned on their baselines rather than centred, so the quiet half reads as an
+       aside to the loud half instead of as a second control. */
+    .post-card-read-row {
+        display: flex;
+        align-items: baseline;
+        gap: @(AppMeasures.Space.Px8)px;
+    }
+
+    .post-card-read-length {
+        color: @(AppColors.TextSecondary.ToRgbaHex(true));
+        font-size: @(AppMeasures.Font.XSmall)px;
+    }
+
     .post-card-actions {
         display: flex;
         align-items: center;
