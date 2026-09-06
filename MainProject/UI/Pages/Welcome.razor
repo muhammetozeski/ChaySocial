@@ -147,6 +147,10 @@
                             <span>@RecallSubmitLabel</span>
                         }
                     </CoreButton>
+
+                    @* The other way back in. A device opening a locked file for the first time can never reach
+                       Settings, so the way to that screen has to be here. *@
+                    <a class="welcome-key-file-link" href="@KeyFile.KeyFileRoute">@KeyFileLinkLabel</a>
                 </div>
             }
 

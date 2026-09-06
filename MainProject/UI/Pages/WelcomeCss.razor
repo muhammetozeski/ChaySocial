@@ -225,6 +225,18 @@
         animation: welcome-reveal @(AppMeasures.Duration.Normal)s @ArrivalEasing both;
     }
 
+    /* The quieter of the two ways back in, because pasting a secret is the one most people will take. */
+    .welcome-key-file-link {
+        align-self: center;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+        text-decoration: underline;
+    }
+
+        .welcome-key-file-link:hover {
+            color: @(AppColors.TextPrimary.ToRgbaHex(true));
+        }
+
     /* Both secret boxes — the one a returning owner pastes into and the readonly one a new owner copies out of —
        share this monospace, wide-tracked look, because both hold the same grouped characters. */
     .welcome-secret-box {

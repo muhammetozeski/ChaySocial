@@ -290,6 +290,10 @@
                 <p class="settings-error">@_secretFailureMessage</p>
             }
 
+            @* Offered right under the secret itself, because this is the only form of it that can be kept
+               anywhere but on paper. *@
+            <a class="settings-archive-link" href="@KeyFile.KeyFileRoute">@KeyFileLinkLabel</a>
+
         </CoreCard>
 
         <CoreCard Acrylic="AcrylicLevel.Normal"

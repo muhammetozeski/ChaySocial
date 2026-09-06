@@ -77,6 +77,9 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> Text on the button that opens a pasted secret. </summary>
         const string RecallSubmitLabel = "Continue";
 
+        /// <summary> What the link into the key file screen says, for somebody whose backup is a file rather than words. </summary>
+        const string KeyFileLinkLabel = "I have a locked key file instead";
+
         /// <summary> Shown when the pasted text is simply not a secret this app ever produced. </summary>
         const string UnrecognisedSecretMessage = "That does not read as a Chay Social secret. Check for a missing group of characters and try again.";
 

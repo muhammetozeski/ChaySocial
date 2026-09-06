@@ -178,6 +178,9 @@ namespace ChaySocial.MainProject.UI.Pages
         /// <summary> What the link into the archive screen says. </summary>
         const string ArchiveSectionLinkLabel = "Open my archive";
 
+        /// <summary> What the link into the key file screen says, offered under the secret it locks. </summary>
+        const string KeyFileLinkLabel = "Lock my key into a file";
+
         /// <summary> Emoji on the section about being made to open this device. </summary>
         const string DuressSectionEmoji = "🧯";
 
