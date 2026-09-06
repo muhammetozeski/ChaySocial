@@ -48,6 +48,29 @@ namespace ChaySocial.MainProject.DataModels
         /// <summary> Short excerpt shown in the alerts list. Always empty for <see cref="NotificationKind.Message"/>. </summary>
         public string Preview { get; init; } = string.Empty;
 
+        /// <summary>
+        /// Base64 value the recipient decapsulates to recover the secret <see cref="SealedDetail"/> was sealed
+        /// with; empty on an alert that carries nothing sealed.
+        /// </summary>
+        public string Encapsulation { get; init; } = string.Empty;
+
+        /// <summary> Base64 nonce <see cref="SealedDetail"/> was sealed under; empty when nothing is sealed. </summary>
+        public string Nonce { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Who acted and what they acted on, sealed to the recipient alone.
+        /// </summary>
+        /// <remarks>
+        /// A private message's alert used to name its sender and its conversation in the clear, in a collection
+        /// that exists only to ring a bell — a second, plain-text copy of the private-message graph the encryption
+        /// beside it was there to prevent. Sealed, the alert still rings and still opens the right conversation,
+        /// and the collection says nothing about who wrote to whom.
+        /// </remarks>
+        public string SealedDetail { get; init; } = string.Empty;
+
+        /// <summary> True when the actor and target of this alert are sealed rather than written in the clear. </summary>
+        public bool IsSealed => SealedDetail.Length > 0;
+
         /// <summary> When it happened. </summary>
         public required long CreatedAtUnixMs { get; init; }
 

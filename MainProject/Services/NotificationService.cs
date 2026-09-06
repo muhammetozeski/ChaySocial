@@ -1,11 +1,18 @@
 using ChaySocial.MainProject.Cryptography;
 using ChaySocial.MainProject.DataModels;
 using ChaySocial.MainProject.Events;
+using ChaySocial.MainProject.Identity;
 using ChaySocial.MainProject.Persistence;
 using ChaySocial.MainProject.Text;
 
 namespace ChaySocial.MainProject.Services
 {
+    /// <summary> What an alert kept sealed: who acted, what they acted on, and the thing it announced. </summary>
+    /// <param name="ActorAddress"> Account whose action caused the alert. </param>
+    /// <param name="TargetId"> What the alert points at — a conversation, for a letter. </param>
+    /// <param name="DetailId"> The thing announced, so an alert can be found again by it; a message's own id. </param>
+    public readonly record struct SealedAlertDetail(string ActorAddress, string TargetId, string DetailId);
+
     /// <summary>
     /// The alerts list behind the bell. A notification is a pointer, not a copy: it names who acted and what they
     /// acted on, so opening one sends the reader back to the post, comment or conversation itself rather than to a
@@ -25,34 +32,102 @@ namespace ChaySocial.MainProject.Services
         /// <param name="kind"> What the actor did. </param>
         /// <param name="targetId"> Post or comment the alert points at; left empty for a follow. </param>
         /// <param name="preview"> Excerpt to show, shortened to <see cref="NotificationData.MaximumPreviewLength"/> and dropped entirely for a message. </param>
+        /// <param name="sealTo"> Account to seal the actor and target to, so the stored alert names neither; null leaves them in the clear. </param>
+        /// <param name="sealedDetailId"> A second id kept inside the seal, so an alert can be found again by what it announced. </param>
         /// <returns> The stored notification, or null when it was for the actor themselves or an address was missing. </returns>
         public static async Task<NotificationData?> NotifyAsync(
             string recipientAddress,
             string actorAddress,
             NotificationKind kind,
             string targetId = "",
-            string preview = "")
+            string preview = "",
+            PublicIdentity? sealTo = null,
+            string sealedDetailId = "")
         {
             if (recipientAddress.Length == 0 || actorAddress.Length == 0) return null;
             if (recipientAddress == actorAddress) return null;
+
+            long createdAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            SealedFields sealed_ = sealTo is null
+                ? new SealedFields(string.Empty, string.Empty, string.Empty)
+                : Seal(sealTo, recipientAddress, createdAt, actorAddress, targetId, sealedDetailId);
 
             NotificationData notification = new()
             {
                 NotificationId = Base32.Encode(RandomSource.Next(NotificationIdBytes)),
                 RecipientAddress = recipientAddress,
-                ActorAddress = actorAddress,
+
+                // Sealed, these two are left empty rather than written twice: the collection exists to ring a bell,
+                // and a bell does not need to know who rang it.
+                ActorAddress = sealTo is null ? actorAddress : string.Empty,
                 Kind = kind,
-                TargetId = targetId,
+                TargetId = sealTo is null ? targetId : string.Empty,
+
+                Encapsulation = sealed_.Encapsulation,
+                Nonce = sealed_.Nonce,
+                SealedDetail = sealed_.Detail,
 
                 // A message body is encrypted for the recipient alone; putting an excerpt here would hand the
                 // server the very text it is not supposed to be able to read.
                 Preview = kind == NotificationKind.Message ? string.Empty : ShortenPreview(preview),
-                CreatedAtUnixMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                CreatedAtUnixMs = createdAt
             };
 
             await AppServices.Documents.WriteAsync(notification.Id, notification);
             MainEvents.Trigger(MainEvents.Names.NotificationsChanged, recipientAddress);
             return notification;
+        }
+
+        /// <summary>
+        /// Opens what an alert was sealed with. Only the account the alert belongs to can do it, because the secret
+        /// was encapsulated to that account's key.
+        /// </summary>
+        /// <param name="reader"> The unlocked account whose alerts these are. </param>
+        /// <param name="notification"> The alert to open. </param>
+        /// <param name="detail"> Receives who acted and what they acted on, or empty values when it could not be opened. </param>
+        /// <returns> True when the alert carried a seal this account could open. </returns>
+        /// <remarks>
+        /// A seal that will not open is an ordinary outcome — an alert written for somebody else, or one whose
+        /// stored fields were altered — so it is reported as false rather than thrown. The alerts screen draws the
+        /// padlocked line it already draws for a letter it cannot read.
+        /// </remarks>
+        public static bool TryOpenSealed(PrivateIdentity reader, NotificationData notification, out SealedAlertDetail detail)
+        {
+            detail = new SealedAlertDetail(string.Empty, string.Empty, string.Empty);
+
+            if (!notification.IsSealed || notification.RecipientAddress != reader.Public.Address) return false;
+
+            try
+            {
+                byte[] sharedSecret = reader.Decapsulate(Convert.FromBase64String(notification.Encapsulation));
+                byte[] associatedData = BuildSealAssociatedData(notification.RecipientAddress, notification.CreatedAtUnixMs);
+
+                if (!AppCryptography.Cipher.TryDecrypt(
+                    Convert.FromBase64String(notification.SealedDetail),
+                    sharedSecret,
+                    Convert.FromBase64String(notification.Nonce),
+                    associatedData,
+                    out byte[] plaintext))
+                {
+                    return false;
+                }
+
+                TranscriptReader fields = new(plaintext);
+                if (!fields.TryReadText(out string actorAddress)
+                    || !fields.TryReadText(out string targetId)
+                    || !fields.TryReadText(out string detailId))
+                {
+                    return false;
+                }
+
+                detail = new SealedAlertDetail(actorAddress, targetId, detailId);
+                return true;
+            }
+            catch (FormatException error)
+            {
+                Log($"Alert '{notification.NotificationId}' carries malformed base64.\n{error}", LogLevel.Warning);
+                return false;
+            }
         }
 
         /// <summary>
@@ -150,6 +225,69 @@ namespace ChaySocial.MainProject.Services
 
         /// <summary> Random bytes behind a notification id — enough that two alerts never collide. </summary>
         const int NotificationIdBytes = 12;
+
+        /// <summary> Separates an alert's seal from every other thing this app encrypts. </summary>
+        static readonly byte[] AlertSealDomain = "ChaySocial/Alert/v1"u8.ToArray();
+
+        /// <summary> The three stored values a seal produces, kept together so the caller cannot pair them wrongly. </summary>
+        /// <param name="Encapsulation"> Base64 value the recipient decapsulates. </param>
+        /// <param name="Nonce"> Base64 nonce the detail was sealed under. </param>
+        /// <param name="Detail"> Base64 sealed bytes. </param>
+        readonly record struct SealedFields(string Encapsulation, string Nonce, string Detail);
+
+        /// <summary> Seals who acted and what they acted on to the account the alert belongs to. </summary>
+        /// <param name="sealTo"> The recipient's published identity. </param>
+        /// <param name="recipientAddress"> Address of that account, bound into the seal. </param>
+        /// <param name="createdAtUnixMs"> When the alert was written, bound into the seal too. </param>
+        /// <param name="actorAddress"> Account whose action caused the alert. </param>
+        /// <param name="targetId"> What the alert points at. </param>
+        /// <param name="detailId"> The second id kept inside the seal. </param>
+        /// <returns> What to store. </returns>
+        /// <remarks>
+        /// The recipient's address and the alert's time are the associated data rather than part of the body: they
+        /// are already stored in the clear, and binding them means a sealed detail cannot be lifted onto a
+        /// different alert without the tag failing.
+        /// </remarks>
+        static SealedFields Seal(
+            PublicIdentity sealTo,
+            string recipientAddress,
+            long createdAtUnixMs,
+            string actorAddress,
+            string targetId,
+            string detailId)
+        {
+            TranscriptWriter body = new();
+            body.WriteText(actorAddress);
+            body.WriteText(targetId);
+            body.WriteText(detailId);
+
+            EncapsulationResult secret = AppCryptography.Identities.EncapsulateTo(sealTo);
+            byte[] nonce = RandomSource.Next(AppCryptography.Cipher.NonceSize);
+
+            byte[] sealedDetail = AppCryptography.Cipher.Encrypt(
+                body.ToArray(),
+                secret.SharedSecret,
+                nonce,
+                BuildSealAssociatedData(recipientAddress, createdAtUnixMs));
+
+            return new SealedFields(
+                Convert.ToBase64String(secret.Encapsulation),
+                Convert.ToBase64String(nonce),
+                Convert.ToBase64String(sealedDetail));
+        }
+
+        /// <summary> Builds the bytes an alert's seal is bound to. </summary>
+        /// <param name="recipientAddress"> Account the alert belongs to. </param>
+        /// <param name="createdAtUnixMs"> When it was written. </param>
+        /// <returns> The associated data both sealing and opening use. </returns>
+        static byte[] BuildSealAssociatedData(string recipientAddress, long createdAtUnixMs)
+        {
+            TranscriptWriter associatedData = new();
+            associatedData.WriteBytes(AlertSealDomain);
+            associatedData.WriteText(recipientAddress);
+            associatedData.WriteInt64(createdAtUnixMs);
+            return associatedData.ToArray();
+        }
 
         /// <summary>
         /// How many pages counting and clearing may walk through. Both of those have to see every alert an account
