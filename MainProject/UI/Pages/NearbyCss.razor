@@ -1,0 +1,78 @@
+@*
+    Styling for the two-steps-out page. Every value comes from C# — the shared theme tokens where one exists, a
+    named constant in this file where the measurement belongs to this screen alone.
+*@
+<style>
+    .nearby-screen {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+        width: @(AppMeasures.Percent.Full)%;
+        max-width: @(ReadingColumnMaximumWidthPx)px;
+        margin: 0 auto;
+        padding: @(AppMeasures.Space.ScreenTopInset)px @(AppMeasures.Space.Px20)px @(AppMeasures.Space.ScrollBottomInset + AppMeasures.Space.Px40)px;
+    }
+
+    .nearby-header {
+        display: flex;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px12)px;
+        padding: @(AppMeasures.Space.Px12)px @(AppMeasures.Space.Px16)px;
+        border-radius: @(AppMeasures.Radius.XLarge)px;
+    }
+
+    .nearby-heading {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-width: 0;
+        gap: @(AppMeasures.Space.Px4)px;
+    }
+
+    .nearby-title {
+        margin: 0;
+        font-size: @(AppMeasures.Font.Title)px;
+        font-weight: @(AppMeasures.Weight.Black);
+        line-height: @(AppMeasures.LineHeight.Tight);
+        color: @(AppColors.TextPrimary.ToRgbaHex(true));
+    }
+
+    /* Says what the whole ranking is, on the page rather than in a help article somewhere. */
+    .nearby-subtitle {
+        margin: 0;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+
+    .nearby-list {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px16)px;
+    }
+
+    .nearby-row {
+        display: flex;
+        flex-direction: column;
+        gap: @(AppMeasures.Space.Px4)px;
+    }
+
+    /* The reason this account is on the page, under the account itself. Every name in it is somebody the reader
+       chose, which is the whole argument for the row being here at all. */
+    .nearby-reason {
+        margin: 0;
+        padding-left: @(ReasonIndentPx)px;
+        font-size: @(AppMeasures.Font.XSmall)px;
+        line-height: @(AppMeasures.LineHeight.Snug);
+        color: @(AppColors.TextMuted.ToRgbaHex(true));
+    }
+</style>
+
+@code {
+    /// <summary> Caps the column so the page reads as one narrow list on a desktop window instead of a stretched band. </summary>
+    const int ReadingColumnMaximumWidthPx = 640;
+
+    /// <summary> How far the reason is set in, so it reads as belonging to the row above it rather than to the page. </summary>
+    const int ReasonIndentPx = AppMeasures.Space.Px12;
+}

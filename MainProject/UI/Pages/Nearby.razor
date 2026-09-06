@@ -1,0 +1,99 @@
+@attribute [Route(NearbyRoute)]
+@inherits ChaySocial.MainProject.UI.Layout.Architecture.SessionPage
+@using ChaySocial.MainProject.DataModels
+@using ChaySocial.MainProject.Services
+@using ChaySocial.MainProject.UI.Elements.Social
+
+@*
+    People two steps out: accounts the reader's own people already follow. Every row says which of them, by
+    name, and the order is that count and nothing else — so the whole ranking is a number on the screen and a
+    suspicious reader can recount it by hand.
+*@
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<div class="nearby-screen">
+
+    <header class="nearby-header" style="@HeaderSurfaceStyle">
+        <BackButton OnClick="GoBack" />
+
+        <div class="nearby-heading">
+            <h1 class="nearby-title">@PageHeadline</h1>
+            <p class="nearby-subtitle">@PageSubtitle</p>
+        </div>
+
+        @if (IsRefreshing)
+        {
+            <CoreSpinner SizePx="@RefreshSpinnerDiameterPx"
+                         BorderWidthPx="@RefreshSpinnerBorderPx"
+                         Color="@AppColors.Primary" />
+        }
+    </header>
+
+    @if (IsFirstLoad)
+    {
+        <CoreSkeleton Shape="SkeletonShape.Card" />
+    }
+    else if (LoadFailureMessage is not null)
+    {
+        <EmptyState Emoji="@LoadFailedEmoji" Headline="@LoadFailedHeadline" Description="@LoadFailureMessage">
+            <Action>
+                <CoreButton Background="@AppColors.Primary"
+                            TextColor="@AppColors.TextOnFilledSurface"
+                            BorderRadius="@ActionButtonRadiusCss"
+                            Padding="@ActionButtonPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow"
+                            OnClick="ReloadAsync">
+                    @TryAgainLabel
+                </CoreButton>
+            </Action>
+        </EmptyState>
+    }
+    else if (candidates.Count == 0)
+    {
+        @* A second circle needs a first one, so somebody who follows nobody is sent where people are found. *@
+        <EmptyState Emoji="@EmptyEmoji" Headline="@EmptyHeadline" Description="@EmptyDescription">
+            <Action>
+                <CoreButton Background="@AppColors.Primary"
+                            TextColor="@AppColors.TextOnFilledSurface"
+                            BorderRadius="@ActionButtonRadiusCss"
+                            Padding="@ActionButtonPaddingCss"
+                            FontSize="@AppMeasures.Font.Normal"
+                            Shadow="@AppStyles.ShadowPrimaryGlow"
+                            OnClick="OpenDiscover">
+                    @GoToDiscoverLabel
+                </CoreButton>
+            </Action>
+        </EmptyState>
+    }
+    else
+    {
+        <div class="nearby-list">
+            @foreach (NeighbourCandidate candidate in candidates)
+            {
+                @* Declared inside the loop body, so each row's handlers carry their own account. *@
+                NeighbourCandidate row = candidate;
+
+                @if (ProfileFor(row.Address) is ProfileData profile)
+                {
+                    <div class="nearby-row" @key="row.Address">
+                        <PersonRow Profile="profile" OnOpen="() => OpenProfile(row.Address)">
+                            <Action>
+                                <FollowButton TargetAddress="@row.Address"
+                                              IsFollowing="@IsFollowing(row.Address)"
+                                              IsBusy="@IsBusy(row.Address)"
+                                              OnToggle="() => ToggleFollowAsync(row.Address)" />
+                            </Action>
+                        </PersonRow>
+
+                        <p class="nearby-reason">@ReasonFor(row)</p>
+                    </div>
+                }
+            }
+        </div>
+    }
+
+</div>
+
+<NearbyCss />
