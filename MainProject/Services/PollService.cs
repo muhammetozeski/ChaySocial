@@ -89,7 +89,7 @@ namespace ChaySocial.MainProject.Services
                 if (vote.VoterAddress == readerAddress) mine = vote.ChoiceIndex;
             }
 
-            return new PollTally(counts, total, mine, HasClosed(post));
+            return new PollTally(counts, total, mine, HasClosed(post), votes.Count);
         }
 
         /// <summary>
@@ -152,8 +152,17 @@ namespace ChaySocial.MainProject.Services
     /// <param name="Total"> How many answers counted in all. </param>
     /// <param name="ReaderChoice"> Which choice this reader picked, or <see cref="NotAnswered"/> when they have not. </param>
     /// <param name="IsClosed"> True when the asking has closed. </param>
-    public readonly record struct PollTally(IReadOnlyList<int> Counts, int Total, int ReaderChoice, bool IsClosed)
+    /// <param name="ReadCount"> How many answer records were read before any of them were checked. </param>
+    public readonly record struct PollTally(
+        IReadOnlyList<int> Counts,
+        int Total,
+        int ReaderChoice,
+        bool IsClosed,
+        int ReadCount = 0)
     {
+        /// <summary> How many of the records read were thrown away because their signature did not check out. </summary>
+        public int DroppedCount => Math.Max(ReadCount - Total, 0);
+
         /// <summary> Stands for a reader who has not answered. </summary>
         public const int NotAnswered = -1;
 
