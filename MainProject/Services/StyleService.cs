@@ -44,12 +44,34 @@ namespace ChaySocial.MainProject.Services
 
             foreach (PostData post in posts)
             {
-                Fold(folded, post.Text);
-                Fold(folded, post.Title);
-                Fold(folded, post.LongBody);
+                Fold(folded, WritingOf(post.Text, post.Title, post.LongBody));
             }
 
             return StyleFingerprint.Of(folded.ToString());
+        }
+
+        /// <summary>
+        /// Folds the three places a post carries writing into the one body a fingerprint is measured from.
+        /// </summary>
+        /// <param name="text"> The line. </param>
+        /// <param name="title"> The line set above a long piece, empty when the post is not one. </param>
+        /// <param name="longBody"> The whole of a long piece, empty for an ordinary post. </param>
+        /// <returns> The three of them as one body, in the order they are written.  </returns>
+        /// <remarks>
+        /// Published here so a draft is folded by exactly the same code the corpus is. A draft measured from the
+        /// line alone, against accounts measured from line and title and piece, is not the comparison the mirror
+        /// claims to be making — and it is silent altogether for somebody writing a long piece, which is the
+        /// writing that carries a fingerprint best.
+        /// </remarks>
+        public static string WritingOf(string text, string title, string longBody)
+        {
+            StringBuilder folded = new();
+
+            Fold(folded, text);
+            Fold(folded, title);
+            Fold(folded, longBody);
+
+            return folded.ToString();
         }
 
         /// <summary>

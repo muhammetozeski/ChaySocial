@@ -58,7 +58,7 @@
     @* Both shown to the writer only, before anything is sent. Neither reports nor blocks anything: the first says
        how the line will read to somebody else, the second says which of this device's accounts it sounds like. *@
     <WritingMirror Text="@Text" />
-    <StyleMirror Text="@Text" WritingAsAddress="@WritingAsAddress" />
+    <StyleMirror Draft="@DraftWriting" WritingAsAddress="@WritingAsAddress" />
 
     <div class="post-composer-footer">
         <span class="post-composer-counter" style="@CounterStyle">@CounterLabel</span>
@@ -192,6 +192,13 @@
 
     /// <summary> The bubble emoji, falling back to the starter avatar when the page passed nothing. </summary>
     string AvatarEmoji => string.IsNullOrEmpty(Avatar) ? ProfileData.DefaultAvatar : Avatar;
+
+    /// <summary>
+    /// Everything being written here, folded the way a published post is. The style mirror reads this rather than
+    /// the line alone: a long piece is written in the same card and is the part that carries a fingerprint best,
+    /// and the accounts the draft is compared against were measured over all three fields.
+    /// </summary>
+    string DraftWriting => StyleService.WritingOf(Text ?? string.Empty, Title ?? string.Empty, LongBody ?? string.Empty);
 
     /// <summary>
     /// Length of what would actually be published. The publish path trims before it measures, so counting the

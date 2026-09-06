@@ -23,8 +23,12 @@
 <StyleMirrorCss />
 
 @code {
-    /// <summary> The draft as it stands right now, mid-typing. </summary>
-    [Parameter, EditorRequired] public string Text { get; set; } = string.Empty;
+    /// <summary>
+    /// The whole draft as it stands right now, mid-typing — the line, the title and the piece folded together the
+    /// way <see cref="StyleService.WritingOf"/> folds them, because that is how the accounts it is compared
+    /// against were measured.
+    /// </summary>
+    [Parameter, EditorRequired] public string Draft { get; set; } = string.Empty;
 
     /// <summary> Address the draft will go out under; empty falls back to the signed-in account. </summary>
     [Parameter] public string WritingAsAddress { get; set; } = string.Empty;
@@ -64,7 +68,7 @@
     IReadOnlyDictionary<string, StyleFingerprint> carried = new Dictionary<string, StyleFingerprint>();
 
     /// <summary> The draft this reading was worked out from, so typing does not redo it on unrelated renders. </summary>
-    string readText = string.Empty;
+    string readDraft = string.Empty;
 
     /// <summary> The carried account the draft reads most like, or empty when there is nothing worth saying. </summary>
     string soundsLikeAddress = string.Empty;
@@ -91,9 +95,9 @@
 
     protected override void OnParametersSet()
     {
-        if (readText == Text) return;
+        if (readDraft == Draft) return;
 
-        readText = Text;
+        readDraft = Draft;
         Judge();
     }
 
@@ -105,7 +109,7 @@
     {
         soundsLikeAddress = string.Empty;
 
-        string draft = Text ?? string.Empty;
+        string draft = Draft ?? string.Empty;
         if (draft.Trim().Length < ShortestJudgeableDraft) return;
         if (carried.Count < 2) return;
 
