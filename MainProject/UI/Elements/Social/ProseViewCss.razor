@@ -10,6 +10,61 @@
         gap: @(ProseBlockGapPx)px;
     }
 
+    /* Every block is a row: the margin on the left where a note can be left, the words on the right. Where nobody
+       is taking notes the margin is not drawn at all, so a card in a feed lays out exactly as it always did. */
+    .prose-view-block {
+        display: flex;
+        align-items: flex-start;
+        gap: @(AppMeasures.Space.Px8)px;
+        border-radius: @(AppMeasures.Radius.Medium)px;
+    }
+
+        .prose-view-block.is-chosen {
+            background: @(AppColors.SurfaceSubtle.ToRgbaHex(true));
+            box-shadow: 0 0 0 @(ChosenBlockOutlinePx)px @(AppColors.Primary.ToRgbaHex(true));
+        }
+
+    .prose-view-margin {
+        flex-shrink: 0;
+        width: @(ProseMarginWidthPx)px;
+    }
+
+    .prose-view-body {
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* Quiet until it is wanted: a mark this size beside every paragraph would compete with the words it belongs to. */
+    .prose-view-note-button {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: @(AppMeasures.Space.Px2)px;
+        width: @(ProseMarginWidthPx)px;
+        padding: 0;
+        border: none;
+        background: none;
+        font: inherit;
+        line-height: @(AppMeasures.LineHeight.None);
+        opacity: @(RestingMarkOpacity);
+        cursor: pointer;
+    }
+
+        .prose-view-note-button:hover,
+        .prose-view-block.is-chosen .prose-view-note-button {
+            opacity: @(WantedMarkOpacity);
+        }
+
+    .prose-view-note-mark {
+        font-size: @(ProseNoteMarkFontSizePx)px;
+    }
+
+    .prose-view-note-count {
+        font-size: @(AppMeasures.Font.XSmall)px;
+        font-weight: @(AppMeasures.Weight.Heavy);
+        color: @(AppColors.Primary.ToRgbaHex(true));
+    }
+
     .prose-view-paragraph {
         margin: 0;
         font-size: @(AppMeasures.Font.Normal)px;
@@ -69,4 +124,19 @@
 
     /// <summary> Thickness of the bar down the side of a quoted line. </summary>
     const int ProseQuoteBarWidthPx = AppMeasures.Border.Medium;
+
+    /// <summary> Width of the column the note mark sits in, left of the words. </summary>
+    const int ProseMarginWidthPx = AppMeasures.Size.Px24;
+
+    /// <summary> Size of the mark itself: readable at a glance, smaller than the prose it stands beside. </summary>
+    const int ProseNoteMarkFontSizePx = AppMeasures.Font.Small;
+
+    /// <summary> Thickness of the ring drawn around the block the reader picked. </summary>
+    const int ChosenBlockOutlinePx = AppMeasures.Border.Thin;
+
+    /// <summary> How visible a note mark is before it is hovered or picked: present, but not competing with the words. </summary>
+    const string RestingMarkOpacity = AppMeasures.Opacity.Dim;
+
+    /// <summary> And once it is hovered or picked, which is the only time it is being looked at. </summary>
+    const string WantedMarkOpacity = "1";
 }

@@ -22,35 +22,61 @@
 else
 {
     <div class="prose-view">
-        @foreach (ProseBlock block in Shown)
+        @for (int position = 0; position < ShownCount; position++)
         {
-            @switch (block.Kind)
-            {
-                case ProseBlockKind.Heading:
-                    <h3 class="prose-view-heading"><WrittenLine Text="@block.Text" MayBeCovered="false" /></h3>
-                    break;
+            @* Held in a local, so each margin button carries its own block rather than the last one drawn. *@
+            int index = position;
+            ProseBlock block = Blocks[index];
 
-                case ProseBlockKind.Quote:
-                    <blockquote class="prose-view-quote"><WrittenLine Text="@block.Text" MayBeCovered="false" /></blockquote>
-                    break;
+            <div class="prose-view-block @ChosenModifierFor(index)">
 
-                @* The one block that does not go through WrittenLine: inside code an @@ is not somebody being
-                   named and a # is not a subject, and drawing either as a link would rewrite what was meant. *@
-                case ProseBlockKind.Code:
-                    <CodeView Text="@block.Text" Language="@block.Language" />
-                    break;
+                @if (IsNotable)
+                {
+                    <div class="prose-view-margin">
+                        <button type="button"
+                                class="prose-view-note-button"
+                                title="@MarginNoteHint"
+                                @onclick="@(() => ChooseBlockAsync(index))">
+                            <span class="prose-view-note-mark">@MarginNoteGlyph</span>
+                            @if (NoteCountFor(index) > 0)
+                            {
+                                <span class="prose-view-note-count">@NoteCountFor(index)</span>
+                            }
+                        </button>
+                    </div>
+                }
 
-                case ProseBlockKind.Bullet:
-                    <p class="prose-view-bullet">
-                        <span class="prose-view-bullet-mark">@BulletGlyph</span>
-                        <span class="prose-view-bullet-text"><WrittenLine Text="@block.Text" MayBeCovered="false" /></span>
-                    </p>
-                    break;
+                <div class="prose-view-body">
+                    @switch (block.Kind)
+                    {
+                        case ProseBlockKind.Heading:
+                            <h3 class="prose-view-heading"><WrittenLine Text="@block.Text" MayBeCovered="false" /></h3>
+                            break;
 
-                default:
-                    <p class="prose-view-paragraph"><WrittenLine Text="@block.Text" MayBeCovered="false" /></p>
-                    break;
-            }
+                        case ProseBlockKind.Quote:
+                            <blockquote class="prose-view-quote"><WrittenLine Text="@block.Text" MayBeCovered="false" /></blockquote>
+                            break;
+
+                        @* The one block that does not go through WrittenLine: inside code an @@ is not somebody being
+                           named and a # is not a subject, and drawing either as a link would rewrite what was meant. *@
+                        case ProseBlockKind.Code:
+                            <CodeView Text="@block.Text" Language="@block.Language" />
+                            break;
+
+                        case ProseBlockKind.Bullet:
+                            <p class="prose-view-bullet">
+                                <span class="prose-view-bullet-mark">@BulletGlyph</span>
+                                <span class="prose-view-bullet-text"><WrittenLine Text="@block.Text" MayBeCovered="false" /></span>
+                            </p>
+                            break;
+
+                        default:
+                            <p class="prose-view-paragraph"><WrittenLine Text="@block.Text" MayBeCovered="false" /></p>
+                            break;
+                    }
+                </div>
+
+            </div>
         }
     </div>
 }
@@ -67,8 +93,29 @@ else
     /// <summary> Whether this piece may be covered at all; off where a reader is looking at their own words. </summary>
     [Parameter] public bool MayBeCovered { get; set; } = true;
 
+    /// <summary> How many notes sit beside each block, in the piece's own order; empty where nobody is counting. </summary>
+    [Parameter] public IReadOnlyList<int> NoteCountsPerBlock { get; set; } = [];
+
+    /// <summary> Block the reader has picked, counting from one, or zero while the whole piece is being read. </summary>
+    [Parameter] public int ChosenBlockIndex { get; set; }
+
+    /// <summary>
+    /// Raised with a block's one-based index when the reader taps its margin, and with zero when they tap the block
+    /// they already picked. The margin is drawn only where a caller handles this, so a card in a feed is untouched.
+    /// </summary>
+    [Parameter] public EventCallback<int> OnBlockChosen { get; set; }
+
     /// <summary> Drawn in front of a list item. </summary>
     const string BulletGlyph = "•";
+
+    /// <summary> Drawn in the margin beside a block, the way somebody marks a page they mean to come back to. </summary>
+    const string MarginNoteGlyph = "🔖";
+
+    /// <summary> Tooltip on that mark. </summary>
+    const string MarginNoteHint = "Read and leave notes beside this paragraph";
+
+    /// <summary> Marks the block the reader has picked; the same modifier the drawing pad and picker use. </summary>
+    const string ChosenClass = "is-chosen";
 
     /// <summary> What the curtain offers, worded as the one over a single line is. </summary>
     const string ShowAnywayLabel = "Show anyway";
@@ -91,8 +138,27 @@ else
     /// <summary> True while this piece is behind a curtain. </summary>
     bool IsCovered => MayBeCovered && !revealed && Verdict.ReachesBand(ContentGuard.Covered);
 
-    /// <summary> The blocks actually drawn, which is all of them unless a caller asked for an opening. </summary>
-    IEnumerable<ProseBlock> Shown => BlockLimit > 0 ? Blocks.Take(BlockLimit) : Blocks;
+    /// <summary> How many blocks are actually drawn, which is all of them unless a caller asked for an opening. </summary>
+    int ShownCount => BlockLimit > 0 ? Math.Min(BlockLimit, Blocks.Count) : Blocks.Count;
+
+    /// <summary> True while this piece is somewhere notes can be left, which is the only place the margin is drawn. </summary>
+    bool IsNotable => OnBlockChosen.HasDelegate;
+
+    /// <summary> How many notes sit beside one block. </summary>
+    /// <param name="index"> The block's place in the piece, counting from zero. </param>
+    /// <returns> Its note count, or zero when nobody handed one in. </returns>
+    int NoteCountFor(int index) => index < NoteCountsPerBlock.Count ? NoteCountsPerBlock[index] : 0;
+
+    /// <summary> The modifier marking the block the reader picked, empty for every other block. </summary>
+    /// <param name="index"> The block's place in the piece, counting from zero. </param>
+    /// <returns> The class to add, or an empty string. </returns>
+    string ChosenModifierFor(int index) => ChosenBlockIndex == index + 1 ? ChosenClass : string.Empty;
+
+    /// <summary> Hands a tapped block back to the caller, or clears the choice when the chosen block is tapped again. </summary>
+    /// <param name="index"> The block's place in the piece, counting from zero. </param>
+    /// <returns> A task that completes once the caller has taken the new choice. </returns>
+    Task ChooseBlockAsync(int index)
+        => OnBlockChosen.InvokeAsync(ChosenBlockIndex == index + 1 ? 0 : index + 1);
 
     protected override void OnParametersSet()
     {

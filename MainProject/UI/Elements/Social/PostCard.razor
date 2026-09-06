@@ -64,7 +64,11 @@
                 <h2 class="post-card-title"><WrittenLine Text="@Post.Title" MayBeCovered="false" /></h2>
             }
 
-            <ProseView Body="@Post.LongBody" BlockLimit="@(ShowLongFormInFull ? EveryBlock : OpeningBlockCount)" />
+            <ProseView Body="@Post.LongBody"
+                       BlockLimit="@(ShowLongFormInFull ? EveryBlock : OpeningBlockCount)"
+                       NoteCountsPerBlock="@NoteCountsPerBlock"
+                       ChosenBlockIndex="@ChosenBlockIndex"
+                       OnBlockChosen="OnBlockChosen" />
 
             @if (!ShowLongFormInFull)
             {
@@ -202,6 +206,15 @@
     /// full and where a way in would only lead back to itself.
     /// </summary>
     [Parameter] public bool ShowLongFormInFull { get; set; }
+
+    /// <summary> How many notes sit beside each block of the long piece; empty everywhere but the post's own page. </summary>
+    [Parameter] public IReadOnlyList<int> NoteCountsPerBlock { get; set; } = [];
+
+    /// <summary> Block of the long piece the reader has picked, counting from one, or zero for none. </summary>
+    [Parameter] public int ChosenBlockIndex { get; set; }
+
+    /// <summary> Raised when the reader picks a block to read the notes beside. A wall leaves it unhandled, so no margin is drawn there. </summary>
+    [Parameter] public EventCallback<int> OnBlockChosen { get; set; }
 
     /// <summary> Blocks of a long piece shown on the card: enough to know what it is about, not enough to be the piece. </summary>
     const int OpeningBlockCount = 2;
